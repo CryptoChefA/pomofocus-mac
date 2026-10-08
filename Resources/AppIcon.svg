@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="obsidian" x1="512" y1="48" x2="512" y2="976" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#18191B"/>
+      <stop offset="0.5" stop-color="#0C0D0F"/>
+      <stop offset="1" stop-color="#050607"/>
+    </linearGradient>
+    <radialGradient id="quietLight" cx="0" cy="0" r="1" gradientTransform="translate(360 230) rotate(48) scale(720)" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFFFF" stop-opacity="0.055"/>
+      <stop offset="0.58" stop-color="#FFFFFF" stop-opacity="0.012"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="ambientShadow" x="18" y="24" width="988" height="1002" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="20" stdDeviation="24" flood-color="#000000" flood-opacity="0.44"/>
+    </filter>
+  </defs>
+
+  <g filter="url(#ambientShadow)">
+    <rect x="48" y="48" width="928" height="928" rx="218" fill="url(#obsidian)"/>
+    <rect x="49" y="49" width="926" height="926" rx="217" fill="url(#quietLight)"/>
+    <rect x="51" y="51" width="922" height="922" rx="215" fill="none" stroke="#FFFFFF" stroke-opacity="0.08" stroke-width="6"/>
+  </g>
+
+  <g fill="none" stroke="#F4F1E8">
+    <!-- The open crown makes the mark read as progress, not a generic clock. -->
+    <path d="M558 253 A263 263 0 1 1 466 253" stroke-width="86" stroke-linecap="butt"/>
+    <path d="M512 512 L684 626" stroke-width="76" stroke-linecap="round"/>
+  </g>
+</svg>

@@ -1,0 +1,26 @@
+# SwiftPM / Xcode
+.build/
+.swiftpm/
+*.xcodeproj/
+xcuserdata/
+DerivedData/
+
+# Local build output (Scripts/build-app.sh) and scratch space
+outputs/
+work/
+
+# Built products
+*.app
+*.zip
+*.dmg
+
+# macOS
+.DS_Store
+
+# Never commit secrets or local configuration
+.env
+.env.*
+*.p12
+*.pem
+*.key
+*.mobileprovision

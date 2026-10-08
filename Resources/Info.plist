@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleDevelopmentRegion</key>
+    <string>en</string>
+    <key>CFBundleDisplayName</key>
+    <string>Pomofocus</string>
+    <key>CFBundleExecutable</key>
+    <string>Pomofocus</string>
+    <key>CFBundleIdentifier</key>
+    <string>org.pomodorononna.app</string>
+    <key>CFBundleIconFile</key>
+    <string>AppIcon</string>
+    <key>CFBundleInfoDictionaryVersion</key>
+    <string>6.0</string>
+    <key>CFBundleName</key>
+    <string>Pomofocus</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleShortVersionString</key>
+	<string>0.17.1</string>
+    <key>CFBundleVersion</key>
+	<string>35</string>
+    <key>CFBundleURLTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleURLName</key>
+            <string>Pomofocus</string>
+            <key>CFBundleURLSchemes</key>
+            <array>
+                <string>pomofocus</string>
+            </array>
+        </dict>
+    </array>
+    <key>LSApplicationCategoryType</key>
+    <string>public.app-category.productivity</string>
+    <key>LSMinimumSystemVersion</key>
+    <string>14.0</string>
+    <key>NSHighResolutionCapable</key>
+    <true/>
+    <key>NSCalendarsFullAccessUsageDescription</key>
+    <string>Pomofocus reads your calendar events to show them on the day timeline. It never creates, edits, or deletes events, and nothing leaves your Mac.</string>
+    <key>NSCalendarsUsageDescription</key>
+    <string>Pomofocus reads your calendar events to show them on the day timeline. It never creates, edits, or deletes events, and nothing leaves your Mac.</string>
+    <key>NSUserNotificationUsageDescription</key>
+    <string>Pomofocus uses local notifications to tell you when focus time or a break ends.</string>
+    <key>NSPrincipalClass</key>
+    <string>NSApplication</string>
+</dict>
+</plist>
