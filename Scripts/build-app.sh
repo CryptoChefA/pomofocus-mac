@@ -53,7 +53,8 @@ chmod 755 "$WIDGET_DIR/Contents/MacOS/PomofocusWidgetExtension"
 /usr/bin/codesign --verify --deep --strict "$TEMP_APP_DIR"
 
 rm -f -- "$ARCHIVE_PATH"
-/usr/bin/ditto -c -k --keepParent "$TEMP_APP_DIR" "$ARCHIVE_PATH"
+# --norsrc keeps macOS metadata (._ files) out of the archive.
+/usr/bin/ditto -c -k --norsrc --keepParent "$TEMP_APP_DIR" "$ARCHIVE_PATH"
 /usr/bin/ditto "$TEMP_APP_DIR" "$APP_DIR"
 
 echo "$ARCHIVE_PATH"

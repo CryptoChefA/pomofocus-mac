@@ -4,7 +4,21 @@ Pomofocus is a beautiful, local-first focus timer for macOS. It brings together 
 
 > Piano piano. One meaningful thing at a time.
 
-![Pomofocus widgets](Design/Pomofocus-Widget-Family-Concept.png)
+**[Download for Mac](https://github.com/CryptoChefA/pomofocus-mac/releases/latest/download/Pomofocus.zip)** · **[Website](https://cryptochefa.github.io/pomofocus-mac/)** · macOS 14+ · Apple silicon · free and open source
+
+![The Pomofocus focus screen: an analog dial, the current intention, and a day timeline of focus blocks and breaks](docs/assets/focus.jpg)
+
+![Cinema mode on an ultrawide display](docs/assets/cinema.jpg)
+
+## Install
+
+1. [Download `Pomofocus.zip`](https://github.com/CryptoChefA/pomofocus-mac/releases/latest/download/Pomofocus.zip) and unzip it.
+2. Drag **Pomofocus** into **Applications**.
+3. The build isn't notarized by Apple, so macOS blocks the first launch. Open **System Settings → Privacy & Security** and choose **Open Anyway**, or run:
+
+   ```sh
+   xattr -dr com.apple.quarantine /Applications/Pomofocus.app
+   ```
 
 ## What works today
 
@@ -81,7 +95,7 @@ open "outputs/Pomofocus.app"
 
 The script makes `outputs/Pomofocus-<version>.zip`, containing a local ad-hoc-signed application and its WidgetKit extension with stable designated requirements, plus an unpacked development copy. Keeping the app requirement stable prevents macOS calendar consent from being lost between local updates. The ZIP is the canonical local release because some file-provider folders attach metadata directly to exposed app bundles. A public release should use an Apple Developer ID and notarization.
 
-Builds from this script are ad-hoc signed, not notarized, so the first time you open one macOS will refuse it. Right-click the app and choose **Open**, or allow it under **System Settings → Privacy & Security**.
+Builds from this script are ad-hoc signed, not notarized. A build you make yourself opens normally; a downloaded one needs the **Open Anyway** step from [Install](#install).
 
 The bundle identifiers (`org.pomodorononna.app` and `org.pomodorononna.app.widget`) live in `Resources/Info.plist`, `Resources/WidgetInfo.plist`, and `Scripts/build-app.sh`. Change all three if you ship your own fork.
 
