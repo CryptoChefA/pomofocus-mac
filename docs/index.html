@@ -144,6 +144,7 @@ a { color: inherit; text-decoration: none; }
   position: absolute; left: 50%; bottom: 22px; transform: translateX(-50%); color: var(--ink-3); font-size: 12px;
   display: grid; justify-items: center; gap: 6px; opacity: clamp(0, calc(1 - var(--p) * 8), 1);
 }
+@media (max-height: 820px) { .scroll-cue { display: none; } }
 .scroll-cue i { width: 1px; height: 30px; background: linear-gradient(var(--ink-3), transparent); display: block; }
 @media (prefers-reduced-motion: no-preference) {
   .scroll-cue i { animation: cue 2.2s var(--ease) infinite; transform-origin: top; }
