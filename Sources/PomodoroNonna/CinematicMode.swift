@@ -340,6 +340,13 @@ struct CinematicView: View {
                         .lineLimit(1)
                         .truncationMode(.tail)
                         .frame(maxWidth: unit * 1.4)
+                } else if model.status != .idle, let idea = model.currentBreakIdea {
+                    Text(idea)
+                        .font(.system(size: max(15, unit * 0.026), weight: .regular, design: .serif))
+                        .italic()
+                        .foregroundStyle(NonnaTheme.sage)
+                        .lineLimit(1)
+                        .frame(maxWidth: unit * 1.4)
                 }
                 if model.phase == .focus, let task = model.selectedTask {
                     HStack(spacing: unit * 0.008) {

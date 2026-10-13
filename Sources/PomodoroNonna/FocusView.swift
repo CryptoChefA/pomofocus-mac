@@ -41,6 +41,13 @@ struct FocusView: View {
                         .keyboardShortcut("i", modifiers: [.command])
                     }
 
+                    if let level = model.planLevelUp, let plan = model.focusPlan {
+                        LevelUpBanner(level: level, isFinal: plan.isFinalLevel) {
+                            withAnimation(reduceMotion ? nil : NonnaMotion.quick) { model.planLevelUp = nil }
+                        }
+                        .frame(maxWidth: 690)
+                    }
+
                     VStack(spacing: 13) {
                         Text("What's your focus?")
                             .font(.system(size: 28, weight: .semibold))
@@ -274,6 +281,17 @@ struct FocusView: View {
                                 .background(NonnaTheme.raisedPaper)
                                 .clipShape(Capsule())
                                 .overlay { Capsule().stroke(NonnaTheme.line, lineWidth: 0.8) }
+                            if let idea = model.currentBreakIdea {
+                                Label(idea, systemImage: "leaf")
+                                    .font(.system(size: 11, weight: .medium))
+                                    .foregroundStyle(NonnaTheme.sage)
+                                    .padding(.horizontal, 12)
+                                    .frame(height: 28)
+                                    .background(NonnaTheme.sage.opacity(0.1), in: Capsule())
+                                    .overlay { Capsule().stroke(NonnaTheme.sage.opacity(0.35), lineWidth: 0.8) }
+                                    .padding(.top, 4)
+                                    .help("A low-stimulation break from your focus plan")
+                            }
                         }
                     }
 

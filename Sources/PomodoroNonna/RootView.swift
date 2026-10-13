@@ -2,6 +2,7 @@ import SwiftUI
 
 enum AppSection: String, CaseIterable, Identifiable {
     case focus = "Focus"
+    case plan = "Plan"
     case dashboard = "Dashboard"
     case history = "History"
     case tasks = "Tasks"
@@ -11,6 +12,7 @@ enum AppSection: String, CaseIterable, Identifiable {
     var icon: String {
         switch self {
         case .focus: "timer"
+        case .plan: "figure.stairs"
         case .dashboard: "chart.bar.xaxis"
         case .history: "clock.arrow.circlepath"
         case .tasks: "checklist"
@@ -35,6 +37,10 @@ struct RootView: View {
                     Group {
                         switch selection {
                         case .focus: FocusView()
+                        case .plan: FocusPlanView {
+                            withAnimation(reduceMotion ? nil : NonnaMotion.page) { selection = .focus }
+                            if model.status == .idle, !model.isBreathing, model.awaitingNextPhase == nil { model.startFocus() }
+                        }
                         case .dashboard: DashboardView()
                         case .history: HistoryView()
                         case .tasks: TasksView()

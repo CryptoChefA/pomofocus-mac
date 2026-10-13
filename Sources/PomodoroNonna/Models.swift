@@ -272,6 +272,8 @@ struct AppData: Codable, Sendable {
     var breaks: [BreakSession]? = nil
     /// When the current sitting (a run of pomodoros and breaks) began. Cleared by End session.
     var runStartedAt: Date? = nil
+    /// The dopamine focus plan, if one has been built.
+    var focusPlan: FocusPlan? = nil
 
     static let starter = AppData(
         tasks: [

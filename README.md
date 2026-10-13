@@ -48,6 +48,7 @@ Pomofocus is a beautiful, local-first focus timer for macOS. It brings together 
 - Local session canvas with clipboard paste, drag-and-drop, and multi-image import
 - Per-image resizing, captions, ordering, removal, and preserved history thumbnails
 - Optional post-session focus rating and reflection
+- Dopamine focus plan: eight questions build a ladder from your current attention span to your target block (e.g. 45 min focus / 15 min break), climbing five minutes per level after four full blocks across two days, with house rules from your distractions, a low-stimulation break menu, and a reward for the end of the day
 - Session celebration: when you press End session, screen-wide confetti and a cinematic breakdown of the whole sitting (every pomodoro, total focus, breaks, pauses, overtime, today vs goal, streak); single pomodoros pass quietly; switchable in Settings
 - Three-cycle guided breathing ritual with animated inhale and exhale cues
 - Local notifications and a locally generated bell ding for every timer cue
@@ -105,8 +106,10 @@ The current command-line Swift installation does not bundle XCTest, so the core 
 
 ```sh
 mkdir -p .build/checks
-swiftc Sources/PomodoroNonna/Models.swift Sources/PomodoroNonna/Insights.swift Sources/PomodoroNonna/DeepDiveAnalytics.swift Tests/AnalyticsCheck/main.swift -o .build/checks/analytics-check
+swiftc Sources/PomodoroNonna/Models.swift Sources/PomodoroNonna/FocusPlan.swift Sources/PomodoroNonna/Insights.swift Sources/PomodoroNonna/DeepDiveAnalytics.swift Tests/AnalyticsCheck/main.swift -o .build/checks/analytics-check
 .build/checks/analytics-check
+swiftc Sources/PomodoroNonna/Models.swift Sources/PomodoroNonna/FocusPlan.swift Tests/FocusPlanCheck/main.swift -o .build/checks/focus-plan-check
+.build/checks/focus-plan-check
 ```
 
 ## Architecture
@@ -128,6 +131,8 @@ swiftc Sources/PomodoroNonna/Models.swift Sources/PomodoroNonna/Insights.swift S
 - `FocusCanvasView.swift`: local text, pasted images, captions, resizing, and ordering
 - `CinematicMode.swift`: full-screen Cinema scene, with Core Animation backdrop and minute tape
 - `CelebrationMode.swift`: end-of-sitting confetti and stats breakdown
+- `FocusPlan.swift`: the focus plan engine (ladder, levelling, rules, break menu)
+- `FocusPlanView.swift`: the Plan section and its questionnaire
 - `DashboardView.swift`: local charts, lifetime task totals, streaks, and usage days
 - `HistoryView.swift`: searchable session ledger and CSV export
 - `TasksView.swift`: task library and lifetime totals

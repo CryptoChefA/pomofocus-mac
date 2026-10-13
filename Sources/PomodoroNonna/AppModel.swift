@@ -228,6 +228,7 @@ final class AppModel {
             if data.runStartedAt == nil, data.activeTimer != nil || data.pendingPhase != nil {
                 data.runStartedAt = inferredRunStart()
             }
+            evaluatePlanProgress()
             synchronizeWidget()
         } catch {
             storageError = "Could not read local data: \(error.localizedDescription)"
@@ -500,6 +501,7 @@ final class AppModel {
             if elapsedSeconds > 0 {
                 data.sessions.append(session)
                 if resolved == .completed { completedFocusCycleCount += 1 }
+                evaluatePlanProgress()
                 if showsReflection { reflectionSession = session }
             }
         } else {
@@ -507,6 +509,63 @@ final class AppModel {
         }
         clearTimer()
         save()
+    }
+
+    // MARK: - Focus plan
+
+    /// Set when a plan level is earned; the Focus and Plan screens show it until dismissed.
+    var planLevelUp: FocusPlan.Level?
+
+    var focusPlan: FocusPlan? { data.focusPlan }
+
+    /// A low-stimulation idea for the current break, from the plan's break menu.
+    var currentBreakIdea: String? {
+        guard phase != .focus, let plan = data.focusPlan else { return nil }
+        return plan.breakIdea(seed: data.breaks?.count ?? 0)
+    }
+
+    func startPlan(with answers: FocusPlanAnswers) {
+        let plan = FocusPlan.build(from: answers)
+        data.focusPlan = plan
+        planLevelUp = nil
+        applyPlanSettings(plan)
+    }
+
+    func removePlan() {
+        data.focusPlan = nil
+        planLevelUp = nil
+        save()
+    }
+
+    /// Points the timer at the plan's current level. The breathing ritual stays on: a
+    /// calm, identical start is part of the plan.
+    private func applyPlanSettings(_ plan: FocusPlan) {
+        updateSettings { settings in
+            settings.focusMinutes = plan.level.focusMinutes
+            settings.shortBreakMinutes = plan.level.breakMinutes
+            settings.longBreakMinutes = plan.longBreakMinutes
+            settings.longBreakEvery = plan.longBreakEvery
+            settings.dailyGoalMinutes = plan.dailyGoalMinutes
+            settings.breathingEnabled = true
+        }
+    }
+
+    /// After each recorded block: climb a rung once it has been earned.
+    private func evaluatePlanProgress() {
+        guard var plan = data.focusPlan, !plan.isFinalLevel,
+              plan.progress(sessions: data.sessions).isComplete else { return }
+        plan.levelIndex += 1
+        plan.levelStartedAt = Date()
+        data.focusPlan = plan
+        planLevelUp = plan.level
+        applyPlanSettings(plan)
+
+        let content = UNMutableNotificationContent()
+        content.title = plan.isFinalLevel ? "Target reached" : "Level up"
+        content.body = plan.isFinalLevel
+            ? "\(plan.level.focusMinutes)-minute blocks are yours now. That's the focus you set out to rebuild."
+            : "You've earned \(plan.level.focusMinutes)-minute blocks with \(plan.level.breakMinutes)-minute breaks. Your next block uses them."
+        UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil))
     }
 
     /// Whether there is anything for End session to end.
