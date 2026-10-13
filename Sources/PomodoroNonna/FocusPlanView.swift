@@ -454,7 +454,7 @@ private struct PlanQuestionnaire: View {
         .frame(width: 680, height: 640)
         .background(NonnaTheme.cream)
         .foregroundStyle(NonnaTheme.ink)
-        .preferredColorScheme(.dark)
+        .preferredColorScheme(NonnaTheme.colorScheme)
     }
 
     private func go(_ delta: Int) {
@@ -627,7 +627,7 @@ private struct ChoiceCard: View {
                 Image(systemName: icon)
                     .font(.system(size: 17))
                     .frame(width: 38, height: 38)
-                    .foregroundStyle(isSelected ? NonnaTheme.cream : NonnaTheme.terracotta)
+                    .foregroundStyle(isSelected ? NonnaTheme.onAccent : NonnaTheme.terracotta)
                     .background(isSelected ? NonnaTheme.terracotta : NonnaTheme.sunken, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
                 VStack(alignment: .leading, spacing: 3) {
                     Text(title).font(.system(size: 14, weight: .semibold))

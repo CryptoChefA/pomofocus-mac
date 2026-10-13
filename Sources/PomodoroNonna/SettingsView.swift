@@ -13,6 +13,8 @@ struct SettingsView: View {
                     subtitle: "No account, telemetry, cloud service, or hidden data collection."
                 )
 
+                AppearanceSettingsCard()
+
                 HStack(alignment: .top, spacing: 18) {
                     VStack(spacing: 18) {
                         timerSettings

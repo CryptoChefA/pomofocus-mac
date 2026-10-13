@@ -208,6 +208,8 @@ final class AppModel {
     func load() async {
         do {
             data = try await LocalStore.shared.load()
+            applyTheme()
+            hasLoaded = true
             selectedTaskID = data.draft?.taskID ?? tasks.first?.id
             intention = data.draft?.intention ?? ""
             note = data.draft?.note ?? ""
@@ -238,6 +240,7 @@ final class AppModel {
     func updateSettings(_ mutate: (inout NonnaSettings) -> Void) {
         let previousAmbientSound = data.settings.ambientSound
         mutate(&data.settings)
+        applyTheme()
         if status == .idle { applyIdleDuration() }
         ambientPlayer.setVolume(data.settings.ambientVolume)
         if previousAmbientSound != data.settings.ambientSound {
@@ -509,6 +512,23 @@ final class AppModel {
         }
         clearTimer()
         save()
+    }
+
+    // MARK: - Theme and welcome
+
+    private func applyTheme() {
+        ThemeManager.shared.apply(themeID: data.settings.themeID, custom: data.settings.customTheme)
+    }
+
+    /// Set once the saved data has been read. Until then `data` is the blank starter,
+    /// which must not be mistaken for a fresh install.
+    private(set) var hasLoaded = false
+
+    /// True on a fresh install until the welcome screen is finished.
+    var needsOnboarding: Bool { hasLoaded && !data.settings.hasCompletedOnboarding }
+
+    func completeOnboarding() {
+        updateSettings { $0.hasCompletedOnboarding = true }
     }
 
     // MARK: - Focus plan

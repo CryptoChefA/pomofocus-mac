@@ -1,19 +1,97 @@
+import AppKit
 import SwiftUI
 
+/// The colours of the current theme, resolved to SwiftUI colours once per change.
+struct ResolvedTheme: Sendable {
+    let palette: ThemePalette
+    let background, paper, raised, sunken, ink, secondaryInk, line, strongLine: Color
+    let accent, accentHighlight, onAccent, rest, longRest: Color
+
+    init(_ p: ThemePalette) {
+        palette = p
+        background = Color(hex: p.background); paper = Color(hex: p.paper); raised = Color(hex: p.raised)
+        sunken = Color(hex: p.sunken); ink = Color(hex: p.ink); secondaryInk = Color(hex: p.secondaryInk)
+        line = Color(hex: p.line); strongLine = Color(hex: p.strongLine)
+        accent = Color(hex: p.accent); accentHighlight = Color(hex: p.accentHighlight); onAccent = Color(hex: p.onAccent)
+        rest = Color(hex: p.rest); longRest = Color(hex: p.longRest)
+    }
+}
+
+/// Holds the active theme. It is observable, so any view that reads a `NonnaTheme`
+/// colour redraws when the theme changes, and only then.
+@Observable
+final class ThemeManager: @unchecked Sendable {
+    static let shared = ThemeManager()
+
+    private(set) var resolved: ResolvedTheme
+    private(set) var themeID: String
+    private(set) var custom: CustomThemeSpec
+    @ObservationIgnored private var appearanceObserver: NSObjectProtocol?
+
+    private static let cacheKey = "pomofocus.theme.v1"
+
+    private struct Cached: Codable { var themeID: String; var custom: CustomThemeSpec }
+
+    private init() {
+        // The last theme is cached in defaults, so the first frame is already right
+        // instead of flashing dark while the data file loads.
+        let cached = UserDefaults.standard.data(forKey: Self.cacheKey).flatMap { try? JSONDecoder().decode(Cached.self, from: $0) }
+        themeID = cached?.themeID ?? ThemeChoice.obsidian.rawValue
+        custom = cached?.custom ?? CustomThemeSpec()
+        resolved = ResolvedTheme(ThemeChoice.resolve(cached?.themeID ?? "obsidian", custom: cached?.custom ?? CustomThemeSpec(),
+                                                     systemIsDark: Self.systemIsDark))
+        appearanceObserver = DistributedNotificationCenter.default().addObserver(
+            forName: NSNotification.Name("AppleInterfaceThemeChangedNotification"), object: nil, queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated { self?.refreshForSystem() }
+        }
+    }
+
+    static var systemIsDark: Bool {
+        UserDefaults.standard.string(forKey: "AppleInterfaceStyle")?.lowercased() == "dark"
+    }
+
+    @MainActor
+    func apply(themeID: String, custom: CustomThemeSpec) {
+        let palette = ThemeChoice.resolve(themeID, custom: custom, systemIsDark: Self.systemIsDark)
+        if themeID != self.themeID { self.themeID = themeID }
+        if custom != self.custom { self.custom = custom }
+        if palette != resolved.palette { resolved = ResolvedTheme(palette) }
+        if let data = try? JSONEncoder().encode(Cached(themeID: themeID, custom: custom)) {
+            UserDefaults.standard.set(data, forKey: Self.cacheKey)
+        }
+    }
+
+    @MainActor
+    private func refreshForSystem() {
+        // macOS posts this before the new value lands in defaults.
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(150))
+            if themeID == ThemeChoice.system.rawValue { apply(themeID: themeID, custom: custom) }
+        }
+    }
+}
+
 enum NonnaTheme {
-    static let cream = Color(hex: "060708")
-    static let paper = Color(hex: "0D0F11")
-    static let raisedPaper = Color(hex: "14171A")
-    static let sunken = Color(hex: "090B0D")
-    static let ink = Color(hex: "F1EFE9")
-    static let secondaryInk = Color(hex: "8A8F96")
-    static let terracotta = Color(hex: "BDA56F")
-    static let darkTerracotta = Color(hex: "D7C28F")
-    static let sage = Color(hex: "738B80")
-    static let gold = Color(hex: "A9A4B5")
-    static let line = Color(hex: "24282D")
-    static let strongLine = Color(hex: "343A40")
-    static let shadow = Color.black.opacity(0.46)
+    private static var t: ResolvedTheme { ThemeManager.shared.resolved }
+
+    static var cream: Color { t.background }
+    static var paper: Color { t.paper }
+    static var raisedPaper: Color { t.raised }
+    static var sunken: Color { t.sunken }
+    static var ink: Color { t.ink }
+    static var secondaryInk: Color { t.secondaryInk }
+    static var terracotta: Color { t.accent }
+    static var darkTerracotta: Color { t.accentHighlight }
+    /// Text and icons on top of the accent colour.
+    static var onAccent: Color { t.onAccent }
+    static var sage: Color { t.rest }
+    static var gold: Color { t.longRest }
+    static var line: Color { t.line }
+    static var strongLine: Color { t.strongLine }
+    static var isDark: Bool { t.palette.isDark }
+    static var colorScheme: ColorScheme { isDark ? .dark : .light }
+    static var shadow: Color { Color.black.opacity(isDark ? 0.46 : 0.1) }
     /// Master-caution red, used only for the overtime alert.
     static let alert = Color(hex: "FF453A")
 
@@ -139,7 +217,7 @@ private struct NonnaButtonBody: View {
     var body: some View {
         configuration.label
             .font(.system(size: 13, weight: .medium))
-            .foregroundStyle(prominent ? NonnaTheme.cream : NonnaTheme.ink)
+            .foregroundStyle(prominent ? NonnaTheme.onAccent : NonnaTheme.ink)
             .padding(.horizontal, 17)
             .frame(minHeight: 40)
             .background {

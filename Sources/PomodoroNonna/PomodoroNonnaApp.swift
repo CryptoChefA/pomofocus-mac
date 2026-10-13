@@ -11,7 +11,7 @@ struct PomodoroNonnaApp: App {
             RootView()
                 .environment(model)
                 .environmentObject(calendarStore)
-                .preferredColorScheme(.dark)
+                .preferredColorScheme(NonnaTheme.colorScheme)
                 .frame(minWidth: 1180, minHeight: 720)
                 .onChange(of: model.settings.showCalendarEvents) { _, enabled in
                     guard enabled, calendarStore.access == .notDetermined else { return }
@@ -64,7 +64,7 @@ struct PomodoroNonnaApp: App {
         MenuBarExtra {
             MenuBarTimerView()
                 .environment(model)
-                .preferredColorScheme(.dark)
+                .preferredColorScheme(NonnaTheme.colorScheme)
         } label: {
             MenuBarLabel(model: model, pulse: model.menuPulse)
         }

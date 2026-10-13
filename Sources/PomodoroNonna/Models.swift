@@ -181,6 +181,11 @@ struct NonnaSettings: Codable, Equatable, Sendable {
     var showCalendarEvents = false
     var hiddenCalendarIDs: [String] = []
     var celebrateSessions = true
+    /// A `ThemeChoice` raw value.
+    var themeID = ThemeChoice.obsidian.rawValue
+    var customTheme = CustomThemeSpec()
+    /// New installs see the welcome screen once; data saved before it existed skips it.
+    var hasCompletedOnboarding = false
 
     private enum CodingKeys: String, CodingKey {
         case focusMinutes, shortBreakMinutes, longBreakMinutes, longBreakEvery
@@ -188,7 +193,7 @@ struct NonnaSettings: Codable, Equatable, Sendable {
         case breathingEnabled, breathingSeconds, presenceChimeMinutes, overtimeReminderMinutes, playSounds
         case ambientSound, ambientVolume, showInMenuBar
         case showCalendarEvents, hiddenCalendarIDs, overtimeAlert
-        case celebrateSessions
+        case celebrateSessions, themeID, customTheme, hasCompletedOnboarding
     }
 
     init() {}
@@ -219,12 +224,18 @@ struct NonnaSettings: Codable, Equatable, Sendable {
         overtimeAlert = try values.decodeIfPresent(Bool.self, forKey: .overtimeAlert) ?? true
         hiddenCalendarIDs = try values.decodeIfPresent([String].self, forKey: .hiddenCalendarIDs) ?? []
         celebrateSessions = try values.decodeIfPresent(Bool.self, forKey: .celebrateSessions) ?? true
+        themeID = try values.decodeIfPresent(String.self, forKey: .themeID) ?? ThemeChoice.obsidian.rawValue
+        customTheme = try values.decodeIfPresent(CustomThemeSpec.self, forKey: .customTheme) ?? CustomThemeSpec()
+        hasCompletedOnboarding = try values.decodeIfPresent(Bool.self, forKey: .hasCompletedOnboarding) ?? true
     }
 
     func encode(to encoder: Encoder) throws {
         var values = encoder.container(keyedBy: CodingKeys.self)
         try values.encode(focusMinutes, forKey: .focusMinutes)
         try values.encode(celebrateSessions, forKey: .celebrateSessions)
+        try values.encode(themeID, forKey: .themeID)
+        try values.encode(customTheme, forKey: .customTheme)
+        try values.encode(hasCompletedOnboarding, forKey: .hasCompletedOnboarding)
         try values.encode(shortBreakMinutes, forKey: .shortBreakMinutes)
         try values.encode(longBreakMinutes, forKey: .longBreakMinutes)
         try values.encode(longBreakEvery, forKey: .longBreakEvery)

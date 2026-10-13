@@ -56,6 +56,12 @@ struct RootView: View {
         }
         .foregroundStyle(NonnaTheme.ink)
         .tint(NonnaTheme.terracotta)
+        .sheet(isPresented: Binding(get: { model.needsOnboarding }, set: { _ in })) {
+            WelcomeView {
+                withAnimation(reduceMotion ? nil : NonnaMotion.page) { selection = .plan }
+            }
+            .environment(model)
+        }
         .sheet(item: Bindable(model).reflectionSession) { session in
             ReflectionView(session: session)
                 .environment(model)
@@ -134,7 +140,7 @@ private struct Sidebar: View {
         .padding(.top, 24)
         .padding(.horizontal, 15)
         .padding(.bottom, 18)
-        .background(Color(hex: "090B0D").opacity(0.94))
+        .background(NonnaTheme.sunken.opacity(0.94))
     }
 }
 

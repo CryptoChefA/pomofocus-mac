@@ -25,6 +25,7 @@ Pomofocus is a beautiful, local-first focus timer for macOS. It brings together 
 - Native SwiftUI macOS app and menu-bar timer with a live progress ring and countdown
 - Native small, medium, and large desktop/sidebar widgets with a live timer and one restrained gold progress band
 - Obsidian Atelier interface with graphite surfaces, champagne accents, and precision typography
+- Themes: Obsidian, Ivory (light), Midnight, Forest, Ember and Sakura, Match system (follows macOS light/dark), or a custom theme built from a base, a background, a focus colour and a break colour; readable surfaces are derived automatically. Chosen on first launch and changeable in Settings
 - Split focus workspace with an analog timer dial and a dark daily timeline
 - Cinema mode (⇧⌘F): a full-screen, screensaver-like scene for wide and ultrawide displays, with rolling digits, an unrolled minute tape, and a slowly drifting glow; keeps the display awake, Space pauses, → advances, Esc leaves
 - Seven-day navigator with focus, break, and live-session blocks
@@ -106,10 +107,12 @@ The current command-line Swift installation does not bundle XCTest, so the core 
 
 ```sh
 mkdir -p .build/checks
-swiftc Sources/PomodoroNonna/Models.swift Sources/PomodoroNonna/FocusPlan.swift Sources/PomodoroNonna/Insights.swift Sources/PomodoroNonna/DeepDiveAnalytics.swift Tests/AnalyticsCheck/main.swift -o .build/checks/analytics-check
+swiftc Sources/PomodoroNonna/Models.swift Sources/PomodoroNonna/FocusPlan.swift Sources/PomodoroNonna/ThemePalette.swift Sources/PomodoroNonna/Insights.swift Sources/PomodoroNonna/DeepDiveAnalytics.swift Tests/AnalyticsCheck/main.swift -o .build/checks/analytics-check
 .build/checks/analytics-check
-swiftc Sources/PomodoroNonna/Models.swift Sources/PomodoroNonna/FocusPlan.swift Tests/FocusPlanCheck/main.swift -o .build/checks/focus-plan-check
+swiftc Sources/PomodoroNonna/Models.swift Sources/PomodoroNonna/FocusPlan.swift Sources/PomodoroNonna/ThemePalette.swift Tests/FocusPlanCheck/main.swift -o .build/checks/focus-plan-check
 .build/checks/focus-plan-check
+swiftc Sources/PomodoroNonna/ThemePalette.swift Tests/ThemeCheck/main.swift -o .build/checks/theme-check
+.build/checks/theme-check
 ```
 
 ## Architecture
@@ -133,6 +136,8 @@ swiftc Sources/PomodoroNonna/Models.swift Sources/PomodoroNonna/FocusPlan.swift 
 - `CelebrationMode.swift`: end-of-sitting confetti and stats breakdown
 - `FocusPlan.swift`: the focus plan engine (ladder, levelling, rules, break menu)
 - `FocusPlanView.swift`: the Plan section and its questionnaire
+- `ThemePalette.swift`: theme palettes, presets and custom-theme colour derivation
+- `ThemePickerView.swift`: the theme picker, custom theme editor and first-launch welcome
 - `DashboardView.swift`: local charts, lifetime task totals, streaks, and usage days
 - `HistoryView.swift`: searchable session ledger and CSV export
 - `TasksView.swift`: task library and lifetime totals

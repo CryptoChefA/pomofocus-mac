@@ -198,7 +198,7 @@ struct DayTimelineView: View {
                         .padding(.horizontal, 5)
                         .frame(height: 18)
                         .background(NonnaTheme.terracotta)
-                        .foregroundStyle(NonnaTheme.cream)
+                        .foregroundStyle(NonnaTheme.onAccent)
                         .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
                     Rectangle()
                         .fill(NonnaTheme.terracotta)

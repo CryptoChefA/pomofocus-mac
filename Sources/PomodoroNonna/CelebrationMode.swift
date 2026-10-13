@@ -242,7 +242,7 @@ private struct CelebrationView: View {
                 .animation(reduceMotion ? nil : .spring(duration: 0.85, bounce: 0.18).delay(0.12), value: shown)
                 .onTapGesture(perform: onDismiss)
         }
-        .preferredColorScheme(.dark)
+        .preferredColorScheme(NonnaTheme.colorScheme)
         .foregroundStyle(NonnaTheme.ink)
         .onAppear {
             shown = true

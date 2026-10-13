@@ -207,7 +207,7 @@ struct CinematicView: View {
             let sideMargin = max(unit * 0.09, proxy.size.width * 0.055)
 
             ZStack {
-                CinematicBackdrop(accent: NSColor(accent), animates: !reduceMotion)
+                CinematicBackdrop(accent: NSColor(accent), dark: NonnaTheme.isDark, animates: !reduceMotion)
 
                 VStack(spacing: 0) {
                     topBar(unit: unit)
@@ -235,7 +235,7 @@ struct CinematicView: View {
         .ignoresSafeArea()
         .background(NonnaTheme.cream)
         .foregroundStyle(NonnaTheme.ink)
-        .preferredColorScheme(.dark)
+        .preferredColorScheme(NonnaTheme.colorScheme)
         .onContinuousHover { phase in
             if case .active = phase { revealControls() }
         }
@@ -576,12 +576,13 @@ private extension View {
 /// Animation: once added, the window server runs it without waking the app.
 private struct CinematicBackdrop: NSViewRepresentable {
     let accent: NSColor
+    let dark: Bool
     let animates: Bool
 
     func makeNSView(context: Context) -> CinematicBackdropView { CinematicBackdropView() }
 
     func updateNSView(_ view: CinematicBackdropView, context: Context) {
-        view.apply(accent: accent, animates: animates)
+        view.apply(accent: accent, dark: dark, animates: animates)
     }
 }
 
@@ -605,7 +606,6 @@ final class CinematicBackdropView: NSView {
         vignette.type = .radial
         vignette.startPoint = CGPoint(x: 0.5, y: 0.5)
         vignette.endPoint = CGPoint(x: 1, y: 1)
-        vignette.colors = [NSColor.clear.cgColor, NSColor.clear.cgColor, NSColor.black.withAlphaComponent(0.62).cgColor]
         vignette.locations = [0, 0.5, 1]
         layer?.addSublayer(vignette)
     }
@@ -614,7 +614,15 @@ final class CinematicBackdropView: NSView {
 
     override func hitTest(_ point: NSPoint) -> NSView? { nil }
 
-    func apply(accent: NSColor, animates: Bool) {
+    private var dark: Bool?
+
+    func apply(accent: NSColor, dark: Bool, animates: Bool) {
+        if dark != self.dark {
+            self.dark = dark
+            // A deep vignette frames a dark scene; on a light theme it's only a whisper.
+            vignette.colors = [NSColor.clear.cgColor, NSColor.clear.cgColor,
+                               NSColor.black.withAlphaComponent(dark ? 0.62 : 0.08).cgColor]
+        }
         let changedMotion = animates != self.animates
         self.animates = animates
         if accent != self.accent {
