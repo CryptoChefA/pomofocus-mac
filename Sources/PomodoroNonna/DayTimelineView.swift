@@ -11,6 +11,12 @@ struct DayTimelineView: View {
 
     private let calendar = Calendar.current
     private let hourHeight: CGFloat = 58
+    /// When set, the header shows a button that tucks the timeline away.
+    private let onCollapse: (() -> Void)?
+
+    init(onCollapse: (() -> Void)? = nil) {
+        self.onCollapse = onCollapse
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -45,6 +51,16 @@ struct DayTimelineView: View {
                     Image(systemName: "chevron.right")
                 }
                 .buttonStyle(TimelineHeaderButtonStyle())
+
+                if let onCollapse {
+                    Button(action: onCollapse) {
+                        Image(systemName: "sidebar.right")
+                    }
+                    .buttonStyle(TimelineHeaderButtonStyle())
+                    .keyboardShortcut("t", modifiers: [.command, .option])
+                    .help("Hide the timeline (⌥⌘T)")
+                    .accessibilityLabel("Hide the timeline")
+                }
             }
 
             HStack(spacing: 6) {

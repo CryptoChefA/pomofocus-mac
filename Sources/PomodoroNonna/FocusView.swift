@@ -5,6 +5,7 @@ struct FocusView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var showingNewTask = false
     @State private var showsInspector = false
+    @AppStorage("pomofocus.timelineCollapsed") private var timelineCollapsed = false
     @State private var confirmsAbandon = false
     @Namespace private var phaseSelection
 
@@ -41,9 +42,9 @@ struct FocusView: View {
                         .keyboardShortcut("i", modifiers: [.command])
                     }
 
-                    if let level = model.planLevelUp, let plan = model.focusPlan {
-                        LevelUpBanner(level: level, isFinal: plan.isFinalLevel) {
-                            withAnimation(reduceMotion ? nil : NonnaMotion.quick) { model.planLevelUp = nil }
+                    if let change = model.planChange {
+                        PlanChangeBanner(change: change) {
+                            withAnimation(reduceMotion ? nil : NonnaMotion.quick) { model.planChange = nil }
                         }
                         .frame(maxWidth: 690)
                     }
@@ -63,9 +64,18 @@ struct FocusView: View {
 
             Divider().overlay(NonnaTheme.line)
 
-            DayTimelineView()
-                .frame(minWidth: 470, idealWidth: 540, maxWidth: 620)
+            Group {
+                if timelineCollapsed {
+                    TimelineRail(onExpand: toggleTimeline)
+                        .transition(.move(edge: .trailing).combined(with: .opacity))
+                } else {
+                    DayTimelineView(onCollapse: toggleTimeline)
+                        .frame(minWidth: 470, idealWidth: 540, maxWidth: 620)
+                        .transition(.move(edge: .trailing).combined(with: .opacity))
+                }
+            }
         }
+        .clipped()
         .sheet(isPresented: $showingNewTask) {
             NewTaskView()
                 .environment(model)
@@ -75,6 +85,12 @@ struct FocusView: View {
         }
         .onChange(of: model.intention) { _, _ in model.persistDraft() }
         .onChange(of: model.note) { _, _ in model.persistDraft() }
+    }
+
+    private func toggleTimeline() {
+        withAnimation(reduceMotion ? nil : .spring(duration: 0.5, bounce: 0.08)) {
+            timelineCollapsed.toggle()
+        }
     }
 
     private var focusSetup: some View {
@@ -907,5 +923,68 @@ struct ReflectionView: View {
         .padding(30)
         .frame(width: 560)
         .background(NonnaTheme.cream)
+    }
+}
+
+/// The day timeline, tucked away: a slim strip on the right edge with today's total and
+/// a live dot while a timer runs. Click anywhere on it to pull the timeline back out.
+private struct TimelineRail: View {
+    @Environment(AppModel.self) private var model
+    let onExpand: () -> Void
+    @State private var hovering = false
+
+    private var todayText: String {
+        let live = model.phase == .focus && model.status != .idle ? model.elapsedSeconds : 0
+        return (model.todayRecordedFocusSeconds + live).focusDurationString.uppercased()
+    }
+
+    var body: some View {
+        Button(action: onExpand) {
+            VStack(spacing: 22) {
+                Image(systemName: "sidebar.left")
+                    .font(.system(size: 12, weight: .semibold))
+                    .frame(width: 32, height: 32)
+                    .background(hovering ? NonnaTheme.strongLine : NonnaTheme.raisedPaper)
+                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    .overlay { RoundedRectangle(cornerRadius: 8, style: .continuous).stroke(NonnaTheme.line, lineWidth: 0.8) }
+
+                if model.status != .idle {
+                    Circle()
+                        .fill(NonnaTheme.accent(for: model.phase))
+                        .frame(width: 7, height: 7)
+                        .shadow(color: NonnaTheme.accent(for: model.phase).opacity(0.7), radius: 5)
+                        .help("A timer is running")
+                }
+
+                Text("TIMELINE")
+                    .font(.system(size: 9, weight: .semibold, design: .monospaced))
+                    .tracking(2.4)
+                    .foregroundStyle(NonnaTheme.secondaryInk)
+                    .fixedSize()
+                    .rotationEffect(.degrees(90))
+                    .frame(width: 14, height: 80)
+
+                Text(todayText)
+                    .font(.system(size: 9, weight: .semibold, design: .monospaced))
+                    .tracking(1.4)
+                    .foregroundStyle(NonnaTheme.terracotta)
+                    .fixedSize()
+                    .rotationEffect(.degrees(90))
+                    .frame(width: 14, height: 70)
+
+                Spacer(minLength: 0)
+            }
+            .padding(.top, 18)
+            .frame(width: 52)
+            .frame(maxHeight: .infinity)
+            .background(NonnaTheme.sunken.opacity(hovering ? 0.95 : 0.72))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering = $0 }
+        .animation(NonnaMotion.quick, value: hovering)
+        .keyboardShortcut("t", modifiers: [.command, .option])
+        .help("Show the timeline (⌥⌘T)")
+        .accessibilityLabel("Show the timeline")
     }
 }

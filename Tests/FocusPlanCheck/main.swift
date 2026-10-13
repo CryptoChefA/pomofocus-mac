@@ -63,4 +63,42 @@ odd.capacity = .tenToTwenty
 odd.targetMinutes = 90
 check(FocusPlan.build(from: odd).levels.last?.focusMinutes == 90 && FocusPlan.build(from: odd).levels.last?.breakMinutes == 30, "90-minute target ends at 90/30")
 
+// Finishing too few blocks blocks the climb, even with enough full ones.
+var spotty = FocusPlan.build(from: answers, now: start)
+let spottySessions = earned + (0..<3).map { _ in session(day: 1, minutes: 4, outcome: .finishedEarly) }
+check(!spotty.progress(sessions: spottySessions, calendar: calendar).isComplete, "4 of 7 finished (57%) is below the 70% bar")
+
+// Repeatedly failing a level steps back one.
+spotty.levelIndex = 3
+let struggling = (0..<6).map { i in session(day: i % 2, minutes: i == 0 ? 25 : 9) }
+func plannedAt(_ s: FocusSession, _ minutes: Int) -> FocusSession { var s = s; s.plannedSeconds = minutes * 60; return s }
+let atLevel = struggling.map { plannedAt($0, 25) }
+check(spotty.adjustment(sessions: atLevel, calendar: calendar) == .stepBack, "1 of 6 finished at 25 min steps back")
+spotty.levelIndex = 0
+check(spotty.adjustment(sessions: atLevel.map { plannedAt($0, 10) }, calendar: calendar) != .stepBack, "never steps below the first level")
+
+// Phases.
+let fresh = FocusPlan.build(from: answers, now: start)
+check(fresh.phase(now: start.addingTimeInterval(3 * 86_400), calendar: calendar).phase == .reset, "first week is Reset")
+check(fresh.phase(now: start.addingTimeInterval(10 * 86_400), calendar: calendar).phase == .build, "then Build")
+var nearTop = fresh; nearTop.levelIndex = 6
+check(nearTop.phase(now: start.addingTimeInterval(20 * 86_400), calendar: calendar).phase == .extend, "upper rungs are Extend")
+var top = fresh; top.levelIndex = top.levels.count - 1
+check(top.phase(now: start.addingTimeInterval(20 * 86_400), calendar: calendar).phase == .sustain, "target reached is Sustain")
+
+// Metrics.
+let m = FocusMetrics.measure(sessions: earned + [session(day: 1, minutes: 4, outcome: .abandoned)],
+                             from: start, to: start.addingTimeInterval(7 * 86_400), calendar: calendar)
+check(m.blocks == 5 && m.activeDays == 2, "metrics count blocks and days")
+check(abs((m.completionRate ?? 0) - 0.8) < 0.001, "4 of 5 blocks finished is 80%")
+check(m.startSpreadMinutes == 0, "same start time every day has no spread")
+
+// Every piece of advice is sourced, and every source exists.
+let everything = top.rules + top.breakMenu + [top.reward, FocusPlan.ladderGuidance, FocusPlan.breakGuidance]
+var allAnswers = answers; allAnswers.distractions = FocusPlanAnswers.Distraction.allCases
+let allRules = FocusPlan.build(from: allAnswers).rules
+check((everything + allRules).allSatisfy { !$0.sources.isEmpty }, "every rule, break idea and explanation cites a source")
+check(Citation.ID.allCases.allSatisfy { FocusScience.library[$0] != nil }, "every citation id resolves")
+check(FocusScience.all.allSatisfy { $0.scholarURL != nil && $0.year > 1900 && !$0.finding.isEmpty }, "citations are complete")
+
 print("Focus plan checks passed")

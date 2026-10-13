@@ -24,11 +24,22 @@ struct FocusPlanAnswers: Codable, Equatable, Sendable {
     var reward = ""
 }
 
+/// One piece of advice and the research behind it.
+struct PlanGuidance: Equatable, Sendable {
+    let title: String
+    let detail: String
+    let sources: [Citation.ID]
+}
+
 // MARK: - Plan
 
-/// A focus rebuild plan: a ladder of block lengths that starts where your attention is
-/// today and climbs, five minutes at a time, to the length you want. Each rung is earned
-/// by finishing full blocks on more than one day, so progress is real, not wishful.
+/// A focus rebuild plan, built on the research in `FocusScience`.
+///
+/// It starts a little below the attention span you have today, so the first blocks are
+/// wins (mastery experiences build self-efficacy), and climbs in five-minute proximal
+/// steps to the block length you want. A step is earned on evidence, not on a calendar:
+/// enough full blocks, on more than one day, at a good completion rate. If a length keeps
+/// beating you, the plan steps back one level to consolidate.
 struct FocusPlan: Codable, Equatable, Sendable {
     struct Level: Codable, Equatable, Sendable {
         let focusMinutes: Int
@@ -43,8 +54,15 @@ struct FocusPlan: Codable, Equatable, Sendable {
 
     /// Full blocks at the current length needed to climb a rung…
     static let blocksPerLevel = 4
-    /// …spread over at least this many days, so one heroic evening doesn't count as a habit.
+    /// …spread over at least this many days, so one heroic evening doesn't count as a habit…
     static let daysPerLevel = 2
+    /// …with at least this share of started blocks finished at full length.
+    static let levelUpCompletion = 0.7
+    /// Below this completion rate over enough attempts, the plan steps back a level.
+    static let stepBackCompletion = 0.4
+    static let stepBackAttempts = 5
+    /// Lally et al. (2010): median days for a repeated behaviour to become automatic.
+    static let habitDays = 66
 
     var level: Level { levels[min(levelIndex, levels.count - 1)] }
     var isFinalLevel: Bool { levelIndex >= levels.count - 1 }
@@ -75,8 +93,9 @@ struct FocusPlan: Codable, Equatable, Sendable {
         return FocusPlan(answers: answers, levels: levels, createdAt: now, levelStartedAt: now)
     }
 
-    /// Breaks are about a third of the block (45 → 15), never under five minutes: long
-    /// enough to actually reset, short enough not to lose the thread.
+    /// Breaks are about a third of the block (45 → 15), never under five minutes. Sustained
+    /// attention is effortful and declines without rest (Warm et al., 2008), and breaks
+    /// restore vigour (Albulescu et al., 2022).
     static func breakMinutes(for focus: Int) -> Int {
         max(5, Int((Double(focus) / 3).rounded()))
     }
@@ -84,23 +103,49 @@ struct FocusPlan: Codable, Equatable, Sendable {
     // MARK: Progress
 
     struct Progress: Equatable, Sendable {
+        /// Blocks started at this level, including ones that were abandoned or cut short.
+        let attempts: Int
         let fullBlocks: Int
         let days: Int
-        var isComplete: Bool { fullBlocks >= FocusPlan.blocksPerLevel && days >= FocusPlan.daysPerLevel }
+
+        var completionRate: Double { attempts == 0 ? 0 : Double(fullBlocks) / Double(attempts) }
+
+        var isComplete: Bool {
+            fullBlocks >= FocusPlan.blocksPerLevel && days >= FocusPlan.daysPerLevel
+                && completionRate >= FocusPlan.levelUpCompletion
+        }
+
+        var isStruggling: Bool {
+            attempts >= FocusPlan.stepBackAttempts && completionRate < FocusPlan.stepBackCompletion
+        }
+
         var fraction: Double {
             let blocks = Double(min(fullBlocks, FocusPlan.blocksPerLevel)) / Double(FocusPlan.blocksPerLevel)
             let spread = Double(min(days, FocusPlan.daysPerLevel)) / Double(FocusPlan.daysPerLevel)
-            return min(blocks, spread)
+            let quality = attempts == 0 ? 0 : min(1, completionRate / FocusPlan.levelUpCompletion)
+            return min(blocks, spread, quality)
         }
     }
 
-    /// Full blocks at the current length since this level began, and on how many days.
+    /// Blocks started at the current length since this level began.
     func progress(sessions: [FocusSession], calendar: Calendar = .current) -> Progress {
-        let full = sessions.filter {
-            $0.startedAt >= levelStartedAt && $0.outcome != .abandoned && $0.focusedSeconds >= level.focusMinutes * 60
+        let minutes = level.focusMinutes
+        let started = sessions.filter {
+            $0.startedAt >= levelStartedAt && $0.plannedSeconds >= minutes * 60 - 30 && $0.plannedSeconds > 0
         }
+        let full = started.filter { $0.outcome != .abandoned && $0.focusedSeconds >= minutes * 60 }
         let days = Set(full.map { calendar.startOfDay(for: $0.startedAt) })
-        return Progress(fullBlocks: full.count, days: days.count)
+        return Progress(attempts: started.count, fullBlocks: full.count, days: days.count)
+    }
+
+    enum Adjustment: Equatable, Sendable { case levelUp, stepBack }
+
+    /// What the evidence says to do next, if anything.
+    func adjustment(sessions: [FocusSession], calendar: Calendar = .current) -> Adjustment? {
+        let progress = progress(sessions: sessions, calendar: calendar)
+        if !isFinalLevel, progress.isComplete { return .levelUp }
+        if levelIndex > 0, progress.isStruggling { return .stepBack }
+        return nil
     }
 
     /// Blocks finished today at (or above) the current length.
@@ -111,47 +156,130 @@ struct FocusPlan: Codable, Equatable, Sendable {
         }.count
     }
 
+    /// Rough days to reach the target if you hit the daily blocks on most days.
+    var estimatedDaysToTarget: Int {
+        let remaining = max(0, levels.count - 1 - levelIndex)
+        let daysPerRung = max(FocusPlan.daysPerLevel, Int(ceil(Double(FocusPlan.blocksPerLevel) / Double(dailyBlocks))))
+        return remaining * daysPerRung
+    }
+
+    // MARK: Phases
+
+    enum Phase: String, Sendable {
+        case reset, build, extend, sustain
+    }
+
+    struct PhaseInfo: Sendable {
+        let phase: Phase
+        let title: String
+        let focus: String
+        let sources: [Citation.ID]
+    }
+
+    func daysSinceStart(now: Date = Date(), calendar: Calendar = .current) -> Int {
+        calendar.dateComponents([.day], from: calendar.startOfDay(for: createdAt), to: calendar.startOfDay(for: now)).day ?? 0
+    }
+
+    func phase(now: Date = Date(), calendar: Calendar = .current) -> PhaseInfo {
+        let day = daysSinceStart(now: now, calendar: calendar)
+        if isFinalLevel {
+            let left = max(0, FocusPlan.habitDays - day)
+            return PhaseInfo(
+                phase: .sustain, title: "Sustain",
+                focus: left > 0
+                    ? "You've reached your target. Keep the same time and place: around \(left) more days of repetition and starting becomes automatic."
+                    : "Your focus routine has had time to become a habit. Keep it light and regular, and missing a day won't undo it.",
+                sources: [.habitFormation, .implementationIntentions])
+        }
+        if day < 7 {
+            return PhaseInfo(
+                phase: .reset, title: "Reset",
+                focus: "Week one is about starting, not stamina. Begin at the same time each day, take the phone out of the room, and let short blocks feel easy.",
+                sources: [.implementationIntentions, .phonePresence, .selfEfficacy])
+        }
+        if Double(levelIndex) >= Double(levels.count - 1) * 0.6 {
+            return PhaseInfo(
+                phase: .extend, title: "Extend",
+                focus: "Your blocks are getting long. Protect your breaks: step away from screens, get outside or move, so the next block starts fresh.",
+                sources: [.vigilanceWork, .natureAttention, .exerciseCognition])
+        }
+        return PhaseInfo(
+            phase: .build, title: "Build",
+            focus: "Climb one five-minute step at a time. Finish blocks at full length on different days, and the plan moves you up when your numbers show you're ready.",
+            sources: [.proximalGoals, .goalSetting, .progressMonitoring])
+    }
+
     // MARK: Guidance
 
     /// House rules that follow from what pulls you away.
-    var rules: [(title: String, detail: String)] {
-        var rules: [(String, String)] = [
-            ("Start is the whole job", "On hard days, the only goal is beginning the first block. Momentum does the rest.")
+    var rules: [PlanGuidance] {
+        var rules = [
+            PlanGuidance(title: "Start is the whole job",
+                         detail: "On hard days, the only goal is beginning one block. Small wins build the belief that you can do the next one.",
+                         sources: [.selfEfficacy, .proximalGoals])
         ]
         let d = Set(answers.distractions)
         if d.contains(.phone) {
-            rules.append(("Phone out of the room", "Not face down, not on silent: out of reach. Every glance costs minutes of attention."))
+            rules.append(PlanGuidance(title: "Phone out of the room",
+                                      detail: "Not face down, not on silent: in another room. Its mere presence measurably lowers working memory.",
+                                      sources: [.phonePresence, .notificationCost]))
         }
         if d.contains(.socialMedia) || d.contains(.video) {
-            rules.append(("No feeds until the reward", "Endless feeds are built to out-compete your work. Save them for after the last block."))
+            rules.append(PlanGuidance(title: "No feeds until the reward",
+                                      detail: "Short-form feeds impair your ability to hold onto what you meant to do, and leave attention residue behind.",
+                                      sources: [.shortFormVideo, .attentionResidue]))
         }
         if d.contains(.games) {
-            rules.append(("Games are the reward, not the break", "A game on a break pulls you out for good. Play after the sitting, guilt-free."))
+            rules.append(PlanGuidance(title: "Games are the reward, not the break",
+                                      detail: "Play after the last block. An enjoyable activity reinforces the work it follows.",
+                                      sources: [.premackPrinciple]))
         }
         if d.contains(.messages) {
-            rules.append(("Messages wait for the long break", "Turn notifications off for the sitting and batch replies every few blocks."))
+            rules.append(PlanGuidance(title: "Messages wait for the long break",
+                                      detail: "Notifications off for the sitting; batch replies. Each switch costs attention and adds stress.",
+                                      sources: [.notificationCost, .interruptionCost, .attentionResidue]))
         }
         if d.contains(.restlessThoughts) {
-            rules.append(("Park stray thoughts", "Keep a 'later' list beside you. Write the thought down, then go straight back."))
+            rules.append(PlanGuidance(title: "Park stray thoughts",
+                                      detail: "Keep a 'later' list beside you. Writing a concrete plan for a nagging task stops it intruding.",
+                                      sources: [.planMaking, .mindWandering]))
         }
-        rules.append(("Same time, same place", "Start at \(answers.energy.window). A fixed start makes beginning automatic."))
+        rules.append(PlanGuidance(title: "Same time, same place",
+                                  detail: "Start at \(answers.energy.window). A fixed when-and-where makes starting far more likely, and repeating it builds the habit.",
+                                  sources: [.implementationIntentions, .habitFormation, .circadianCognition]))
+        rules.append(PlanGuidance(title: "Let the numbers decide",
+                                  detail: "Pomofocus records every block. Watching your own progress is one of the most reliable ways to reach a goal.",
+                                  sources: [.progressMonitoring]))
         return rules
     }
 
-    /// Low-stimulation breaks: they rest the mind without a spike that makes work feel dull.
-    var breakMenu: [String] {
+    /// Low-stimulation breaks: they let directed attention recover instead of spending it.
+    var breakMenu: [PlanGuidance] {
         var menu = [
-            "Walk to the window and look as far away as you can",
-            "Refill your water and drink a full glass",
-            "Stand up and stretch your back and shoulders",
-            "Step outside for a few breaths of fresh air",
-            "Tidy one thing on your desk",
-            "Close your eyes for a slow minute of breathing"
+            PlanGuidance(title: "Look out of a window, as far away as you can", detail: "Natural views let attention recover.",
+                         sources: [.restorationTheory, .natureAttention]),
+            PlanGuidance(title: "Step outside for a few minutes", detail: "Time outdoors improves directed attention afterwards.",
+                         sources: [.natureAttention]),
+            PlanGuidance(title: "Walk to another room and back", detail: "Even brief movement supports attention.",
+                         sources: [.exerciseCognition, .microBreaks]),
+            PlanGuidance(title: "Stand up and stretch your back and shoulders", detail: "Physical micro-breaks reduce fatigue.",
+                         sources: [.microBreaks]),
+            PlanGuidance(title: "Refill your water and drink a full glass", detail: "A real pause away from the screen.",
+                         sources: [.microBreaks]),
+            PlanGuidance(title: "A minute of slow belly breathing", detail: "Slow breathing practice improves sustained attention.",
+                         sources: [.diaphragmaticBreathing]),
         ]
         switch answers.breakHabit {
-        case .scroll: menu.insert("Leave the phone where it is. Walk a lap of the room instead", at: 0)
-        case .snack: menu.insert("Have some fruit or a few nuts, slowly, away from the screen", at: 0)
-        case .move: menu.insert("Ten squats or a quick walk around the block", at: 0)
+        case .scroll:
+            menu.insert(PlanGuidance(title: "Leave the phone where it is. Walk a lap of the room instead",
+                                     detail: "Feeds on a break carry over into the next block.",
+                                     sources: [.shortFormVideo, .exerciseCognition]), at: 0)
+        case .snack:
+            menu.insert(PlanGuidance(title: "Have some fruit or a few nuts, slowly, away from the screen",
+                                     detail: "Rest without a screen.", sources: [.microBreaks]), at: 0)
+        case .move:
+            menu.insert(PlanGuidance(title: "Ten squats or a quick walk around the block",
+                                     detail: "A short bout of exercise sharpens attention.", sources: [.exerciseCognition]), at: 0)
         case .mix: break
         }
         return menu
@@ -159,20 +287,27 @@ struct FocusPlan: Codable, Equatable, Sendable {
 
     func breakIdea(seed: Int) -> String {
         let menu = breakMenu
-        return menu[abs(seed) % menu.count]
+        return menu[abs(seed) % menu.count].title
     }
 
-    var rewardLine: String {
+    var reward: PlanGuidance {
         let reward = answers.reward.trimmingCharacters(in: .whitespacesAndNewlines)
-        return reward.isEmpty ? "Something you enjoy, after the last block of the day" : reward
+        return PlanGuidance(
+            title: reward.isEmpty ? "Something you enjoy, after the last block of the day" : reward,
+            detail: "Only after the day's last block. Something you enjoy reinforces the effort that comes before it.",
+            sources: [.premackPrinciple])
     }
 
-    /// Rough days to reach the target if you hit the daily blocks on most days.
-    var estimatedDaysToTarget: Int {
-        let remaining = max(0, levels.count - 1 - levelIndex)
-        let daysPerRung = max(FocusPlan.daysPerLevel, Int(ceil(Double(FocusPlan.blocksPerLevel) / Double(dailyBlocks))))
-        return remaining * daysPerRung
-    }
+    /// Why the ladder works the way it does.
+    static let ladderGuidance = PlanGuidance(
+        title: "How levels work",
+        detail: "Small, specific steps beat one distant goal. You move up after \(blocksPerLevel) full blocks on \(daysPerLevel)+ days with at least \(Int(levelUpCompletion * 100))% of blocks finished, and step back a level if under \(Int(stepBackCompletion * 100))% are, so you keep succeeding.",
+        sources: [.proximalGoals, .goalSetting, .selfEfficacy])
+
+    static let breakGuidance = PlanGuidance(
+        title: "Why breaks are a third of the block",
+        detail: "Holding attention is hard work and fades without rest. Regular breaks restore vigour and protect the next block.",
+        sources: [.vigilanceWork, .breaksVigilance, .microBreaks])
 }
 
 extension FocusPlanAnswers.Energy {
@@ -183,5 +318,71 @@ extension FocusPlanAnswers.Energy {
         case .evening: "the same time each evening"
         case .lateNight: "the same time each night"
         }
+    }
+}
+
+// MARK: - Metrics
+
+/// Measurements of your focus over a window of days, from the blocks you record.
+struct FocusMetrics: Equatable, Sendable {
+    /// Share of focus blocks finished at their full planned length.
+    let completionRate: Double?
+    /// Median of each block's longest stretch without a pause, in minutes.
+    let unbrokenMinutes: Double?
+    /// Average pauses per block.
+    let pausesPerBlock: Double?
+    /// How tightly the day's first block starts around its usual time, in minutes
+    /// (median absolute deviation). Smaller means a steadier routine.
+    let startSpreadMinutes: Double?
+    let activeDays: Int
+    let blocks: Int
+
+    static func measure(sessions: [FocusSession], from start: Date, to end: Date, calendar: Calendar = .current) -> FocusMetrics {
+        let window = sessions.filter { $0.startedAt >= start && $0.startedAt < end && $0.focusedSeconds > 0 }
+        guard !window.isEmpty else {
+            return FocusMetrics(completionRate: nil, unbrokenMinutes: nil, pausesPerBlock: nil, startSpreadMinutes: nil, activeDays: 0, blocks: 0)
+        }
+        let full = window.filter { $0.outcome != .abandoned && $0.focusedSeconds >= $0.plannedSeconds }
+        let longest = window.map { session -> Double in
+            let stretches = (session.activeIntervals ?? []).compactMap { interval in
+                interval.endedAt.map { $0.timeIntervalSince(interval.startedAt) }
+            }
+            return (stretches.max() ?? Double(session.focusedSeconds)) / 60
+        }
+        let pauses = window.map { Double(max(0, ($0.activeIntervals?.count ?? 1) - 1)) }
+        let byDay = Dictionary(grouping: window) { calendar.startOfDay(for: $0.startedAt) }
+        let firstStarts = byDay.values.compactMap { day -> Double? in
+            guard let first = day.min(by: { $0.startedAt < $1.startedAt }) else { return nil }
+            let parts = calendar.dateComponents([.hour, .minute], from: first.startedAt)
+            return Double((parts.hour ?? 0) * 60 + (parts.minute ?? 0))
+        }
+        let spread: Double? = firstStarts.count >= 2 ? {
+            let center = median(firstStarts)
+            return median(firstStarts.map { abs($0 - center) })
+        }() : nil
+        return FocusMetrics(
+            completionRate: Double(full.count) / Double(window.count),
+            unbrokenMinutes: median(longest),
+            pausesPerBlock: pauses.reduce(0, +) / Double(pauses.count),
+            startSpreadMinutes: spread,
+            activeDays: byDay.count,
+            blocks: window.count
+        )
+    }
+
+    /// This week and the week before, ending now.
+    static func weekOverWeek(sessions: [FocusSession], now: Date = Date(), calendar: Calendar = .current) -> (current: FocusMetrics, previous: FocusMetrics) {
+        let end = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: now)) ?? now
+        let start = calendar.date(byAdding: .day, value: -7, to: end) ?? now
+        let earlier = calendar.date(byAdding: .day, value: -7, to: start) ?? now
+        return (measure(sessions: sessions, from: start, to: end, calendar: calendar),
+                measure(sessions: sessions, from: earlier, to: start, calendar: calendar))
+    }
+
+    private static func median(_ values: [Double]) -> Double {
+        let sorted = values.sorted()
+        guard !sorted.isEmpty else { return 0 }
+        let mid = sorted.count / 2
+        return sorted.count.isMultiple(of: 2) ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid]
     }
 }

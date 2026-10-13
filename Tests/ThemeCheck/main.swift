@@ -10,7 +10,7 @@ private func check(_ condition: @autoclosure () -> Bool, _ message: String) {
 func ratio(_ a: String, _ b: String) -> Double { RGB(hex: a).contrast(with: RGB(hex: b)) }
 
 let presets = ThemeChoice.allCases.compactMap { choice in choice.palette.map { (choice.title, $0) } }
-check(presets.count == 6, "six fixed presets")
+check(presets.count == 8, "eight fixed presets")
 for (name, p) in presets {
     check(ratio(p.ink, p.background) >= 12, "\(name): body text is crisp (\(ratio(p.ink, p.background)))")
     check(ratio(p.ink, p.paper) >= 10, "\(name): text on cards is crisp")
@@ -18,7 +18,9 @@ for (name, p) in presets {
     check(ratio(p.onAccent, p.accent) >= 3.0, "\(name): button labels read on the accent (\(ratio(p.onAccent, p.accent)))")
     check(ratio(p.accent, p.background) >= 3.0, "\(name): the accent stands out (\(ratio(p.accent, p.background)))")
 }
-check(!ThemePalette.ivory.isDark && !ThemePalette.sakura.isDark && ThemePalette.obsidian.isDark, "light and dark presets are flagged correctly")
+check(ratio(ThemePalette.layla.rest, ThemePalette.layla.background) >= 3.0, "Layla: break pink reads on the background")
+check(RGB(hex: ThemePalette.layla.rest).luminance < RGB(hex: ThemePalette.layla.accent).luminance, "Layla: breaks are a darker pink than focus")
+check(!ThemePalette.layla.isDark && !ThemePalette.ivory.isDark && !ThemePalette.sakura.isDark && ThemePalette.obsidian.isDark, "light and dark presets are flagged correctly")
 
 // Match system follows macOS.
 check(ThemeChoice.resolve("system", custom: CustomThemeSpec(), systemIsDark: true) == .obsidian, "system dark → Obsidian")

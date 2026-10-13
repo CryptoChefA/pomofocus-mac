@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 // MARK: - Plan section
@@ -5,6 +6,7 @@ import SwiftUI
 struct FocusPlanView: View {
     @Environment(AppModel.self) private var model
     @State private var showsQuestionnaire = false
+    @State private var showsSources = false
     @State private var confirmsRemoval = false
     var onStartBlock: () -> Void = {}
 
@@ -12,12 +14,12 @@ struct FocusPlanView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {
                 if let plan = model.focusPlan {
-                    if let level = model.planLevelUp {
-                        LevelUpBanner(level: level, isFinal: plan.isFinalLevel) { model.planLevelUp = nil }
+                    if let change = model.planChange {
+                        PlanChangeBanner(change: change) { model.planChange = nil }
                     }
                     dashboard(plan)
                 } else {
-                    PlanIntro { showsQuestionnaire = true }
+                    PlanIntro(onBegin: { showsQuestionnaire = true }, onSources: { showsSources = true })
                 }
             }
             .padding(36)
@@ -33,6 +35,9 @@ struct FocusPlanView: View {
             }
             .environment(model)
         }
+        .sheet(isPresented: $showsSources) {
+            SourcesSheet { showsSources = false }
+        }
         .confirmationDialog("Remove your focus plan?", isPresented: $confirmsRemoval) {
             Button("Remove plan", role: .destructive) { model.removePlan() }
             Button("Cancel", role: .cancel) {}
@@ -47,14 +52,23 @@ struct FocusPlanView: View {
     private func dashboard(_ plan: FocusPlan) -> some View {
         let progress = plan.progress(sessions: model.sessions)
         let today = plan.blocksToday(sessions: model.sessions)
+        let phase = plan.phase()
+        let weeks = FocusMetrics.weekOverWeek(sessions: model.sessions)
 
         HStack(alignment: .bottom) {
             SectionHeading(
-                eyebrow: "Dopamine focus plan",
+                eyebrow: "Focus rebuild plan",
                 title: "Your focus rebuild",
-                subtitle: "Level \(plan.levelIndex + 1) of \(plan.levels.count) · \(plan.level.focusMinutes) min focus, \(plan.level.breakMinutes) min break"
+                subtitle: "Level \(plan.levelIndex + 1) of \(plan.levels.count) · \(plan.level.focusMinutes) min focus, \(plan.level.breakMinutes) min break · day \(plan.daysSinceStart() + 1)"
             )
             Spacer()
+            Button {
+                showsSources = true
+            } label: {
+                Label("Sources", systemImage: "books.vertical")
+            }
+            .buttonStyle(NonnaButtonStyle(prominent: false))
+            .help("The research behind this plan")
             Menu {
                 Button("Retake the questions…") { showsQuestionnaire = true }
                 Divider()
@@ -73,15 +87,20 @@ struct FocusPlanView: View {
             .buttonStyle(NonnaButtonStyle())
         }
 
+        PhaseStrip(current: phase)
+
         HStack(alignment: .top, spacing: 18) {
             NonnaCard {
                 HStack(spacing: 26) {
                     LevelRing(fraction: plan.isFinalLevel ? 1 : progress.fraction, minutes: plan.level.focusMinutes)
                     VStack(alignment: .leading, spacing: 10) {
-                        Text(plan.isFinalLevel ? "TARGET REACHED" : "NEXT LEVEL")
-                            .font(.system(size: 9, weight: .semibold, design: .monospaced))
-                            .tracking(1.8)
-                            .foregroundStyle(NonnaTheme.terracotta)
+                        HStack(spacing: 8) {
+                            Text(plan.isFinalLevel ? "TARGET REACHED" : "NEXT LEVEL")
+                                .font(.system(size: 9, weight: .semibold, design: .monospaced))
+                                .tracking(1.8)
+                                .foregroundStyle(NonnaTheme.terracotta)
+                            SourceChip(guidance: FocusPlan.ladderGuidance)
+                        }
                         if plan.isFinalLevel {
                             Text("\(plan.level.focusMinutes)-minute blocks are yours.")
                                 .font(.system(size: 20, weight: .semibold))
@@ -92,8 +111,12 @@ struct FocusPlanView: View {
                             let next = plan.levels[plan.levelIndex + 1]
                             Text("\(next.focusMinutes) min focus · \(next.breakMinutes) min break")
                                 .font(.system(size: 20, weight: .semibold))
-                            requirement("Full \(plan.level.focusMinutes)-minute blocks", done: progress.fullBlocks, of: FocusPlan.blocksPerLevel)
-                            requirement("Different days", done: progress.days, of: FocusPlan.daysPerLevel)
+                            requirement("Full \(plan.level.focusMinutes)-minute blocks", value: "\(min(progress.fullBlocks, FocusPlan.blocksPerLevel)) of \(FocusPlan.blocksPerLevel)",
+                                        met: progress.fullBlocks >= FocusPlan.blocksPerLevel)
+                            requirement("On different days", value: "\(min(progress.days, FocusPlan.daysPerLevel)) of \(FocusPlan.daysPerLevel)",
+                                        met: progress.days >= FocusPlan.daysPerLevel)
+                            requirement("Blocks finished", value: progress.attempts == 0 ? "–" : "\(Int((progress.completionRate * 100).rounded()))% · need \(Int(FocusPlan.levelUpCompletion * 100))%",
+                                        met: progress.attempts > 0 && progress.completionRate >= FocusPlan.levelUpCompletion)
                         }
                     }
                     Spacer(minLength: 0)
@@ -124,13 +147,16 @@ struct FocusPlanView: View {
             }
         }
 
+        MetricsCard(current: weeks.current, previous: weeks.previous)
+
         NonnaCard {
             VStack(alignment: .leading, spacing: 18) {
-                HStack {
+                HStack(spacing: 8) {
                     Text("THE LADDER")
                         .font(.system(size: 9, weight: .semibold, design: .monospaced))
                         .tracking(1.8)
                         .foregroundStyle(NonnaTheme.terracotta)
+                    SourceChip(guidance: FocusPlan.breakGuidance)
                     Spacer()
                     if !plan.isFinalLevel {
                         Text("About \(plan.estimatedDaysToTarget) days to \(plan.levels.last?.focusMinutes ?? 45)-minute blocks at this pace")
@@ -150,7 +176,10 @@ struct FocusPlanView: View {
                         .font(.system(size: 15, weight: .semibold))
                     ForEach(Array(plan.rules.enumerated()), id: \.offset) { _, rule in
                         VStack(alignment: .leading, spacing: 3) {
-                            Text(rule.title).font(.system(size: 13, weight: .semibold))
+                            HStack(spacing: 6) {
+                                Text(rule.title).font(.system(size: 13, weight: .semibold))
+                                SourceChip(guidance: rule)
+                            }
                             Text(rule.detail)
                                 .font(.system(size: 12))
                                 .foregroundStyle(NonnaTheme.secondaryInk)
@@ -166,13 +195,14 @@ struct FocusPlanView: View {
                     VStack(alignment: .leading, spacing: 12) {
                         Label("Break menu", systemImage: "cup.and.saucer")
                             .font(.system(size: 15, weight: .semibold))
-                        Text("Breaks that rest you without a spike that makes the work feel dull.")
+                        Text("Breaks that let attention recover instead of spending it.")
                             .font(.system(size: 12))
                             .foregroundStyle(NonnaTheme.secondaryInk)
-                        ForEach(plan.breakMenu, id: \.self) { idea in
+                        ForEach(Array(plan.breakMenu.enumerated()), id: \.offset) { _, idea in
                             HStack(alignment: .firstTextBaseline, spacing: 9) {
                                 Circle().fill(NonnaTheme.sage).frame(width: 5, height: 5)
-                                Text(idea).font(.system(size: 12))
+                                Text(idea.title).font(.system(size: 12))
+                                SourceChip(guidance: idea)
                             }
                         }
                     }
@@ -180,12 +210,15 @@ struct FocusPlanView: View {
                 }
                 NonnaCard {
                     VStack(alignment: .leading, spacing: 10) {
-                        Label("Your reward", systemImage: "gift")
-                            .font(.system(size: 15, weight: .semibold))
-                        Text(plan.rewardLine)
+                        HStack(spacing: 6) {
+                            Label("Your reward", systemImage: "gift")
+                                .font(.system(size: 15, weight: .semibold))
+                            SourceChip(guidance: plan.reward)
+                        }
+                        Text(plan.reward.title)
                             .font(.system(size: 17, design: .serif))
                             .italic()
-                        Text("Only after the day's last block. Wanting it is what pulls you through the middle.")
+                        Text(plan.reward.detail)
                             .font(.system(size: 12))
                             .foregroundStyle(NonnaTheme.secondaryInk)
                     }
@@ -194,22 +227,313 @@ struct FocusPlanView: View {
             }
         }
 
-        Text("Built on simple habit science: start small, earn each step, keep breaks low-stimulation. It isn't medical advice.")
-            .font(.system(size: 10))
-            .foregroundStyle(NonnaTheme.secondaryInk.opacity(0.8))
+        Button {
+            showsSources = true
+        } label: {
+            Text("Built on \(FocusScience.all.count) peer-reviewed studies. Read the sources, and what the science doesn't say →")
+                .font(.system(size: 11))
+                .foregroundStyle(NonnaTheme.secondaryInk)
+                .underline()
+        }
+        .buttonStyle(.plain)
     }
 
-    private func requirement(_ title: String, done: Int, of total: Int) -> some View {
+    private func requirement(_ title: String, value: String, met: Bool) -> some View {
         HStack(spacing: 8) {
-            Image(systemName: done >= total ? "checkmark.circle.fill" : "circle")
-                .foregroundStyle(done >= total ? NonnaTheme.sage : NonnaTheme.secondaryInk)
+            Image(systemName: met ? "checkmark.circle.fill" : "circle")
+                .foregroundStyle(met ? NonnaTheme.sage : NonnaTheme.secondaryInk)
             Text(title).font(.system(size: 12))
             Spacer(minLength: 8)
-            Text("\(min(done, total)) of \(total)")
+            Text(value)
                 .font(.system(size: 11, weight: .medium, design: .monospaced))
                 .foregroundStyle(NonnaTheme.secondaryInk)
         }
-        .frame(maxWidth: 300)
+        .frame(maxWidth: 320)
+    }
+}
+
+// MARK: - Phases and metrics
+
+private struct PhaseStrip: View {
+    let current: FocusPlan.PhaseInfo
+
+    private let order: [(FocusPlan.Phase, String)] = [(.reset, "Reset"), (.build, "Build"), (.extend, "Extend"), (.sustain, "Sustain")]
+
+    var body: some View {
+        NonnaCard(padding: 18) {
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(spacing: 8) {
+                    ForEach(Array(order.enumerated()), id: \.offset) { index, item in
+                        let reached = (order.firstIndex { $0.0 == current.phase } ?? 0) >= index
+                        let isCurrent = item.0 == current.phase
+                        HStack(spacing: 6) {
+                            Text("\(index + 1)")
+                                .font(.system(size: 10, weight: .bold, design: .monospaced))
+                                .frame(width: 20, height: 20)
+                                .foregroundStyle(isCurrent ? NonnaTheme.onAccent : reached ? NonnaTheme.terracotta : NonnaTheme.secondaryInk)
+                                .background(isCurrent ? NonnaTheme.terracotta : NonnaTheme.sunken, in: Circle())
+                                .overlay { Circle().stroke(reached ? NonnaTheme.terracotta.opacity(0.6) : NonnaTheme.line, lineWidth: 0.8) }
+                            Text(item.1)
+                                .font(.system(size: 12, weight: isCurrent ? .semibold : .regular))
+                                .foregroundStyle(isCurrent ? NonnaTheme.ink : NonnaTheme.secondaryInk)
+                        }
+                        if index < order.count - 1 {
+                            Rectangle()
+                                .fill(reached && !isCurrent ? NonnaTheme.terracotta.opacity(0.6) : NonnaTheme.line)
+                                .frame(height: 1)
+                                .frame(maxWidth: .infinity)
+                        }
+                    }
+                }
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text(current.focus)
+                        .font(.system(size: 13))
+                        .fixedSize(horizontal: false, vertical: true)
+                    SourceChip(ids: current.sources)
+                }
+            }
+        }
+    }
+}
+
+private struct MetricsCard: View {
+    let current: FocusMetrics
+    let previous: FocusMetrics
+
+    var body: some View {
+        NonnaCard {
+            VStack(alignment: .leading, spacing: 16) {
+                HStack(spacing: 8) {
+                    Text("YOUR FOCUS, MEASURED")
+                        .font(.system(size: 9, weight: .semibold, design: .monospaced))
+                        .tracking(1.8)
+                        .foregroundStyle(NonnaTheme.terracotta)
+                    SourceChip(ids: [.progressMonitoring])
+                    Spacer()
+                    Text("Last 7 days vs the 7 before")
+                        .font(.system(size: 11))
+                        .foregroundStyle(NonnaTheme.secondaryInk)
+                }
+                HStack(alignment: .top, spacing: 0) {
+                    metric("Blocks finished", percent(current.completionRate), delta(current.completionRate, previous.completionRate, scale: 100, unit: " pts", higherIsBetter: true),
+                           "Share of blocks you finished at full length.", [.selfEfficacy, .goalSetting])
+                    divider
+                    metric("Longest unbroken", minutes(current.unbrokenMinutes), delta(current.unbrokenMinutes, previous.unbrokenMinutes, scale: 1, unit: " min", higherIsBetter: true),
+                           "Median longest stretch per block without a pause. This is the attention span you're rebuilding.", [.vigilanceWork, .interruptionCost])
+                    divider
+                    metric("Pauses per block", decimal(current.pausesPerBlock), delta(current.pausesPerBlock, previous.pausesPerBlock, scale: 1, unit: "", higherIsBetter: false),
+                           "Fewer pauses means fewer interruptions and less attention residue.", [.attentionResidue, .interruptionCost])
+                    divider
+                    metric("Start time spread", current.startSpreadMinutes.map { "±\(Int($0.rounded())) min" } ?? "–",
+                           delta(current.startSpreadMinutes, previous.startSpreadMinutes, scale: 1, unit: " min", higherIsBetter: false),
+                           "How close to the same time your first block starts. A steadier start builds the habit.", [.implementationIntentions, .habitFormation])
+                    divider
+                    metric("Active days", "\(current.activeDays) of 7", delta(Double(current.activeDays), Double(previous.activeDays), scale: 1, unit: "", higherIsBetter: true),
+                           "Days with at least one block.", [.habitFormation])
+                }
+            }
+        }
+    }
+
+    private var divider: some View {
+        Rectangle().fill(NonnaTheme.line).frame(width: 1, height: 70)
+    }
+
+    private func metric(_ label: String, _ value: String, _ change: (String, Color)?, _ explanation: String, _ sources: [Citation.ID]) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 4) {
+                Text(label.uppercased())
+                    .font(.system(size: 8.5, weight: .semibold, design: .monospaced))
+                    .tracking(1.2)
+                    .foregroundStyle(NonnaTheme.secondaryInk)
+                    .lineLimit(1)
+                SourceChip(guidance: PlanGuidance(title: label, detail: explanation, sources: sources))
+            }
+            Text(value)
+                .font(.system(size: 22, weight: .medium))
+                .monospacedDigit()
+            if let change {
+                Text(change.0)
+                    .font(.system(size: 10, weight: .medium, design: .monospaced))
+                    .foregroundStyle(change.1)
+            } else {
+                Text("no data last week")
+                    .font(.system(size: 10))
+                    .foregroundStyle(NonnaTheme.secondaryInk.opacity(0.8))
+            }
+        }
+        .padding(.horizontal, 12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func percent(_ value: Double?) -> String { value.map { "\(Int(($0 * 100).rounded()))%" } ?? "–" }
+    private func minutes(_ value: Double?) -> String { value.map { "\(Int($0.rounded())) min" } ?? "–" }
+    private func decimal(_ value: Double?) -> String { value.map { String(format: "%.1f", $0) } ?? "–" }
+
+    private func delta(_ now: Double?, _ before: Double?, scale: Double, unit: String, higherIsBetter: Bool) -> (String, Color)? {
+        guard let now, let before else { return nil }
+        let change = (now - before) * scale
+        if abs(change) < 0.05 { return ("→ steady", NonnaTheme.secondaryInk) }
+        let better = higherIsBetter ? change > 0 : change < 0
+        let text = (change > 0 ? "↑ " : "↓ ") + (abs(change) >= 10 || unit == " pts" ? "\(Int(abs(change).rounded()))" : String(format: "%.1f", abs(change))) + unit
+        return (text, better ? NonnaTheme.sage : NonnaTheme.alert.opacity(0.85))
+    }
+}
+
+// MARK: - Sources
+
+/// A small citation marker, like a footnote number. Click it to see the study.
+struct SourceChip: View {
+    let ids: [Citation.ID]
+    var title: String?
+    var detail: String?
+    @State private var showing = false
+
+    init(ids: [Citation.ID]) { self.ids = ids }
+    init(guidance: PlanGuidance) {
+        ids = guidance.sources
+        title = guidance.title
+        detail = guidance.detail
+    }
+
+    private var numbers: String {
+        ids.compactMap { id in FocusScience.all.firstIndex { $0.id == id }.map { String($0 + 1) } }.joined(separator: ",")
+    }
+
+    var body: some View {
+        Button {
+            showing.toggle()
+        } label: {
+            Text(numbers)
+                .font(.system(size: 9, weight: .semibold, design: .monospaced))
+                .foregroundStyle(NonnaTheme.terracotta)
+                .padding(.horizontal, 5)
+                .frame(height: 16)
+                .background(NonnaTheme.terracotta.opacity(0.1), in: Capsule())
+                .overlay { Capsule().stroke(NonnaTheme.terracotta.opacity(0.35), lineWidth: 0.6) }
+        }
+        .buttonStyle(.plain)
+        .help("Sources")
+        .accessibilityLabel("Sources \(numbers)")
+        .popover(isPresented: $showing, arrowEdge: .bottom) {
+            VStack(alignment: .leading, spacing: 14) {
+                if let title {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(title).font(.system(size: 13, weight: .semibold))
+                        if let detail {
+                            Text(detail)
+                                .font(.system(size: 11))
+                                .foregroundStyle(NonnaTheme.secondaryInk)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                    Divider().overlay(NonnaTheme.line)
+                }
+                ForEach(FocusScience.citations(ids)) { citation in
+                    CitationRow(citation: citation, compact: true)
+                }
+            }
+            .padding(18)
+            .frame(width: 380)
+            .background(NonnaTheme.cream)
+            .foregroundStyle(NonnaTheme.ink)
+            .environment(\.colorScheme, NonnaTheme.colorScheme)
+        }
+    }
+}
+
+private struct CitationRow: View {
+    let citation: Citation
+    var compact = false
+
+    private var number: Int { (FocusScience.all.firstIndex { $0.id == citation.id } ?? 0) + 1 }
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            Text("\(number)")
+                .font(.system(size: 11, weight: .bold, design: .monospaced))
+                .foregroundStyle(NonnaTheme.terracotta)
+                .frame(width: 20, alignment: .trailing)
+            VStack(alignment: .leading, spacing: 5) {
+                Text(citation.finding)
+                    .font(.system(size: compact ? 12 : 13))
+                    .fixedSize(horizontal: false, vertical: true)
+                Text(citation.reference)
+                    .font(.system(size: 10.5, design: .serif))
+                    .italic()
+                    .foregroundStyle(NonnaTheme.secondaryInk)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .textSelection(.enabled)
+                if let url = citation.scholarURL {
+                    Button {
+                        NSWorkspace.shared.open(url)
+                    } label: {
+                        Label("Find the paper", systemImage: "arrow.up.right.square")
+                            .font(.system(size: 10.5, weight: .medium))
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(NonnaTheme.terracotta)
+                    .help("Opens a Google Scholar search for this paper in your browser")
+                }
+            }
+        }
+    }
+}
+
+struct SourcesSheet: View {
+    let onDone: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(alignment: .firstTextBaseline) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("THE SCIENCE")
+                        .font(.system(size: 9, weight: .semibold, design: .monospaced))
+                        .tracking(2)
+                        .foregroundStyle(NonnaTheme.terracotta)
+                    Text("Sources")
+                        .font(.system(size: 30, weight: .regular, design: .serif))
+                    Text("Every rule, break idea, phase and measurement in your plan traces back to these studies. The numbers next to each piece of advice point here.")
+                        .font(.system(size: 12))
+                        .foregroundStyle(NonnaTheme.secondaryInk)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer()
+                Button("Done", action: onDone)
+                    .buttonStyle(NonnaButtonStyle())
+                    .keyboardShortcut(.defaultAction)
+            }
+            .padding(30)
+            Divider().overlay(NonnaTheme.line)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    ForEach(FocusScience.all) { citation in
+                        CitationRow(citation: citation)
+                    }
+                    VStack(alignment: .leading, spacing: 10) {
+                        Label("What the science doesn't say", systemImage: "exclamationmark.bubble")
+                            .font(.system(size: 15, weight: .semibold))
+                        ForEach(FocusScience.limits, id: \.self) { limit in
+                            HStack(alignment: .firstTextBaseline, spacing: 9) {
+                                Circle().fill(NonnaTheme.secondaryInk).frame(width: 4, height: 4)
+                                Text(limit)
+                                    .font(.system(size: 12))
+                                    .foregroundStyle(NonnaTheme.secondaryInk)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                        }
+                    }
+                    .padding(18)
+                    .background(NonnaTheme.paper, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .overlay { RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(NonnaTheme.line, lineWidth: 0.8) }
+                }
+                .padding(30)
+            }
+        }
+        .frame(width: 720, height: 680)
+        .background(NonnaTheme.cream)
+        .foregroundStyle(NonnaTheme.ink)
+        .preferredColorScheme(NonnaTheme.colorScheme)
     }
 }
 
@@ -282,34 +606,36 @@ private struct PlanLadder: View {
     }
 }
 
-struct LevelUpBanner: View {
-    let level: FocusPlan.Level
-    let isFinal: Bool
+struct PlanChangeBanner: View {
+    let change: AppModel.PlanChange
     let onDismiss: () -> Void
 
     var body: some View {
+        let up = change.adjustment == .levelUp
         HStack(spacing: 14) {
-            Image(systemName: isFinal ? "trophy.fill" : "arrow.up.circle.fill")
+            Image(systemName: up ? (change.isFinal ? "trophy.fill" : "arrow.up.circle.fill") : "arrow.uturn.backward.circle.fill")
                 .font(.system(size: 22))
-                .foregroundStyle(NonnaTheme.terracotta)
+                .foregroundStyle(up ? NonnaTheme.terracotta : NonnaTheme.sage)
             VStack(alignment: .leading, spacing: 2) {
-                Text(isFinal ? "Target reached" : "Level up")
+                Text(up ? (change.isFinal ? "Target reached" : "Level up") : "Consolidating")
                     .font(.system(size: 14, weight: .semibold))
-                Text(isFinal
-                     ? "\(level.focusMinutes)-minute blocks are yours now."
-                     : "You've earned \(level.focusMinutes)-minute blocks with \(level.breakMinutes)-minute breaks. Your next block uses them.")
+                Text(up
+                     ? (change.isFinal ? "\(change.level.focusMinutes)-minute blocks are yours now."
+                        : "You've earned \(change.level.focusMinutes)-minute blocks with \(change.level.breakMinutes)-minute breaks. Your next block uses them.")
+                     : "The last level was a stretch. A few wins at \(change.level.focusMinutes)-minute blocks rebuild confidence, then you'll climb again.")
                     .font(.system(size: 12))
                     .foregroundStyle(NonnaTheme.secondaryInk)
             }
+            SourceChip(ids: up ? [.proximalGoals] : [.selfEfficacy])
             Spacer()
-            Button("Nice", action: onDismiss)
+            Button("Got it", action: onDismiss)
                 .buttonStyle(NonnaButtonStyle(prominent: false))
         }
         .padding(16)
         .background {
             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(NonnaTheme.terracotta.opacity(0.1))
-                .overlay { RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(NonnaTheme.terracotta.opacity(0.45), lineWidth: 0.8) }
+                .fill((up ? NonnaTheme.terracotta : NonnaTheme.sage).opacity(0.1))
+                .overlay { RoundedRectangle(cornerRadius: 14, style: .continuous).stroke((up ? NonnaTheme.terracotta : NonnaTheme.sage).opacity(0.45), lineWidth: 0.8) }
         }
         .transition(.move(edge: .top).combined(with: .opacity))
     }
@@ -317,44 +643,55 @@ struct LevelUpBanner: View {
 
 private struct PlanIntro: View {
     let onBegin: () -> Void
+    let onSources: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 30) {
             VStack(alignment: .leading, spacing: 14) {
-                Text("DOPAMINE FOCUS PLAN")
+                Text("FOCUS REBUILD PLAN")
                     .font(.system(size: 10, weight: .semibold, design: .monospaced))
                     .tracking(2.4)
                     .foregroundStyle(NonnaTheme.terracotta)
                 Text("Rebuild your focus,\none block at a time.")
                     .font(.system(size: 46, weight: .regular, design: .serif))
                     .tracking(-0.8)
-                Text("Answer eight quick questions. Pomofocus builds a plan that starts where your attention is today and climbs, five minutes at a time, to 45-minute blocks with 15-minute breaks, or whatever you're aiming for.")
+                Text("Answer eight quick questions. Pomofocus builds a research-based plan that starts where your attention is today, measures how it responds, and climbs, five minutes at a time, to 45-minute blocks with 15-minute breaks, or whatever you're aiming for.")
                     .font(.system(size: 15))
                     .foregroundStyle(NonnaTheme.secondaryInk)
-                    .frame(maxWidth: 620, alignment: .leading)
+                    .frame(maxWidth: 640, alignment: .leading)
             }
 
             HStack(alignment: .top, spacing: 16) {
-                principle("1", "Start where you are", "If ten minutes is your honest limit today, the plan starts at ten. Early wins build the habit.")
-                principle("2", "Earn every minute", "Four full blocks across two days unlock the next length. Progress you can trust.")
-                principle("3", "Rest without the spike", "Breaks stay low-stimulation, and the feeds wait until your reward.")
+                principle("1", "Start where you are", "The plan begins just under your real limit. Early wins build the belief that drives the next block.", [.selfEfficacy, .proximalGoals])
+                principle("2", "Earn every minute", "Five-minute steps, unlocked by your own numbers: full blocks, on different days, finished at a good rate.", [.goalSetting, .progressMonitoring])
+                principle("3", "Rest that restores", "Breaks away from screens and feeds, outside or moving, so attention recovers instead of being spent.", [.natureAttention, .shortFormVideo])
             }
 
-            Button(action: onBegin) {
-                Label("Build my plan", systemImage: "sparkles")
+            HStack(spacing: 14) {
+                Button(action: onBegin) {
+                    Label("Build my plan", systemImage: "sparkles")
+                }
+                .buttonStyle(NonnaButtonStyle())
+                .keyboardShortcut(.defaultAction)
+                Button(action: onSources) {
+                    Label("Read the science", systemImage: "books.vertical")
+                }
+                .buttonStyle(NonnaButtonStyle(prominent: false))
             }
-            .buttonStyle(NonnaButtonStyle())
-            .keyboardShortcut(.defaultAction)
         }
         .padding(.top, 30)
     }
 
-    private func principle(_ number: String, _ title: String, _ detail: String) -> some View {
+    private func principle(_ number: String, _ title: String, _ detail: String, _ sources: [Citation.ID]) -> some View {
         NonnaCard(padding: 20) {
             VStack(alignment: .leading, spacing: 10) {
-                Text(number)
-                    .font(.system(size: 30, weight: .light, design: .serif))
-                    .foregroundStyle(NonnaTheme.terracotta)
+                HStack {
+                    Text(number)
+                        .font(.system(size: 30, weight: .light, design: .serif))
+                        .foregroundStyle(NonnaTheme.terracotta)
+                    Spacer()
+                    SourceChip(guidance: PlanGuidance(title: title, detail: detail, sources: sources))
+                }
                 Text(title).font(.system(size: 15, weight: .semibold))
                 Text(detail)
                     .font(.system(size: 12))

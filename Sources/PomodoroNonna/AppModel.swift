@@ -533,8 +533,14 @@ final class AppModel {
 
     // MARK: - Focus plan
 
-    /// Set when a plan level is earned; the Focus and Plan screens show it until dismissed.
-    var planLevelUp: FocusPlan.Level?
+    /// Set when the plan changes level; the Focus and Plan screens show it until dismissed.
+    var planChange: PlanChange?
+
+    struct PlanChange: Equatable {
+        let adjustment: FocusPlan.Adjustment
+        let level: FocusPlan.Level
+        let isFinal: Bool
+    }
 
     var focusPlan: FocusPlan? { data.focusPlan }
 
@@ -547,13 +553,13 @@ final class AppModel {
     func startPlan(with answers: FocusPlanAnswers) {
         let plan = FocusPlan.build(from: answers)
         data.focusPlan = plan
-        planLevelUp = nil
+        planChange = nil
         applyPlanSettings(plan)
     }
 
     func removePlan() {
         data.focusPlan = nil
-        planLevelUp = nil
+        planChange = nil
         save()
     }
 
@@ -570,15 +576,22 @@ final class AppModel {
         }
     }
 
-    /// After each recorded block: climb a rung once it has been earned.
+    /// After each recorded block: climb a rung once it has been earned, or step back one
+    /// if the current length keeps beating you.
     private func evaluatePlanProgress() {
-        guard var plan = data.focusPlan, !plan.isFinalLevel,
-              plan.progress(sessions: data.sessions).isComplete else { return }
-        plan.levelIndex += 1
+        guard var plan = data.focusPlan, let adjustment = plan.adjustment(sessions: data.sessions) else { return }
+        plan.levelIndex += adjustment == .levelUp ? 1 : -1
         plan.levelStartedAt = Date()
         data.focusPlan = plan
-        planLevelUp = plan.level
+        planChange = PlanChange(adjustment: adjustment, level: plan.level, isFinal: plan.isFinalLevel)
         applyPlanSettings(plan)
+        guard adjustment == .levelUp else {
+            let content = UNMutableNotificationContent()
+            content.title = "Consolidating at \(plan.level.focusMinutes) minutes"
+            content.body = "The last level was a stretch. A few wins at \(plan.level.focusMinutes)-minute blocks will set you up to climb again."
+            UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil))
+            return
+        }
 
         let content = UNMutableNotificationContent()
         content.title = plan.isFinalLevel ? "Target reached" : "Level up"

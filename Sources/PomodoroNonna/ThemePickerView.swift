@@ -8,7 +8,7 @@ import SwiftUI
 struct ThemePicker: View {
     @Environment(AppModel.self) private var model
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    var columns = 4
+    var columns = 5
 
     private var selected: ThemeChoice { ThemeChoice(rawValue: model.settings.themeID) ?? .obsidian }
 

@@ -61,7 +61,7 @@ struct CustomThemeSpec: Codable, Equatable, Sendable {
 
 /// The ready-made looks, plus "match system" and "custom".
 enum ThemeChoice: String, CaseIterable, Identifiable, Sendable {
-    case system, obsidian, ivory, midnight, forest, ember, sakura, custom
+    case system, obsidian, ivory, midnight, forest, ember, sakura, layla, ecrin, custom
 
     var id: String { rawValue }
 
@@ -74,6 +74,8 @@ enum ThemeChoice: String, CaseIterable, Identifiable, Sendable {
         case .forest: "Forest"
         case .ember: "Ember"
         case .sakura: "Sakura"
+        case .layla: "Layla"
+        case .ecrin: "Écrin"
         case .custom: "Custom"
         }
     }
@@ -87,6 +89,8 @@ enum ThemeChoice: String, CaseIterable, Identifiable, Sendable {
         case .forest: "Pine dark, soft sage"
         case .ember: "Warm dark, glowing coral"
         case .sakura: "Soft blush, rose accents"
+        case .layla: "Tiffany baby pink"
+        case .ecrin: "Jewel-box red and gold"
         case .custom: "Build your own"
         }
     }
@@ -100,6 +104,8 @@ enum ThemeChoice: String, CaseIterable, Identifiable, Sendable {
         case .forest: .forest
         case .ember: .ember
         case .sakura: .sakura
+        case .layla: .layla
+        case .ecrin: .ecrin
         case .system, .custom: nil
         }
     }
@@ -138,6 +144,21 @@ extension ThemePalette {
         isDark: true, background: "0A0605", paper: "120C0A", raised: "1A1310", sunken: "0E0907",
         ink: "F4EDE8", secondaryInk: "9A8D86", line: "2C221E", strongLine: "3D302A",
         accent: "E0895A", accentHighlight: "F2B28E", onAccent: "0A0605", rest: "8FA88F", longRest: "B79FC2")
+
+    /// Layla's theme: the pastel baby pink of a Tiffany heart tag, a soft rose for focus
+    /// that still reads clearly, and deeper rose and plum-pink for breaks.
+    static let layla = ThemePalette(
+        isDark: false, background: "FBE9EE", paper: "FFF5F8", raised: "FFFFFF", sunken: "F6DDE4",
+        ink: "3A2229", secondaryInk: "86616C", line: "F1D2DA", strongLine: "E6BECA",
+        accent: "C96B86", accentHighlight: "A9506A", onAccent: "FFFFFF", rest: "9E4A64", longRest: "8A4F7D")
+
+    /// Écrin, French for a jewel case: the deep red leather of a fine jewellery box, gold
+    /// tooling, a cream satin lining for text, rose gold for breaks and a ruby glow for
+    /// long breaks.
+    static let ecrin = ThemePalette(
+        isDark: true, background: "160406", paper: "21070A", raised: "2C0B0F", sunken: "0F0204",
+        ink: "F6ECDD", secondaryInk: "B8968C", line: "3A1418", strongLine: "4D1E22",
+        accent: "D4B06A", accentHighlight: "EBD3A0", onAccent: "160406", rest: "E0A08C", longRest: "E0566A")
 
     static let sakura = ThemePalette(
         isDark: false, background: "FAF4F3", paper: "FFFAF9", raised: "FFFFFF", sunken: "F1E6E4",

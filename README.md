@@ -25,7 +25,7 @@ Pomofocus is a beautiful, local-first focus timer for macOS. It brings together 
 - Native SwiftUI macOS app and menu-bar timer with a live progress ring and countdown
 - Native small, medium, and large desktop/sidebar widgets with a live timer and one restrained gold progress band
 - Obsidian Atelier interface with graphite surfaces, champagne accents, and precision typography
-- Themes: Obsidian, Ivory (light), Midnight, Forest, Ember and Sakura, Match system (follows macOS light/dark), or a custom theme built from a base, a background, a focus colour and a break colour; readable surfaces are derived automatically. Chosen on first launch and changeable in Settings
+- Themes: Obsidian, Ivory (light), Midnight, Forest, Ember, Sakura, Layla (Tiffany baby pink) and Écrin (jewel-box red and gold), Match system (follows macOS light/dark), or a custom theme built from a base, a background, a focus colour and a break colour; readable surfaces are derived automatically. Chosen on first launch and changeable in Settings
 - Split focus workspace with an analog timer dial and a dark daily timeline
 - Cinema mode (⇧⌘F): a full-screen, screensaver-like scene for wide and ultrawide displays, with rolling digits, an unrolled minute tape, and a slowly drifting glow; keeps the display awake, Space pauses, → advances, Esc leaves
 - Seven-day navigator with focus, break, and live-session blocks
@@ -49,7 +49,8 @@ Pomofocus is a beautiful, local-first focus timer for macOS. It brings together 
 - Local session canvas with clipboard paste, drag-and-drop, and multi-image import
 - Per-image resizing, captions, ordering, removal, and preserved history thumbnails
 - Optional post-session focus rating and reflection
-- Dopamine focus plan: eight questions build a ladder from your current attention span to your target block (e.g. 45 min focus / 15 min break), climbing five minutes per level after four full blocks across two days, with house rules from your distractions, a low-stimulation break menu, and a reward for the end of the day
+- Focus rebuild plan: eight questions build a research-based plan in four phases (Reset, Build, Extend, Sustain). Blocks climb five minutes per level once you finish 4 full blocks on 2+ days with a 70% completion rate, and step back a level if under 40% are finished. Weekly metrics (completion rate, longest unbroken stretch, pauses per block, start-time spread, active days), house rules from your distractions, a restorative break menu and an end-of-day reward; every recommendation cites peer-reviewed research, with a Sources page and an honest note on what the science doesn't say
+- Collapsible day timeline (⌥⌘T)
 - Session celebration: when you press End session, screen-wide confetti and a cinematic breakdown of the whole sitting (every pomodoro, total focus, breaks, pauses, overtime, today vs goal, streak); single pomodoros pass quietly; switchable in Settings
 - Three-cycle guided breathing ritual with animated inhale and exhale cues
 - Local notifications and a locally generated bell ding for every timer cue
@@ -107,9 +108,9 @@ The current command-line Swift installation does not bundle XCTest, so the core 
 
 ```sh
 mkdir -p .build/checks
-swiftc Sources/PomodoroNonna/Models.swift Sources/PomodoroNonna/FocusPlan.swift Sources/PomodoroNonna/ThemePalette.swift Sources/PomodoroNonna/Insights.swift Sources/PomodoroNonna/DeepDiveAnalytics.swift Tests/AnalyticsCheck/main.swift -o .build/checks/analytics-check
+swiftc Sources/PomodoroNonna/Models.swift Sources/PomodoroNonna/FocusPlan.swift Sources/PomodoroNonna/FocusScience.swift Sources/PomodoroNonna/ThemePalette.swift Sources/PomodoroNonna/Insights.swift Sources/PomodoroNonna/DeepDiveAnalytics.swift Tests/AnalyticsCheck/main.swift -o .build/checks/analytics-check
 .build/checks/analytics-check
-swiftc Sources/PomodoroNonna/Models.swift Sources/PomodoroNonna/FocusPlan.swift Sources/PomodoroNonna/ThemePalette.swift Tests/FocusPlanCheck/main.swift -o .build/checks/focus-plan-check
+swiftc Sources/PomodoroNonna/Models.swift Sources/PomodoroNonna/FocusPlan.swift Sources/PomodoroNonna/FocusScience.swift Sources/PomodoroNonna/ThemePalette.swift Tests/FocusPlanCheck/main.swift -o .build/checks/focus-plan-check
 .build/checks/focus-plan-check
 swiftc Sources/PomodoroNonna/ThemePalette.swift Tests/ThemeCheck/main.swift -o .build/checks/theme-check
 .build/checks/theme-check
@@ -134,7 +135,8 @@ swiftc Sources/PomodoroNonna/ThemePalette.swift Tests/ThemeCheck/main.swift -o .
 - `FocusCanvasView.swift`: local text, pasted images, captions, resizing, and ordering
 - `CinematicMode.swift`: full-screen Cinema scene, with Core Animation backdrop and minute tape
 - `CelebrationMode.swift`: end-of-sitting confetti and stats breakdown
-- `FocusPlan.swift`: the focus plan engine (ladder, levelling, rules, break menu)
+- `FocusPlan.swift`: the focus plan engine (ladder, evidence-based levelling, phases, metrics, rules, break menu)
+- `FocusScience.swift`: the citations behind the plan and the limits of the evidence
 - `FocusPlanView.swift`: the Plan section and its questionnaire
 - `ThemePalette.swift`: theme palettes, presets and custom-theme colour derivation
 - `ThemePickerView.swift`: the theme picker, custom theme editor and first-launch welcome
