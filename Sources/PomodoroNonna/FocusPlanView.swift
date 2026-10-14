@@ -9,6 +9,7 @@ struct FocusPlanView: View {
     @State private var showsSources = false
     @State private var confirmsRemoval = false
     @AppStorage(SourceChip.visibilityKey) private var showsCitations = false
+    @Environment(\.compactLayout) private var compact
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     var onStartBlock: () -> Void = {}
 
@@ -101,7 +102,7 @@ struct FocusPlanView: View {
 
         PhaseStrip(current: phase)
 
-        HStack(alignment: .top, spacing: 18) {
+        AdaptiveColumns(compact) {
             NonnaCard {
                 HStack(spacing: 26) {
                     LevelRing(fraction: plan.isFinalLevel ? 1 : progress.fraction, minutes: plan.level.focusMinutes)
@@ -155,7 +156,8 @@ struct FocusPlanView: View {
                         .font(.system(size: 12))
                         .foregroundStyle(NonnaTheme.secondaryInk)
                 }
-                .frame(width: 260, alignment: .leading)
+                .frame(maxWidth: compact ? .infinity : 260, alignment: .leading)
+                .frame(width: compact ? nil : 260)
             }
         }
 
@@ -181,7 +183,7 @@ struct FocusPlanView: View {
             }
         }
 
-        HStack(alignment: .top, spacing: 18) {
+        AdaptiveColumns(compact) {
             NonnaCard {
                 VStack(alignment: .leading, spacing: 14) {
                     Label("House rules", systemImage: "checkmark.seal")

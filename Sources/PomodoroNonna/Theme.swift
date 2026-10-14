@@ -392,3 +392,37 @@ struct RollingClockText: View {
         .accessibilityLabel(text)
     }
 }
+
+/// True when the content area is too narrow for side-by-side cards. Sections read this to
+/// stack their columns, so the window can be made small without anything clipping.
+private struct CompactLayoutKey: EnvironmentKey {
+    static let defaultValue = false
+}
+
+extension EnvironmentValues {
+    var compactLayout: Bool {
+        get { self[CompactLayoutKey.self] }
+        set { self[CompactLayoutKey.self] = newValue }
+    }
+}
+
+/// Columns side by side when there's room, stacked when the window is narrow. One layout
+/// value keeps each card's identity, so the switch animates instead of rebuilding.
+struct AdaptiveColumns<Content: View>: View {
+    let compact: Bool
+    var spacing: CGFloat = 18
+    @ViewBuilder let content: Content
+
+    init(_ compact: Bool, spacing: CGFloat = 18, @ViewBuilder content: () -> Content) {
+        self.compact = compact
+        self.spacing = spacing
+        self.content = content()
+    }
+
+    var body: some View {
+        let layout = compact
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: spacing))
+            : AnyLayout(HStackLayout(alignment: .top, spacing: spacing))
+        layout { content }
+    }
+}

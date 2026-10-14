@@ -3,6 +3,7 @@ import SwiftUI
 
 struct DashboardView: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.compactLayout) private var compact
     @State private var hoveredDay: Date?
     @State private var selectedMetric: DashboardMetric?
 
@@ -28,7 +29,7 @@ struct DashboardView: View {
                 let totalBreakSeconds = model.breakSessions.reduce(0) { $0 + $1.restedSeconds }
                 let breakOvertimeSeconds = model.breakSessions.reduce(0) { $0 + $1.overtimeSeconds }
 
-                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 14), count: 3), spacing: 14) {
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 14), count: compact ? 2 : 3), spacing: 14) {
                     DashboardMetricButton(
                         metric: .focus,
                         icon: "hourglass",
@@ -85,11 +86,12 @@ struct DashboardView: View {
                     )
                 }
 
-                HStack(alignment: .top, spacing: 18) {
+                AdaptiveColumns(compact) {
                     recentActivityCard
                         .frame(maxWidth: .infinity)
                     taskTotalsCard
-                        .frame(width: 330)
+                        .frame(maxWidth: compact ? .infinity : 330)
+                        .frame(width: compact ? nil : 330)
                 }
 
                 consistencyCard

@@ -3,6 +3,7 @@ import SwiftUI
 
 /// Deeper, range-filtered analytics shown under the lifetime cards on the Dashboard.
 struct InsightsSection: View {
+    @Environment(\.compactLayout) private var compact
     @Environment(AppModel.self) private var model
     @State private var range: InsightsRange = .month
 
@@ -46,7 +47,7 @@ struct InsightsSection: View {
             } else {
                 TrendsCard(insights: insights, goalMinutes: model.settings.dailyGoalMinutes)
                 RhythmCard(insights: insights)
-                HStack(alignment: .top, spacing: 18) {
+                AdaptiveColumns(compact) {
                     QualityCard(insights: insights)
                         .frame(maxWidth: .infinity)
                     BreaksCard(insights: insights)
@@ -154,6 +155,7 @@ private struct TrendsCard: View {
 // MARK: - Time of day
 
 private struct RhythmCard: View {
+    @Environment(\.compactLayout) private var compact
     let insights: InsightsSnapshot
     @State private var hoveredHour: String?
     @State private var hoveredWeekday: String?
@@ -169,7 +171,7 @@ private struct RhythmCard: View {
                         .foregroundStyle(NonnaTheme.secondaryInk)
                 }
 
-                HStack(alignment: .top, spacing: 22) {
+                AdaptiveColumns(compact, spacing: 22) {
                     VStack(alignment: .leading, spacing: 10) {
                         InsightChartLabel(text: "BY HOUR")
                         hourChart
@@ -180,7 +182,7 @@ private struct RhythmCard: View {
                         InsightChartLabel(text: "BY WEEKDAY")
                         weekdayChart
                     }
-                    .frame(width: 300)
+                    .frame(maxWidth: compact ? .infinity : 300)
                 }
             }
         }

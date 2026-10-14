@@ -125,7 +125,7 @@ struct MetricDeepDiveView: View {
         }
         .foregroundStyle(NonnaTheme.ink)
         .tint(metric.tint)
-        .frame(minWidth: 1040, idealWidth: 1160, minHeight: 720, idealHeight: 820)
+        .frame(minWidth: 900, idealWidth: 1160, minHeight: 640, idealHeight: 820)
         .onChange(of: range) { _, newRange in
             hoveredDay = nil
             snapshot = DeepDiveSnapshot.calculate(

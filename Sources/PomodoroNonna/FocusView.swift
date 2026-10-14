@@ -6,6 +6,9 @@ struct FocusView: View {
     @State private var showingNewTask = false
     @State private var showsInspector = false
     @AppStorage("pomofocus.timelineCollapsed") private var timelineCollapsed = false
+    @Environment(\.compactLayout) private var compact
+    /// On a narrow window the timeline slides out over the timer instead of beside it.
+    @State private var timelineDrawerOpen = false
     @State private var confirmsAbandon = false
     @Namespace private var phaseSelection
 
@@ -56,7 +59,7 @@ struct FocusView: View {
                     }
 
                     timerCard
-                        .frame(minWidth: 500, maxWidth: 690)
+                        .frame(minWidth: 380, maxWidth: 690)
                 }
                 .frame(maxWidth: .infinity)
                 .padding(28)
@@ -65,8 +68,8 @@ struct FocusView: View {
             Divider().overlay(NonnaTheme.line)
 
             Group {
-                if timelineCollapsed {
-                    TimelineRail(onExpand: toggleTimeline)
+                if timelineCollapsed || compact {
+                    TimelineRail(onExpand: compact ? toggleDrawer : toggleTimeline)
                         .transition(.move(edge: .trailing).combined(with: .opacity))
                 } else {
                     DayTimelineView(onCollapse: toggleTimeline)
@@ -76,6 +79,25 @@ struct FocusView: View {
             }
         }
         .clipped()
+        .overlay(alignment: .trailing) {
+            if compact && timelineDrawerOpen {
+                ZStack(alignment: .trailing) {
+                    Color.black.opacity(NonnaTheme.isDark ? 0.4 : 0.15)
+                        .contentShape(Rectangle())
+                        .onTapGesture(perform: toggleDrawer)
+                        .transition(.opacity)
+                    DayTimelineView(onCollapse: toggleDrawer)
+                        .frame(width: 460)
+                        .background(NonnaTheme.cream)
+                        .overlay(alignment: .leading) { Rectangle().fill(NonnaTheme.line).frame(width: 1) }
+                        .shadow(color: .black.opacity(0.35), radius: 30, x: -8)
+                        .transition(.move(edge: .trailing))
+                }
+            }
+        }
+        .onChange(of: compact) { _, isCompact in
+            if !isCompact { timelineDrawerOpen = false }
+        }
         .sheet(isPresented: $showingNewTask) {
             NewTaskView()
                 .environment(model)
@@ -85,6 +107,12 @@ struct FocusView: View {
         }
         .onChange(of: model.intention) { _, _ in model.persistDraft() }
         .onChange(of: model.note) { _, _ in model.persistDraft() }
+    }
+
+    private func toggleDrawer() {
+        withAnimation(reduceMotion ? nil : .spring(duration: 0.45, bounce: 0.06)) {
+            timelineDrawerOpen.toggle()
+        }
     }
 
     private func toggleTimeline() {

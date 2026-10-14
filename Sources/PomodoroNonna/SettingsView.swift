@@ -3,6 +3,7 @@ import SwiftUI
 struct SettingsView: View {
     @Environment(AppModel.self) private var model
     @EnvironmentObject private var calendarStore: CalendarStore
+    @Environment(\.compactLayout) private var compact
 
     var body: some View {
         ScrollView {
@@ -15,7 +16,7 @@ struct SettingsView: View {
 
                 AppearanceSettingsCard()
 
-                HStack(alignment: .top, spacing: 18) {
+                AdaptiveColumns(compact) {
                     VStack(spacing: 18) {
                         timerSettings
                         rhythmSettings

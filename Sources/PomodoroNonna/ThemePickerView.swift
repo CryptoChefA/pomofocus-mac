@@ -9,12 +9,13 @@ struct ThemePicker: View {
     @Environment(AppModel.self) private var model
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     var columns = 5
+    @Environment(\.compactLayout) private var compact
 
     private var selected: ThemeChoice { ThemeChoice(rawValue: model.settings.themeID) ?? .obsidian }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 14), count: columns), spacing: 14) {
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 14), count: compact ? 3 : columns), spacing: 14) {
                 ForEach(ThemeChoice.allCases) { choice in
                     ThemeSwatchButton(choice: choice, custom: model.settings.customTheme, isSelected: selected == choice) {
                         withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.45)) {

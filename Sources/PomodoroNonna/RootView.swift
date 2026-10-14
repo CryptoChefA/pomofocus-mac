@@ -33,6 +33,7 @@ struct RootView: View {
                 Sidebar(selection: $selection)
                     .frame(width: 82)
                 Divider().overlay(NonnaTheme.line)
+                GeometryReader { proxy in
                 ZStack {
                     Group {
                         switch selection {
@@ -49,6 +50,9 @@ struct RootView: View {
                     }
                     .id(selection)
                     .transition(.opacity.combined(with: .scale(scale: 0.995)))
+                }
+                .environment(\.compactLayout, proxy.size.width < 980)
+                .frame(width: proxy.size.width, height: proxy.size.height)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .animation(reduceMotion ? nil : NonnaMotion.page, value: selection)

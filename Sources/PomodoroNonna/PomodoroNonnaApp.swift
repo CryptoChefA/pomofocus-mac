@@ -12,7 +12,7 @@ struct PomodoroNonnaApp: App {
                 .environment(model)
                 .environmentObject(calendarStore)
                 .preferredColorScheme(NonnaTheme.colorScheme)
-                .frame(minWidth: 1180, minHeight: 720)
+                .frame(minWidth: 720, minHeight: 560)
                 .onChange(of: model.settings.showCalendarEvents) { _, enabled in
                     guard enabled, calendarStore.access == .notDetermined else { return }
                     calendarStore.requestAccess()
