@@ -17,24 +17,22 @@ func parse(_ line: String, focus: Int = 25) -> ParsedTodo? { TodoParser.parseLin
 
 // Plain titles survive untouched.
 check(parse("Read chapter 4")?.title == "Read chapter 4", "plain title")
-check(parse("Read chapter 4")?.estimate == nil, "no estimate unless asked")
+check(parse("Read chapter 4")?.minutes == nil, "no length unless given")
 check(parse("   ") == nil && parse("- ") == nil, "blank lines are skipped")
 
-// Pomodoro estimates in every spelling.
-check(parse("Problem set 5 3p")?.estimate == 3 && parse("Problem set 5 3p")?.title == "Problem set 5", "3p")
-check(parse("Essay 2 pomos")?.estimate == 2, "2 pomos")
-check(parse("Essay 4 pomodoros")?.estimate == 4, "4 pomodoros")
-check(parse("Essay 3🍅")?.estimate == 3 && parse("Essay 🍅2")?.estimate == 2, "tomato emoji")
-check(parse("Essay 99p")?.estimate == 20, "estimates are capped")
+// Time, in minutes.
+check(parse("Lab report 1h")?.minutes == 60 && parse("Lab report 1h")?.title == "Lab report", "1h")
+check(parse("Lab report 1.5h")?.minutes == 90, "1.5h")
+check(parse("Lab report 1h 30m")?.minutes == 90 && parse("Lab report 1h 30m")?.title == "Lab report", "1h 30m")
+check(parse("Quick email 10m")?.minutes == 10, "10m")
+check(parse("Quick email 2m")?.minutes == 5, "lengths are at least 5 minutes")
+check(parse("Thesis 40h")?.minutes == 1440, "lengths are capped at a day")
 
-// Time converts to pomodoros at the current focus length, rounding up.
-check(parse("Lab report 1h")?.estimate == 3, "1h at 25m = 3")
-check(parse("Lab report 1h", focus: 50)?.estimate == 2, "1h at 50m = 2")
-check(parse("Lab report 1.5h", focus: 45)?.estimate == 2, "1.5h at 45m = 2")
-check(parse("Lab report 1h 30m")?.estimate == 4, "1h 30m at 25m = 4")
-check(parse("Quick email 10m")?.estimate == 1, "short tasks are at least one block")
-check(parse("Lab report 1h 30m")?.title == "Lab report", "time removed from title")
-check(parse("Pomodoro technique video")?.estimate == nil, "words containing p aren't estimates")
+// Pomodoro shorthand still works, converted at the focus length.
+check(parse("Problem set 5 3p")?.minutes == 75 && parse("Problem set 5 3p")?.title == "Problem set 5", "3p at 25m")
+check(parse("Essay 2 pomos", focus: 50)?.minutes == 100, "2 pomos at 50m")
+check(parse("Essay 3🍅")?.minutes == 75 && parse("Essay 🍅2")?.minutes == 50, "tomato emoji")
+check(parse("Pomodoro technique video")?.minutes == nil, "words containing p aren't lengths")
 
 // Dates.
 check(parse("Quiz prep today")?.due == today && parse("Quiz prep tonight")?.due == today, "today / tonight")
@@ -48,7 +46,7 @@ check(parse("Monitor setup")?.due == nil && parse("Monitor setup")?.title == "Mo
 
 // Lists and combinations.
 let full = parse("- Problem set 5 3p tomorrow #Math")
-check(full == ParsedTodo(title: "Problem set 5", estimate: 3, due: day(1), listName: "Math"), "everything at once: \(String(describing: full))")
+check(full == ParsedTodo(title: "Problem set 5", minutes: 75, due: day(1), listName: "Math"), "everything at once: \(String(describing: full))")
 
 // Bullets and checkboxes.
 check(parse("* Flashcards")?.title == "Flashcards" && parse("• Flashcards")?.title == "Flashcards" && parse("2. Flashcards")?.title == "Flashcards", "bullets")
@@ -74,7 +72,7 @@ let items = TodoParser.parseDocument(note, focusMinutes: 25, now: now, calendar:
 check(items.count == 5, "five tasks from the note (\(items.count))")
 check(items.map(\.listName) == ["Math", "Math", "Bio", "Exams", "Bio"], "headings set lists, #list overrides (\(items.map(\.listName)))")
 check(items[2].isDone && !items[3].isDone, "checked lines come in done")
-check(items[3].estimate == 3 && items[3].due == day(3), "estimate and date on a pasted line")
+check(items[3].minutes == 60 && items[3].due == day(3), "length and date on a pasted line")
 
 // Due buckets and labels.
 check(DueBucket.of(day(-2), now: now, calendar: calendar) == .overdue, "overdue")

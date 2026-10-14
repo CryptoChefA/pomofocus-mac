@@ -4,7 +4,6 @@ struct FocusView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var showingNewTask = false
-    @State private var showsInspector = false
     @AppStorage("pomofocus.timelineCollapsed") private var timelineCollapsed = false
     @Environment(\.compactLayout) private var compact
     /// On a narrow window the timeline slides out over the timer instead of beside it.
@@ -36,14 +35,6 @@ struct FocusView: View {
                         }
                         .buttonStyle(NonnaButtonStyle(prominent: false))
                         .help("Show the timer full screen (⇧⌘F)")
-                        Button {
-                            showsInspector = true
-                        } label: {
-                            Label("Notes", systemImage: "note.text")
-                        }
-                        .buttonStyle(NonnaButtonStyle(prominent: false))
-                        .keyboardShortcut("i", modifiers: [.command])
-                        .help("Notes and images for this focus block, saved with it in History (⌘I)")
                     }
 
                     if let change = model.planChange {
@@ -102,9 +93,6 @@ struct FocusView: View {
         .sheet(isPresented: $showingNewTask) {
             NewTaskView()
                 .environment(model)
-        }
-        .sheet(isPresented: $showsInspector) {
-            sessionInspector
         }
         .onChange(of: model.intention) { _, _ in model.persistDraft() }
         .onChange(of: model.note) { _, _ in model.persistDraft() }
@@ -185,24 +173,6 @@ struct FocusView: View {
             .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
             .overlay { RoundedRectangle(cornerRadius: 9).stroke(NonnaTheme.line, lineWidth: 0.8) }
         }
-    }
-
-    private var sessionInspector: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            HStack {
-                SectionHeading(eyebrow: "This focus block", title: "Notes")
-                Spacer()
-                Button("Done") { showsInspector = false }
-                    .buttonStyle(NonnaButtonStyle(prominent: false))
-            }
-            FocusCanvasView()
-            Spacer(minLength: 0)
-        }
-        .padding(28)
-        .frame(width: 560)
-        .frame(minHeight: 540)
-        .background(NonnaTheme.cream)
-        .environment(model)
     }
 
     private var todayProgress: some View {
@@ -603,8 +573,6 @@ struct FocusView: View {
                         .fill(NonnaTheme.line)
                         .frame(height: 1)
                 }
-
-                FocusCanvasView()
 
                 Spacer(minLength: 0)
 

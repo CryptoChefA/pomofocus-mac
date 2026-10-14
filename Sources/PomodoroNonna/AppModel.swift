@@ -212,6 +212,17 @@ final class AppModel {
             data = try await LocalStore.shared.load()
             applyTheme()
             hasLoaded = true
+            // 0.21.0 stored estimates as pomodoros; they're minutes now.
+            if data.todos?.contains(where: { $0.estimate != nil }) == true {
+                data.todos = data.todos?.map { todo in
+                    var todo = todo
+                    if let count = todo.estimate {
+                        if todo.minutes == nil { todo.minutes = count * data.settings.focusMinutes }
+                        todo.estimate = nil
+                    }
+                    return todo
+                }
+            }
             selectedTaskID = data.draft?.taskID ?? tasks.first?.id
             intention = data.draft?.intention ?? ""
             selectedTodoID = data.draft?.todoID
@@ -551,15 +562,23 @@ final class AppModel {
         return cachedTodoStats?[id] ?? TodoStats()
     }
 
-    /// Minutes a number of pomodoros takes at the current focus length.
-    func minutes(forPomodoros count: Int) -> Int { count * settings.focusMinutes }
+    /// Estimated minutes still to go on a task (never below zero).
+    func minutesLeft(on todo: TodoItem) -> Int {
+        guard let minutes = todo.minutes else { return 0 }
+        return max(0, minutes - stats(for: todo.id).seconds / 60)
+    }
+
+    @discardableResult
+    func addTodo(title: String, listID: UUID?, minutes: Int?, due: Date?) -> UUID {
+        addTodo(ParsedTodo(title: title, minutes: minutes, due: due), defaultList: listID, defaultDue: nil)
+    }
 
     @discardableResult
     func addTodo(_ parsed: ParsedTodo, defaultList: UUID?, defaultDue: Date?) -> UUID {
         let item = TodoItem(
             title: parsed.title,
             listID: parsed.listName.map(list(named:)) ?? defaultList,
-            estimate: parsed.estimate,
+            minutes: parsed.minutes,
             due: parsed.due ?? defaultDue,
             isDone: parsed.isDone,
             completedAt: parsed.isDone ? Date() : nil
@@ -571,7 +590,7 @@ final class AppModel {
 
     func addTodos(_ parsed: [ParsedTodo], defaultList: UUID?, defaultDue: Date?) {
         let items = parsed.map { entry in
-            TodoItem(title: entry.title, listID: entry.listName.map(list(named:)) ?? defaultList, estimate: entry.estimate,
+            TodoItem(title: entry.title, listID: entry.listName.map(list(named:)) ?? defaultList, minutes: entry.minutes,
                      due: entry.due ?? defaultDue, isDone: entry.isDone, completedAt: entry.isDone ? Date() : nil)
         }
         data.todos = todos + items

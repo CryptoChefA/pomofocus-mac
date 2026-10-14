@@ -35,7 +35,7 @@ struct DashboardView: View {
                         icon: "hourglass",
                         label: "Focused in total",
                         value: analytics.totalFocusSeconds.focusDurationString,
-                        detail: "Across every task",
+                        detail: "Across every list",
                         tint: NonnaTheme.terracotta,
                         action: { selectedMetric = .focus }
                     )
@@ -298,15 +298,12 @@ private struct DashboardMetricButton: View {
             .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
             .overlay {
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .stroke(isHovering ? tint.opacity(0.42) : .clear, lineWidth: 1)
+                    .stroke(isHovering ? tint.opacity(0.5) : .clear, lineWidth: 1)
             }
-            .shadow(color: isHovering ? tint.opacity(0.1) : .clear, radius: 18, y: 8)
-            .scaleEffect(isHovering ? 1.008 : 1)
         }
         .buttonStyle(.plain)
         .animation(reduceMotion ? nil : NonnaMotion.quick, value: isHovering)
         .onHover { isHovering = $0 }
-        .help("Open \(metric.title)")
         .accessibilityLabel("\(label), \(value). Open detailed analytics")
     }
 }

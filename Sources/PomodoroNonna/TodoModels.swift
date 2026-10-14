@@ -6,7 +6,9 @@ struct TodoItem: Codable, Identifiable, Equatable, Sendable {
     var id = UUID()
     var title: String
     var listID: UUID?
-    /// How many focus blocks (pomodoros) this should take.
+    /// How long it should take, in minutes.
+    var minutes: Int?
+    /// Pomodoro count from 0.21.0; converted to `minutes` when the data loads.
     var estimate: Int?
     /// The day it's due (start of day), or nil for "someday".
     var due: Date?
@@ -19,7 +21,7 @@ struct TodoItem: Codable, Identifiable, Equatable, Sendable {
 /// The parts of a typed line like "Problem set 5 3p tomorrow #Math".
 struct ParsedTodo: Equatable, Sendable {
     var title: String
-    var estimate: Int?
+    var minutes: Int?
     var due: Date?
     var listName: String?
     var isDone = false
@@ -28,8 +30,8 @@ struct ParsedTodo: Equatable, Sendable {
 /// Turns quick-add lines and pasted notes into tasks.
 ///
 /// Understands, anywhere in a line:
-/// - pomodoros: `3p`, `3 pomos`, `3 pomodoros`, `3🍅`
-/// - time: `45m`, `1h`, `1.5h`, `1h 30m`, `2 hours` (converted to pomodoros)
+/// - time: `45m`, `1h`, `1.5h`, `1h 30m`, `2 hours`
+/// - pomodoros: `3p`, `3 pomos`, `3🍅` (converted to minutes at the focus length)
 /// - dates: `today`, `tonight`, `tomorrow`, `tmrw`, `mon`…`sunday`, `next week`
 /// - a list: `#Math`
 /// and in pasted notes: bullets (`-`, `*`, `•`, `1.`), checkboxes (`[ ]`, `[x]`), and
@@ -73,9 +75,7 @@ enum TodoParser {
         take(#"\b(\d{1,3})\s*(?:m|min|mins|minutes?)\b"#) { groups in
             minutes = (minutes ?? 0) + (Double(groups[1]) ?? 0)
         }
-        if estimate == nil, let minutes, minutes > 0 {
-            estimate = max(1, Int((minutes / focus).rounded(.up)))
-        }
+        if minutes == nil, let estimate { minutes = Double(estimate) * focus }
 
         let today = calendar.startOfDay(for: now)
         take(#"\b(?:due\s+)?(?:today|tonight)\b"#) { _ in due = today }
@@ -93,7 +93,8 @@ enum TodoParser {
             .replacingOccurrences(of: #"\s{2,}"#, with: " ", options: .regularExpression)
             .trimmingCharacters(in: CharacterSet.whitespaces.union(CharacterSet(charactersIn: "-–·,;:")))
         guard !title.isEmpty else { return nil }
-        return ParsedTodo(title: title, estimate: estimate.map { min(20, max(1, $0)) }, due: due, listName: listName, isDone: isDone)
+        let total = minutes.map { min(24 * 60, max(5, Int($0.rounded()))) }
+        return ParsedTodo(title: title, minutes: total, due: due, listName: listName, isDone: isDone)
     }
 
     /// Parses a whole pasted list. A heading sets the list for every line beneath it,

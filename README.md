@@ -30,7 +30,6 @@ Pomofocus is a beautiful, local-first focus timer for macOS. It brings together 
 - Cinema mode (⇧⌘F): a full-screen, screensaver-like scene for wide and ultrawide displays, with rolling digits, an unrolled minute tape, and a slowly drifting glow; keeps the display awake, Space pauses, → advances, Esc leaves
 - Seven-day navigator with focus, break, and live-session blocks
 - Break records with planned duration, actual duration, skipped status, and tracked overtime
-- Notes (⌘I): notes and image references for the current focus block, saved with it in History
 - Custom focus, short-break, and long-break durations
 - Pause, resume, finish early, abandon, automatic breaks, and open-ended overtime
 - End session (⌘.) in every state, including breaks and the Next prompt: keeps everything tracked and stops without starting anything new; Abandon now asks before discarding
@@ -38,21 +37,18 @@ Pomofocus is a beautiful, local-first focus timer for macOS. It brings together 
 - Cockpit-style overtime alert: the time, status tag, and menu-bar item flash caution red (steady red with Reduce Motion, and switchable in Settings)
 - Break-complete reminder with one-click Next straight into the next focus block
 - Visible Skip break action that immediately begins the next focus session
-- Tasks: type “Problem set 5 3p tomorrow #Math” and it's parsed into a title, an estimate (pomodoros, or time like 1h 30m converted at your focus length), a due date and a list; add one without an estimate and the app asks how long it will take
-- All lists board: every list (a class, a project) as a card with its tasks underneath, an add line in each card, a quick “how long?” after adding, click a task to edit it, drag it onto another card to move it
+- Tasks: a New task button (⇧⌘N) asks what, which list, how long (15m to 3h) and when; or type straight into any list and press Return, and the app asks how long it will take
+- All lists board: every list (a class, a project) as a card with its tasks underneath and an add line in each card; click a task to edit it, drag it onto another card to move it
 - Today, Upcoming and Completed views, plus your own colour-coded lists with open counts and estimated time; renaming and archiving from the sidebar
-- Page view: your tasks as one clean, notes-style page grouped by list or day, with a line under each section to keep writing
-- Write it out: paste or type a whole list in plain text (bullets, checkboxes, and headings like “Math:” that become lists) with a live preview, then add it all at once
-- Start a focus block from any task; blocks link to it and fill a tomato meter against the estimate, the timer shows what you're working on, and the celebration lists what you checked off
+- Paste a list: paste or type a whole list in plain text (bullets, checkboxes, and lines like “Chemistry:” that start a list) with a live preview, then add it all at once
+- Start a focus block from any task; its focus time counts toward the task (“52m of 1h 40m”), the timer shows what you're working on, and the celebration lists what you checked off
 - Lifetime focused hours and session count for every list
 - Total focus time, distinct usage days, current streak, and longest streak
 - Fourteen-day activity chart and twelve-week consistency heatmap
 - Clickable dashboard metrics with dedicated 7, 30, and 90-day intelligence views, rolling trends, outcome distributions, task allocation, time-of-day patterns, and transparent metric definitions
 - Insights with a 7, 30, 90-day or all-time range: week-over-week trend, six-month totals, daily goal hit rate, focus by hour and weekday, rating by task and start hour, completion rate, focus-to-break ratio, skipped breaks, and overtime trend
 - Read-only calendar overlay on the day timeline through EventKit, so any account added to macOS (Google included) appears behind your sessions, with a per-calendar picker and Start focus from an event
-- Intention and session notes
-- Local session canvas with clipboard paste, drag-and-drop, and multi-image import
-- Per-image resizing, captions, ordering, removal, and preserved history thumbnails
+- Intention for each focus block
 - Optional post-session focus rating and reflection
 - Focus rebuild plan: eight questions build a research-based plan in four phases (Reset, Build, Extend, Sustain). Blocks climb five minutes per level once you finish 4 full blocks on 2+ days with a 70% completion rate, and step back a level if under 40% are finished. Weekly metrics (completion rate, longest unbroken stretch, pauses per block, start-time spread, active days), house rules from your distractions, a restorative break menu and an end-of-day reward; every recommendation cites peer-reviewed research, with a Sources page and an honest note on what the science doesn't say
 - Collapsible day timeline (⌥⌘T)
@@ -77,7 +73,7 @@ Pomofocus has no account system, telemetry, advertisements, analytics SDK, or ne
 
 The Settings screen can reveal this file in Finder. Back it up, inspect it, transform it, or delete it whenever you choose.
 
-Images added to the session canvas are stored locally beside it in:
+Images attached to past sessions are stored locally beside it in:
 
 ```text
 ~/Library/Application Support/Pomofocus/Images/
@@ -150,7 +146,7 @@ swiftc Sources/PomodoroNonna/TodoModels.swift Tests/TodoCheck/main.swift -o .bui
 - `ThemePickerView.swift`: the theme picker, custom theme editor and first-launch welcome
 - `DashboardView.swift`: local charts, lifetime task totals, streaks, and usage days
 - `HistoryView.swift`: searchable session ledger and CSV export
-- `TasksView.swift`: Tasks (smart views, lists, quick add, Page view, Write it out) and the timer's task link
+- `TasksView.swift`: Tasks (board, smart views, New task form, Paste a list) and the timer's task link
 - `SettingsView.swift`: timer, rhythm, sound, and privacy controls
 
 ## Roadmap
