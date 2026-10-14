@@ -48,6 +48,7 @@ final class AppModel {
     @ObservationIgnored private var cachedBreaks: [BreakSession]?
     @ObservationIgnored private var cachedAnalytics: AnalyticsSnapshot?
     @ObservationIgnored private var cachedTodayFocus: (day: Date, seconds: Int)?
+    @ObservationIgnored private var cachedTodoStats: [UUID: TodoStats]?
 
     var tasks: [FocusTask] { data.tasks.filter { !$0.isArchived } }
     var sessions: [FocusSession] {
@@ -90,6 +91,7 @@ final class AppModel {
         cachedBreaks = nil
         cachedAnalytics = nil
         cachedTodayFocus = nil
+        cachedTodoStats = nil
     }
     var activeTimerStartedAt: Date? { sessionStartedAt }
 
@@ -212,6 +214,7 @@ final class AppModel {
             hasLoaded = true
             selectedTaskID = data.draft?.taskID ?? tasks.first?.id
             intention = data.draft?.intention ?? ""
+            selectedTodoID = data.draft?.todoID
             note = data.draft?.note ?? ""
             noteImages = data.draft?.attachments ?? []
             awaitingNextPhase = data.pendingPhase
@@ -499,7 +502,8 @@ final class AppModel {
                 outcome: resolved,
                 focusRating: nil,
                 attachments: noteImages.isEmpty ? nil : noteImages,
-                activeIntervals: activityIntervals
+                activeIntervals: activityIntervals,
+                todoID: selectedTodoID
             )
             if elapsedSeconds > 0 {
                 data.sessions.append(session)
@@ -511,6 +515,130 @@ final class AppModel {
             recordBreakSession(startedAt: started)
         }
         clearTimer()
+        save()
+    }
+
+    // MARK: - To-dos
+
+    /// The task the timer is working on, if one is linked.
+    var selectedTodoID: UUID?
+
+    var todos: [TodoItem] { data.todos ?? [] }
+
+    var selectedTodo: TodoItem? {
+        guard let selectedTodoID else { return nil }
+        return todos.first { $0.id == selectedTodoID }
+    }
+
+    struct TodoStats: Equatable {
+        var blocks = 0
+        var seconds = 0
+    }
+
+    /// Focus blocks and time spent on each task, from the session history.
+    func stats(for id: UUID) -> TodoStats {
+        let sessions = data.sessions
+        if cachedTodoStats == nil {
+            var result: [UUID: TodoStats] = [:]
+            for session in sessions where session.outcome != .abandoned && session.focusedSeconds > 0 {
+                guard let todoID = session.todoID else { continue }
+                // A block counts toward the estimate once it's at least half its planned length.
+                if session.focusedSeconds * 2 >= max(60, session.plannedSeconds) { result[todoID, default: TodoStats()].blocks += 1 }
+                result[todoID, default: TodoStats()].seconds += session.focusedSeconds
+            }
+            cachedTodoStats = result
+        }
+        return cachedTodoStats?[id] ?? TodoStats()
+    }
+
+    /// Minutes a number of pomodoros takes at the current focus length.
+    func minutes(forPomodoros count: Int) -> Int { count * settings.focusMinutes }
+
+    @discardableResult
+    func addTodo(_ parsed: ParsedTodo, defaultList: UUID?, defaultDue: Date?) -> UUID {
+        let item = TodoItem(
+            title: parsed.title,
+            listID: parsed.listName.map(list(named:)) ?? defaultList,
+            estimate: parsed.estimate,
+            due: parsed.due ?? defaultDue,
+            isDone: parsed.isDone,
+            completedAt: parsed.isDone ? Date() : nil
+        )
+        data.todos = todos + [item]
+        save()
+        return item.id
+    }
+
+    func addTodos(_ parsed: [ParsedTodo], defaultList: UUID?, defaultDue: Date?) {
+        let items = parsed.map { entry in
+            TodoItem(title: entry.title, listID: entry.listName.map(list(named:)) ?? defaultList, estimate: entry.estimate,
+                     due: entry.due ?? defaultDue, isDone: entry.isDone, completedAt: entry.isDone ? Date() : nil)
+        }
+        data.todos = todos + items
+        save()
+    }
+
+    func updateTodo(_ id: UUID, _ mutate: (inout TodoItem) -> Void) {
+        guard var list = data.todos, let index = list.firstIndex(where: { $0.id == id }) else { return }
+        mutate(&list[index])
+        data.todos = list
+        if selectedTodoID == id, status == .idle, phase == .focus { intention = list[index].title }
+        save()
+    }
+
+    func toggleDone(_ id: UUID) {
+        updateTodo(id) { todo in
+            todo.isDone.toggle()
+            todo.completedAt = todo.isDone ? Date() : nil
+        }
+        // While a block is running it still counts toward the task; the link clears when it ends.
+        if selectedTodoID == id, status == .idle, todos.first(where: { $0.id == id })?.isDone == true { unlinkTodo() }
+    }
+
+    func deleteTodo(_ id: UUID) {
+        data.todos = todos.filter { $0.id != id }
+        if selectedTodoID == id { unlinkTodo() }
+        save()
+    }
+
+    /// Links a task to the timer: its list and title become the block's list and intention.
+    func linkTodo(_ id: UUID) {
+        guard let todo = todos.first(where: { $0.id == id }) else { return }
+        selectedTodoID = id
+        if let listID = todo.listID { selectedTaskID = listID }
+        if phase == .focus || status == .idle { intention = todo.title }
+        if status == .idle { persistDraft() }
+    }
+
+    func unlinkTodo() {
+        selectedTodoID = nil
+        if status == .idle { persistDraft() }
+    }
+
+    /// Starts a focus block on a task (only when nothing is timing).
+    func startFocus(on id: UUID) {
+        guard status == .idle, !isBreathing else { return }
+        if phase != .focus { selectPhase(.focus) }
+        awaitingNextPhase = nil
+        data.pendingPhase = nil
+        linkTodo(id)
+        start()
+    }
+
+    /// Finds a list by name, ignoring case, or makes a new one.
+    func list(named name: String) -> UUID {
+        let trimmed = name.trimmingCharacters(in: .whitespaces)
+        if let existing = tasks.first(where: { $0.name.caseInsensitiveCompare(trimmed) == .orderedSame }) { return existing.id }
+        let palette = ["BDA56F", "738B80", "A9A4B5", "788897", "8F7581", "6F858F", "837765"]
+        let task = FocusTask(name: trimmed, colorHex: palette[data.tasks.count % palette.count])
+        data.tasks.append(task)
+        return task.id
+    }
+
+    func renameList(_ id: UUID, to name: String) {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, let index = data.tasks.firstIndex(where: { $0.id == id }) else { return }
+        data.tasks[index].name = trimmed
         save()
     }
 
@@ -853,7 +981,8 @@ final class AppModel {
             plannedSeconds: plannedSeconds,
             isOvertime: isOvertime,
             attachments: noteImages.isEmpty ? nil : noteImages,
-            activeIntervals: activityIntervals
+            activeIntervals: activityIntervals,
+            todoID: selectedTodoID
         )
         save(synchronizesWidget: synchronizesWidget)
     }
@@ -975,6 +1104,8 @@ final class AppModel {
             note = ""
             noteImages = []
             data.draft = nil
+            // Stay on the linked task, so the next block picks up where this one left off.
+            if let todo = selectedTodo, !todo.isDone { intention = todo.title } else { selectedTodoID = nil }
         }
         applyIdleDuration()
     }
@@ -986,6 +1117,7 @@ final class AppModel {
         status = snapshot.status
         selectedTaskID = snapshot.taskID
         intention = snapshot.intention
+        selectedTodoID = snapshot.todoID
         note = snapshot.note
         noteImages = snapshot.attachments ?? []
         sessionStartedAt = snapshot.startedAt
@@ -1193,9 +1325,9 @@ final class AppModel {
     private func syncDraft() {
         let hasContent = !intention.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
             !note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
-            !noteImages.isEmpty
+            !noteImages.isEmpty || selectedTodoID != nil
         data.draft = hasContent
-            ? SessionDraft(taskID: selectedTaskID, intention: intention, note: note, attachments: noteImages)
+            ? SessionDraft(taskID: selectedTaskID, intention: intention, note: note, attachments: noteImages, todoID: selectedTodoID)
             : nil
     }
 

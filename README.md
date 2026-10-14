@@ -38,8 +38,12 @@ Pomofocus is a beautiful, local-first focus timer for macOS. It brings together 
 - Cockpit-style overtime alert: the time, status tag, and menu-bar item flash caution red (steady red with Reduce Motion, and switchable in Settings)
 - Break-complete reminder with one-click Next straight into the next focus block
 - Visible Skip break action that immediately begins the next focus session
-- Task selection and fast task creation
-- Lifetime focused hours and session count for every task
+- Tasks: type “Problem set 5 3p tomorrow #Math” and it's parsed into a title, an estimate (pomodoros, or time like 1h 30m converted at your focus length), a due date and a list; add one without an estimate and the app asks how long it will take
+- Today, Next 7 days, All tasks and Completed views, plus your own colour-coded lists with open counts and estimated time; renaming and archiving from the sidebar
+- Page view: your tasks as one clean, notes-style page grouped by list or day, with a line under each section to keep writing
+- Write it out: paste or type a whole list in plain text (bullets, checkboxes, and headings like “Math:” that become lists) with a live preview, then add it all at once
+- Start a focus block from any task; blocks link to it and fill a tomato meter against the estimate, the timer shows what you're working on, and the celebration lists what you checked off
+- Lifetime focused hours and session count for every list
 - Total focus time, distinct usage days, current streak, and longest streak
 - Fourteen-day activity chart and twelve-week consistency heatmap
 - Clickable dashboard metrics with dedicated 7, 30, and 90-day intelligence views, rolling trends, outcome distributions, task allocation, time-of-day patterns, and transparent metric definitions
@@ -108,12 +112,14 @@ The current command-line Swift installation does not bundle XCTest, so the core 
 
 ```sh
 mkdir -p .build/checks
-swiftc Sources/PomodoroNonna/Models.swift Sources/PomodoroNonna/FocusPlan.swift Sources/PomodoroNonna/FocusScience.swift Sources/PomodoroNonna/ThemePalette.swift Sources/PomodoroNonna/Insights.swift Sources/PomodoroNonna/DeepDiveAnalytics.swift Tests/AnalyticsCheck/main.swift -o .build/checks/analytics-check
+swiftc Sources/PomodoroNonna/Models.swift Sources/PomodoroNonna/TodoModels.swift Sources/PomodoroNonna/FocusPlan.swift Sources/PomodoroNonna/FocusScience.swift Sources/PomodoroNonna/ThemePalette.swift Sources/PomodoroNonna/Insights.swift Sources/PomodoroNonna/DeepDiveAnalytics.swift Tests/AnalyticsCheck/main.swift -o .build/checks/analytics-check
 .build/checks/analytics-check
-swiftc Sources/PomodoroNonna/Models.swift Sources/PomodoroNonna/FocusPlan.swift Sources/PomodoroNonna/FocusScience.swift Sources/PomodoroNonna/ThemePalette.swift Tests/FocusPlanCheck/main.swift -o .build/checks/focus-plan-check
+swiftc Sources/PomodoroNonna/Models.swift Sources/PomodoroNonna/TodoModels.swift Sources/PomodoroNonna/FocusPlan.swift Sources/PomodoroNonna/FocusScience.swift Sources/PomodoroNonna/ThemePalette.swift Tests/FocusPlanCheck/main.swift -o .build/checks/focus-plan-check
 .build/checks/focus-plan-check
 swiftc Sources/PomodoroNonna/ThemePalette.swift Tests/ThemeCheck/main.swift -o .build/checks/theme-check
 .build/checks/theme-check
+swiftc Sources/PomodoroNonna/TodoModels.swift Tests/TodoCheck/main.swift -o .build/checks/todo-check
+.build/checks/todo-check
 ```
 
 ## Architecture
@@ -122,6 +128,7 @@ swiftc Sources/PomodoroNonna/ThemePalette.swift Tests/ThemeCheck/main.swift -o .
 - `AmbientSoundPlayer.swift`: locally generated, looping ambient soundscapes
 - `CueSoundPlayer.swift`: locally generated bell ding for timer cues
 - `Models.swift`: persistent records and pure analytics calculations
+- `TodoModels.swift`: tasks, due dates, and the quick-add / pasted-notes parser
 - `Insights.swift`: pure, range-filtered insight calculations (trends, time of day, quality, breaks)
 - `InsightsView.swift`: the Insights section of the dashboard
 - `DeepDiveAnalytics.swift`: 7/30/90-day intelligence calculations for dashboard drill-downs
@@ -142,7 +149,7 @@ swiftc Sources/PomodoroNonna/ThemePalette.swift Tests/ThemeCheck/main.swift -o .
 - `ThemePickerView.swift`: the theme picker, custom theme editor and first-launch welcome
 - `DashboardView.swift`: local charts, lifetime task totals, streaks, and usage days
 - `HistoryView.swift`: searchable session ledger and CSV export
-- `TasksView.swift`: task library and lifetime totals
+- `TasksView.swift`: Tasks (smart views, lists, quick add, Page view, Write it out) and the timer's task link
 - `SettingsView.swift`: timer, rhythm, sound, and privacy controls
 
 ## Roadmap

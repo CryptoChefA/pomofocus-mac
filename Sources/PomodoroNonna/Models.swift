@@ -116,6 +116,7 @@ struct SessionDraft: Codable, Equatable, Sendable {
     var intention: String
     var note: String
     var attachments: [SessionImageAttachment]
+    var todoID: UUID? = nil
 }
 
 struct ActivityInterval: Codable, Hashable, Sendable {
@@ -142,6 +143,8 @@ struct FocusSession: Identifiable, Codable, Hashable, Sendable {
     var focusRating: Int?
     var attachments: [SessionImageAttachment]? = nil
     var activeIntervals: [ActivityInterval]? = nil
+    /// The to-do this block was for, if any.
+    var todoID: UUID? = nil
 
     var duration: TimeInterval { TimeInterval(focusedSeconds) }
 }
@@ -271,6 +274,7 @@ struct ActiveTimerSnapshot: Codable, Equatable, Sendable {
     var isOvertime: Bool
     var attachments: [SessionImageAttachment]? = nil
     var activeIntervals: [ActivityInterval]? = nil
+    var todoID: UUID? = nil
 }
 
 struct AppData: Codable, Sendable {
@@ -285,6 +289,8 @@ struct AppData: Codable, Sendable {
     var runStartedAt: Date? = nil
     /// The dopamine focus plan, if one has been built.
     var focusPlan: FocusPlan? = nil
+    /// To-dos, organised into the task lists above.
+    var todos: [TodoItem]? = nil
 
     static let starter = AppData(
         tasks: [

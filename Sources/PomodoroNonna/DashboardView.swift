@@ -202,7 +202,7 @@ struct DashboardView: View {
                         .font(.system(size: 9, weight: .semibold, design: .monospaced))
                         .tracking(1.7)
                         .foregroundStyle(NonnaTheme.secondaryInk)
-                    Text("Time by task")
+                    Text("Time by list")
                         .font(.system(size: 18, weight: .semibold))
                 }
 

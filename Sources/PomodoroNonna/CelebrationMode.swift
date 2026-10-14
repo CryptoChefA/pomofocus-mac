@@ -15,6 +15,8 @@ struct CelebrationSummary: Sendable {
 
     let blocks: [Block]
     let intentions: [String]
+    /// Tasks checked off during the sitting.
+    var checkedOff: [String] = []
     let startedAt: Date
     let endedAt: Date
     let breakCount: Int
@@ -49,7 +51,7 @@ extension AppModel {
             if !text.isEmpty, !intentions.contains(text) { intentions.append(text) }
         }
 
-        let summary = CelebrationSummary(
+        var summary = CelebrationSummary(
             blocks: focus.map { session in
                 CelebrationSummary.Block(
                     id: session.id,
@@ -76,6 +78,10 @@ extension AppModel {
             goalSeconds: max(60, settings.dailyGoalMinutes * 60),
             streakDays: analytics.currentStreak
         )
+        summary.checkedOff = todos
+            .filter { $0.isDone && ($0.completedAt ?? .distantPast) >= start }
+            .sorted { ($0.completedAt ?? .distantPast) < ($1.completedAt ?? .distantPast) }
+            .map(\.title)
         CelebrationController.shared.show(summary)
     }
 
@@ -218,6 +224,12 @@ private struct CelebrationView: View {
         return more > 0 ? "\(shown)  ·  +\(more) more" : shown
     }
 
+    private var checkedOffLine: String {
+        let shown = summary.checkedOff.prefix(3).map { "✓ \($0)" }.joined(separator: "   ")
+        let more = summary.checkedOff.count - 3
+        return more > 0 ? "\(shown)   +\(more) more" : shown
+    }
+
     var body: some View {
         ZStack {
             Color.black
@@ -274,6 +286,13 @@ private struct CelebrationView: View {
                         .font(.system(size: 20, design: .serif))
                         .italic()
                         .foregroundStyle(NonnaTheme.ink.opacity(0.72))
+                        .lineLimit(1)
+                        .frame(maxWidth: 760)
+                }
+                if !summary.checkedOff.isEmpty {
+                    Text(checkedOffLine)
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(accent)
                         .lineLimit(1)
                         .frame(maxWidth: 760)
                 }

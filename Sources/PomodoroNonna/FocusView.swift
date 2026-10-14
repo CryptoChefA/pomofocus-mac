@@ -134,13 +134,13 @@ struct FocusView: View {
                         }
                     }
                     Divider()
-                    Button("New task…") { showingNewTask = true }
+                    Button("New list…") { showingNewTask = true }
                 } label: {
                     HStack(spacing: 8) {
                         Circle()
                             .fill(NonnaTheme.taskColor(for: model.selectedTask?.colorHex ?? "BDA56F"))
                             .frame(width: 7, height: 7)
-                        Text(model.selectedTask?.name ?? "Choose a task")
+                        Text(model.selectedTask?.name ?? "Choose a list")
                         Image(systemName: "chevron.down")
                             .font(.system(size: 8, weight: .bold))
                     }
@@ -163,6 +163,8 @@ struct FocusView: View {
                 }
                 .buttonStyle(.plain)
             }
+
+            LinkedTodoControl(compact: true)
 
             ZStack(alignment: .leading) {
                 if model.intention.isEmpty {
@@ -526,7 +528,7 @@ struct FocusView: View {
                 }
 
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("TASK")
+                    Text("LIST")
                         .font(.system(size: 9, weight: .medium, design: .monospaced))
                         .tracking(1.5)
                         .foregroundStyle(NonnaTheme.secondaryInk)
@@ -542,13 +544,13 @@ struct FocusView: View {
                                 }
                             }
                             Divider()
-                            Button("New task…") { showingNewTask = true }
+                            Button("New list…") { showingNewTask = true }
                         } label: {
                             HStack(spacing: 8) {
                                 Circle()
                                     .fill(NonnaTheme.taskColor(for: model.selectedTask?.colorHex ?? "8D8379"))
                                     .frame(width: 9, height: 9)
-                                Text(model.selectedTask?.name ?? "Choose a task")
+                                Text(model.selectedTask?.name ?? "Choose a list")
                                 Image(systemName: "chevron.down")
                                     .font(.system(size: 9, weight: .bold))
                             }
@@ -575,6 +577,8 @@ struct FocusView: View {
                         .buttonStyle(.plain)
                     }
                 }
+
+                LinkedTodoControl()
 
                 VStack(alignment: .leading, spacing: 8) {
                     Text("INTENTION")
@@ -854,8 +858,8 @@ struct NewTaskView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 22) {
-            SectionHeading(eyebrow: "Tasks", title: "New task")
-            TextField("Task name", text: $name)
+            SectionHeading(eyebrow: "Lists", title: "New list")
+            TextField("List name, like a course or project", text: $name)
                 .font(.system(size: 18, weight: .semibold, design: .default))
                 .textFieldStyle(.roundedBorder)
             HStack(spacing: 12) {
@@ -879,7 +883,7 @@ struct NewTaskView: View {
                 Spacer()
                 Button("Cancel") { dismiss() }
                     .buttonStyle(NonnaButtonStyle(prominent: false))
-                Button("Create task") {
+                Button("Create list") {
                     model.addTask(name: name, colorHex: color)
                     dismiss()
                 }
