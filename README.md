@@ -30,7 +30,7 @@ Pomofocus is a beautiful, local-first focus timer for macOS. It brings together 
 - Cinema mode (⇧⌘F): a full-screen, screensaver-like scene for wide and ultrawide displays, with rolling digits, an unrolled minute tape, and a slowly drifting glow; keeps the display awake, Space pauses, → advances, Esc leaves
 - Seven-day navigator with focus, break, and live-session blocks
 - Break records with planned duration, actual duration, skipped status, and tracked overtime
-- Hideable local session canvas for notes and image references
+- Notes (⌘I): notes and image references for the current focus block, saved with it in History
 - Custom focus, short-break, and long-break durations
 - Pause, resume, finish early, abandon, automatic breaks, and open-ended overtime
 - End session (⌘.) in every state, including breaks and the Next prompt: keeps everything tracked and stops without starting anything new; Abandon now asks before discarding
@@ -39,7 +39,8 @@ Pomofocus is a beautiful, local-first focus timer for macOS. It brings together 
 - Break-complete reminder with one-click Next straight into the next focus block
 - Visible Skip break action that immediately begins the next focus session
 - Tasks: type “Problem set 5 3p tomorrow #Math” and it's parsed into a title, an estimate (pomodoros, or time like 1h 30m converted at your focus length), a due date and a list; add one without an estimate and the app asks how long it will take
-- Today, Next 7 days, All tasks and Completed views, plus your own colour-coded lists with open counts and estimated time; renaming and archiving from the sidebar
+- All lists board: every list (a class, a project) as a card with its tasks underneath, an add line in each card, a quick “how long?” after adding, click a task to edit it, drag it onto another card to move it
+- Today, Upcoming and Completed views, plus your own colour-coded lists with open counts and estimated time; renaming and archiving from the sidebar
 - Page view: your tasks as one clean, notes-style page grouped by list or day, with a line under each section to keep writing
 - Write it out: paste or type a whole list in plain text (bullets, checkboxes, and headings like “Math:” that become lists) with a live preview, then add it all at once
 - Start a focus block from any task; blocks link to it and fill a tomato meter against the estimate, the timer shows what you're working on, and the celebration lists what you checked off

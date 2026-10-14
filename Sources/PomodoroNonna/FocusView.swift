@@ -39,10 +39,11 @@ struct FocusView: View {
                         Button {
                             showsInspector = true
                         } label: {
-                            Label("Session", systemImage: "doc.text.image")
+                            Label("Notes", systemImage: "note.text")
                         }
                         .buttonStyle(NonnaButtonStyle(prominent: false))
                         .keyboardShortcut("i", modifiers: [.command])
+                        .help("Notes and images for this focus block, saved with it in History (⌘I)")
                     }
 
                     if let change = model.planChange {
@@ -189,7 +190,7 @@ struct FocusView: View {
     private var sessionInspector: some View {
         VStack(alignment: .leading, spacing: 20) {
             HStack {
-                SectionHeading(eyebrow: "Local workspace", title: "Session")
+                SectionHeading(eyebrow: "This focus block", title: "Notes")
                 Spacer()
                 Button("Done") { showsInspector = false }
                     .buttonStyle(NonnaButtonStyle(prominent: false))
