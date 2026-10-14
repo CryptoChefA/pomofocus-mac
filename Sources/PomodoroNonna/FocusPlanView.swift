@@ -8,6 +8,8 @@ struct FocusPlanView: View {
     @State private var showsQuestionnaire = false
     @State private var showsSources = false
     @State private var confirmsRemoval = false
+    @AppStorage(SourceChip.visibilityKey) private var showsCitations = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     var onStartBlock: () -> Void = {}
 
     var body: some View {
@@ -62,13 +64,23 @@ struct FocusPlanView: View {
                 subtitle: "Level \(plan.levelIndex + 1) of \(plan.levels.count) · \(plan.level.focusMinutes) min focus, \(plan.level.breakMinutes) min break · day \(plan.daysSinceStart() + 1)"
             )
             Spacer()
+            if showsCitations {
+                Button {
+                    showsSources = true
+                } label: {
+                    Label("Master list", systemImage: "list.number")
+                }
+                .buttonStyle(NonnaButtonStyle(prominent: false))
+                .help("All \(FocusScience.all.count) studies, with findings and links")
+                .transition(.opacity.combined(with: .scale(scale: 0.9)))
+            }
             Button {
-                showsSources = true
+                withAnimation(reduceMotion ? nil : NonnaMotion.quick) { showsCitations.toggle() }
             } label: {
-                Label("Sources", systemImage: "books.vertical")
+                Label(showsCitations ? "Hide sources" : "Sources", systemImage: showsCitations ? "books.vertical.fill" : "books.vertical")
             }
             .buttonStyle(NonnaButtonStyle(prominent: false))
-            .help("The research behind this plan")
+            .help(showsCitations ? "Hide the citation numbers" : "Show which study backs each piece of advice")
             Menu {
                 Button("Retake the questions…") { showsQuestionnaire = true }
                 Divider()
@@ -384,10 +396,13 @@ private struct MetricsCard: View {
 
 /// A small citation marker, like a footnote number. Click it to see the study.
 struct SourceChip: View {
+    static let visibilityKey = "pomofocus.showCitations"
+
     let ids: [Citation.ID]
     var title: String?
     var detail: String?
     @State private var showing = false
+    @AppStorage(SourceChip.visibilityKey) private var visible = false
 
     init(ids: [Citation.ID]) { self.ids = ids }
     init(guidance: PlanGuidance) {
@@ -400,7 +415,19 @@ struct SourceChip: View {
         ids.compactMap { id in FocusScience.all.firstIndex { $0.id == id }.map { String($0 + 1) } }.joined(separator: ",")
     }
 
+    /// What hovering a number shows: each study's short label and finding.
+    private var hoverText: String {
+        FocusScience.citations(ids).map { citation in
+            let number = (FocusScience.all.firstIndex { $0.id == citation.id } ?? 0) + 1
+            return "\(number). \(citation.shortLabel): \(citation.finding)"
+        }.joined(separator: "\n\n") + "\n\nClick for the full reference."
+    }
+
     var body: some View {
+        if visible { chip.transition(.opacity.combined(with: .scale(scale: 0.8))) }
+    }
+
+    private var chip: some View {
         Button {
             showing.toggle()
         } label: {
@@ -413,7 +440,7 @@ struct SourceChip: View {
                 .overlay { Capsule().stroke(NonnaTheme.terracotta.opacity(0.35), lineWidth: 0.6) }
         }
         .buttonStyle(.plain)
-        .help("Sources")
+        .help(hoverText)
         .accessibilityLabel("Sources \(numbers)")
         .popover(isPresented: $showing, arrowEdge: .bottom) {
             VStack(alignment: .leading, spacing: 14) {
