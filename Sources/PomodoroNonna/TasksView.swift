@@ -841,11 +841,15 @@ private struct TodoRow: View {
                     withAnimation(reduceMotion ? nil : .spring(duration: 0.35, bounce: 0.3)) { model.toggleDone(todo.id) }
                 }
                 VStack(alignment: .leading, spacing: 5) {
-                    Text(todo.title)
-                        .font(.system(size: 14, weight: .medium))
-                        .strikethrough(todo.isDone, color: NonnaTheme.secondaryInk)
-                        .foregroundStyle(todo.isDone ? NonnaTheme.secondaryInk : NonnaTheme.ink)
-                        .lineLimit(2)
+                    if todo.isDone {
+                        Text(todo.title)
+                            .font(.system(size: 14, weight: .medium))
+                            .strikethrough(true, color: NonnaTheme.secondaryInk)
+                            .foregroundStyle(NonnaTheme.secondaryInk)
+                            .lineLimit(2)
+                    } else {
+                        InlineTitleField(todo: todo, size: 14, weight: .medium)
+                    }
                     HStack(spacing: 10) {
                         TaskProgress(todo: todo, tint: tint)
                         if showsList, let list {
@@ -865,14 +869,15 @@ private struct TodoRow: View {
                 if !todo.isDone, hovering || isCurrent {
                     StartButton(todo: todo, tint: tint)
                 }
+                if !todo.isDone, hovering || isExpanded {
+                    EditButton(isOpen: isExpanded, action: onTap)
+                }
                 if let label = todo.dueLabel(), showsTodayLabel || DueBucket.of(todo.due) != .today {
                     DueText(todo: todo, label: label)
                 }
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
-            .contentShape(Rectangle())
-            .onTapGesture(perform: onTap)
 
             if isExpanded {
                 TodoEditor(todo: todo)
@@ -989,22 +994,17 @@ private struct TodoMenu: View {
 private struct TodoEditor: View {
     @Environment(AppModel.self) private var model
     let todo: TodoItem
-    @State private var title = ""
     @State private var notes = ""
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Divider().overlay(NonnaTheme.line)
             field("Name") {
-                TextField("Task", text: $title)
-                    .textFieldStyle(.plain)
-                    .font(.system(size: 13))
+                InlineTitleField(todo: todo, size: 13)
                     .padding(.horizontal, 10)
-                    .frame(height: 32)
+                    .padding(.vertical, 7)
                     .background(NonnaTheme.sunken, in: RoundedRectangle(cornerRadius: 8))
                     .overlay { RoundedRectangle(cornerRadius: 8).stroke(NonnaTheme.line, lineWidth: 0.8) }
-                    .onSubmit(saveTitle)
-                    .onChange(of: title) { _, _ in saveTitle() }
             }
             field("List") {
                 FlowChips {
@@ -1058,16 +1058,7 @@ private struct TodoEditor: View {
                 .foregroundStyle(NonnaTheme.alert.opacity(0.85))
             }
         }
-        .onAppear {
-            title = todo.title
-            notes = todo.notes
-        }
-    }
-
-    private func saveTitle() {
-        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty, trimmed != todo.title else { return }
-        model.updateTodo(todo.id) { $0.title = trimmed }
+        .onAppear { notes = todo.notes }
     }
 
     private func field<Content: View>(_ label: String, @ViewBuilder content: () -> Content) -> some View {
@@ -1112,10 +1103,10 @@ private struct BoardCard: View {
     let list: FocusTask?
     @State private var text = ""
     @State private var promptID: UUID?
-    @State private var renaming = false
     @State private var name = ""
     @State private var isTargeted = false
     @FocusState private var adding: Bool
+    @FocusState private var naming: Bool
 
     private var tint: Color { list.map { NonnaTheme.taskColor(for: $0.colorHex) } ?? NonnaTheme.secondaryInk }
 
@@ -1132,17 +1123,20 @@ private struct BoardCard: View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 10) {
                 Circle().fill(tint).frame(width: 10, height: 10)
-                if renaming, let list {
+                if let list {
                     TextField("List name", text: $name)
                         .textFieldStyle(.plain)
                         .font(.system(size: 18, weight: .semibold, design: .serif))
-                        .onSubmit {
-                            model.renameList(list.id, to: name)
-                            renaming = false
+                        .focused($naming)
+                        .onSubmit { model.renameList(list.id, to: name) }
+                        .onChange(of: naming) { _, isEditing in
+                            if !isEditing { model.renameList(list.id, to: name) }
                         }
-                        .onExitCommand { renaming = false }
+                        .onAppear { name = list.name }
+                        .onChange(of: list.name) { _, value in if !naming { name = value } }
+                        .help("Click to rename")
                 } else {
-                    Text(list?.name ?? "No list")
+                    Text("No list")
                         .font(.system(size: 18, weight: .semibold, design: .serif))
                         .lineLimit(1)
                 }
@@ -1152,10 +1146,7 @@ private struct BoardCard: View {
                     .foregroundStyle(NonnaTheme.secondaryInk)
                 if let list {
                     Menu {
-                        Button("Rename…") {
-                            name = list.name
-                            renaming = true
-                        }
+                        Button("Rename") { naming = true }
                         Button("Archive list", role: .destructive) { model.archiveTask(list.id) }
                     } label: {
                         Image(systemName: "ellipsis")
@@ -1266,31 +1257,32 @@ private struct BoardRow: View {
                 withAnimation(reduceMotion ? nil : .spring(duration: 0.35, bounce: 0.3)) { model.toggleDone(todo.id) }
             }
             VStack(alignment: .leading, spacing: 3) {
-                Text(todo.title)
-                    .font(.system(size: 13.5))
-                    .foregroundStyle(NonnaTheme.ink)
-                    .lineLimit(2)
+                InlineTitleField(todo: todo, size: 13.5)
                 HStack(spacing: 8) {
                     TaskProgress(todo: todo, tint: tint)
                     if isCurrent { Text("● now").foregroundStyle(tint) }
                 }
                 .font(.system(size: 10.5))
                 .foregroundStyle(NonnaTheme.secondaryInk)
+                .contentShape(Rectangle())
+                .onTapGesture { editing = true }
             }
             Spacer(minLength: 6)
             if hovering || isCurrent {
                 StartButton(todo: todo, tint: tint)
             }
+            if hovering || editing {
+                EditButton { editing = true }
+            }
             if let label = todo.dueLabel() {
                 DueText(todo: todo, label: label)
+                    .onTapGesture { editing = true }
             }
         }
         .padding(.horizontal, 18)
         .padding(.vertical, 8)
         .background(hovering ? NonnaTheme.raisedPaper : .clear)
-        .contentShape(Rectangle())
         .onHover { hovering = $0 }
-        .onTapGesture { editing = true }
         .popover(isPresented: $editing, arrowEdge: .trailing) {
             TodoEditor(todo: todo)
                 .padding(18)
@@ -1548,5 +1540,63 @@ struct LinkedTodoControl: View {
     private func item(_ todo: TodoItem) -> some View {
         let left = todo.minutes.map { _ in " · \(model.minutesLeft(on: todo).minutesString) left" } ?? ""
         return Button("\(todo.title)\(left)") { model.linkTodo(todo.id) }
+    }
+}
+
+// MARK: - Inline editing
+
+/// A task's name you can click into and retype, like a line in Notes. Saves on Return or
+/// when you click away; an emptied name goes back to what it was.
+private struct InlineTitleField: View {
+    @Environment(AppModel.self) private var model
+    let todo: TodoItem
+    var size: CGFloat = 14
+    var weight: Font.Weight = .regular
+    @State private var text = ""
+    @FocusState private var focused: Bool
+
+    var body: some View {
+        TextField("Task", text: $text, axis: .vertical)
+            .textFieldStyle(.plain)
+            .font(.system(size: size, weight: weight))
+            .foregroundStyle(NonnaTheme.ink)
+            .lineLimit(1...3)
+            .focused($focused)
+            .onAppear { text = todo.title }
+            .onChange(of: todo.title) { _, value in if !focused { text = value } }
+            .onSubmit(save)
+            .onChange(of: focused) { _, isEditing in if !isEditing { save() } }
+            .onExitCommand {
+                text = todo.title
+                focused = false
+            }
+            .help("Click to edit")
+    }
+
+    private func save() {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            text = todo.title
+            return
+        }
+        if trimmed != todo.title { model.updateTodo(todo.id) { $0.title = trimmed } }
+    }
+}
+
+/// Opens a task's details: list, how long, due date, notes.
+private struct EditButton: View {
+    var isOpen = false
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: isOpen ? "chevron.up" : "slider.horizontal.3")
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundStyle(NonnaTheme.secondaryInk)
+                .frame(width: 22, height: 22)
+                .background(NonnaTheme.sunken, in: Circle())
+        }
+        .buttonStyle(.plain)
+        .help(isOpen ? "Close details" : "Edit time, due date, list and notes")
     }
 }

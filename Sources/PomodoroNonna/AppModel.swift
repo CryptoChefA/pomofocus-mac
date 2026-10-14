@@ -656,7 +656,7 @@ final class AppModel {
 
     func renameList(_ id: UUID, to name: String) {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty, let index = data.tasks.firstIndex(where: { $0.id == id }) else { return }
+        guard !trimmed.isEmpty, let index = data.tasks.firstIndex(where: { $0.id == id }), data.tasks[index].name != trimmed else { return }
         data.tasks[index].name = trimmed
         save()
     }
