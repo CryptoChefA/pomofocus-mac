@@ -100,15 +100,35 @@ public struct PomofocusWidgetSnapshot: Codable, Equatable, Sendable {
         cycleTotal: 4,
         todayFocusSeconds: 106 * 60
     )
+
+    /// Shown when the app hasn't written anything yet: a quiet, idle timer, never made-up numbers.
+    public static var idle: PomofocusWidgetSnapshot {
+        PomofocusWidgetSnapshot(
+            phase: .focus, status: .idle, taskName: "", intention: "", updatedAt: Date(),
+            plannedSeconds: 25 * 60, remainingSeconds: 25 * 60, elapsedSeconds: 0, progress: 0,
+            endDate: nil, overtimeStartDate: nil, cycleCurrent: 1, cycleTotal: 4, todayFocusSeconds: 0
+        )
+    }
 }
 
 public enum PomofocusWidgetSnapshotStore {
     public static let fileName = "widget-state.json"
 
     public static var fileURL: URL {
-        FileManager.default.homeDirectoryForCurrentUser
+        realHomeDirectory
             .appendingPathComponent("Library/Application Support/Pomofocus", isDirectory: true)
             .appendingPathComponent(fileName)
+    }
+
+    /// The user's actual home folder. Inside the sandboxed widget,
+    /// `homeDirectoryForCurrentUser` points at the widget's own container, where the app's
+    /// snapshot never is; the password database still gives the real path, which the
+    /// widget's read-only entitlement allows it to read.
+    static var realHomeDirectory: URL {
+        if let entry = getpwuid(getuid()), let dir = entry.pointee.pw_dir {
+            return URL(fileURLWithPath: String(cString: dir), isDirectory: true)
+        }
+        return FileManager.default.homeDirectoryForCurrentUser
     }
 
     public static func save(_ snapshot: PomofocusWidgetSnapshot) throws {

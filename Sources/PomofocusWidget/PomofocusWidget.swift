@@ -29,7 +29,7 @@ private struct PomofocusProvider: TimelineProvider {
     }
 
     private func loadSnapshot() -> PomofocusWidgetSnapshot {
-        (try? PomofocusWidgetSnapshotStore.load()) ?? .placeholder
+        (try? PomofocusWidgetSnapshotStore.load()) ?? .idle
     }
 }
 

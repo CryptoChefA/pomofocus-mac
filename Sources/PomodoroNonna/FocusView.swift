@@ -155,23 +155,7 @@ struct FocusView: View {
 
             LinkedTodoControl(compact: true)
 
-            ZStack(alignment: .leading) {
-                if model.intention.isEmpty {
-                    Text("Intention")
-                        .foregroundStyle(NonnaTheme.secondaryInk.opacity(0.62))
-                        .padding(.horizontal, 14)
-                }
-                TextField("", text: Bindable(model).intention)
-                    .textFieldStyle(.plain)
-                    .font(.system(size: 14))
-                    .padding(.horizontal, 14)
-                    .disabled(model.phase != .focus)
-            }
-            .frame(maxWidth: 440)
-            .frame(height: 42)
-            .background(NonnaTheme.raisedPaper.opacity(0.82))
-            .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
-            .overlay { RoundedRectangle(cornerRadius: 9).stroke(NonnaTheme.line, lineWidth: 0.8) }
+            IntentionField(style: .pill)
         }
     }
 
@@ -556,22 +540,7 @@ struct FocusView: View {
                         .font(.system(size: 9, weight: .medium, design: .monospaced))
                         .tracking(1.5)
                         .foregroundStyle(NonnaTheme.secondaryInk)
-                    ZStack(alignment: .leading) {
-                        if model.intention.isEmpty {
-                            Text("e.g. Draft the opening section")
-                                .foregroundStyle(NonnaTheme.secondaryInk.opacity(0.58))
-                                .allowsHitTesting(false)
-                        }
-                        TextField("", text: Bindable(model).intention, axis: .vertical)
-                            .foregroundStyle(NonnaTheme.ink)
-                            .textFieldStyle(.plain)
-                            .lineLimit(1...3)
-                            .disabled(model.phase != .focus)
-                    }
-                    .font(.system(size: 18, weight: .medium))
-                    Rectangle()
-                        .fill(NonnaTheme.line)
-                        .frame(height: 1)
+                    IntentionField(style: .underline)
                 }
 
                 Spacer(minLength: 0)
