@@ -425,7 +425,7 @@ struct MetricDeepDiveView: View {
                         AxisGridLine().foregroundStyle(NonnaTheme.line.opacity(0.5))
                         AxisValueLabel {
                             if let minutes = value.as(Double.self) {
-                                Text(minutes >= 60 ? "\(Int(minutes / 60))h" : "\(Int(minutes))m")
+                                Text(Int(minutes.rounded()).minutesString)
                             }
                         }
                         .foregroundStyle(NonnaTheme.secondaryInk)

@@ -291,8 +291,13 @@ final class AppModel {
         guard !trimmed.isEmpty else { return }
         let task = FocusTask(name: trimmed, colorHex: colorHex)
         data.tasks.append(task)
-        selectedTaskID = task.id
-        if status == .idle { persistDraft() } else { save() }
+        // A new list becomes the timer's list only when nothing is running.
+        if status == .idle {
+            selectedTaskID = task.id
+            persistDraft()
+        } else {
+            save()
+        }
     }
 
     func archiveTask(_ id: UUID) {
@@ -623,11 +628,21 @@ final class AppModel {
     /// Links a task to the timer: its list and title become the block's list and intention.
     func linkTodo(_ id: UUID) {
         guard let todo = todos.first(where: { $0.id == id }) else { return }
+        // Mid-block with a task already linked: the time so far belongs to that task, so
+        // this one waits for the next block.
+        if status != .idle, phase == .focus, selectedTodoID != nil, selectedTodoID != id {
+            queuedTodoID = id
+            return
+        }
+        queuedTodoID = nil
         selectedTodoID = id
         if let listID = todo.listID { selectedTaskID = listID }
-        if phase == .focus || status == .idle { intention = todo.title }
+        intention = todo.title
         if status == .idle { persistDraft() }
     }
+
+    /// A task picked while another one's block was running; it's linked when that block ends.
+    var queuedTodoID: UUID?
 
     func unlinkTodo() {
         selectedTodoID = nil
@@ -648,6 +663,11 @@ final class AppModel {
     func list(named name: String) -> UUID {
         let trimmed = name.trimmingCharacters(in: .whitespaces)
         if let existing = tasks.first(where: { $0.name.caseInsensitiveCompare(trimmed) == .orderedSame }) { return existing.id }
+        // An archived list with that name comes back rather than being duplicated.
+        if let index = data.tasks.firstIndex(where: { $0.isArchived && $0.name.caseInsensitiveCompare(trimmed) == .orderedSame }) {
+            data.tasks[index].isArchived = false
+            return data.tasks[index].id
+        }
         let palette = ["BDA56F", "738B80", "A9A4B5", "788897", "8F7581", "6F858F", "837765"]
         let task = FocusTask(name: trimmed, colorHex: palette[data.tasks.count % palette.count])
         data.tasks.append(task)
@@ -779,7 +799,9 @@ final class AppModel {
         }
         if status != .idle {
             if phase == .focus {
-                finish(outcome: elapsedSeconds >= plannedSeconds ? .completed : .finishedEarly)
+                // The celebration covers the end of a sitting; don't stack the reflection on it.
+                finish(outcome: elapsedSeconds >= plannedSeconds ? .completed : .finishedEarly,
+                       showsReflection: !settings.celebrateSessions)
             } else {
                 finish(showsReflection: false)
             }
@@ -1124,7 +1146,14 @@ final class AppModel {
             noteImages = []
             data.draft = nil
             // Stay on the linked task, so the next block picks up where this one left off.
-            if let todo = selectedTodo, !todo.isDone { intention = todo.title } else { selectedTodoID = nil }
+            if let queued = queuedTodoID, todos.contains(where: { $0.id == queued && !$0.isDone }) {
+                queuedTodoID = nil
+                linkTodo(queued)
+            } else if let todo = selectedTodo, !todo.isDone {
+                intention = todo.title
+            } else {
+                selectedTodoID = nil
+            }
         }
         applyIdleDuration()
     }

@@ -169,6 +169,7 @@ struct TasksView: View {
                 .font(.system(size: 11, weight: .semibold))
         }
         .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
         .fixedSize()
     }
 
@@ -748,7 +749,7 @@ private struct DueChips: View {
         let today = calendar.startOfDay(for: Date())
         let day = { (n: Int) in calendar.date(byAdding: .day, value: n, to: today) }
         let toSaturday = (7 - calendar.component(.weekday, from: today)) % 7
-        return [("Today", today), ("Tomorrow", day(1)), ("This weekend", day(toSaturday == 0 ? 7 : toSaturday)),
+        return [("Today", today), ("Tomorrow", day(1)), ("This weekend", day(toSaturday)),
                 ("Next week", day(7)), ("No date", nil)]
     }
 
@@ -860,6 +861,9 @@ private struct TodoRow: View {
                         }
                         if isCurrent {
                             Text("● now").foregroundStyle(tint)
+                        }
+                        if model.queuedTodoID == todo.id {
+                            Text("up next").foregroundStyle(tint)
                         }
                     }
                     .font(.system(size: 10.5))
@@ -1133,6 +1137,10 @@ private struct BoardCard: View {
                             if !isEditing { model.renameList(list.id, to: name) }
                         }
                         .onAppear { name = list.name }
+                        .onExitCommand {
+                            name = list.name
+                            naming = false
+                        }
                         .onChange(of: list.name) { _, value in if !naming { name = value } }
                         .help("Click to rename")
                 } else {
@@ -1261,6 +1269,7 @@ private struct BoardRow: View {
                 HStack(spacing: 8) {
                     TaskProgress(todo: todo, tint: tint)
                     if isCurrent { Text("● now").foregroundStyle(tint) }
+                    if model.queuedTodoID == todo.id { Text("up next").foregroundStyle(tint) }
                 }
                 .font(.system(size: 10.5))
                 .foregroundStyle(NonnaTheme.secondaryInk)
@@ -1528,11 +1537,16 @@ struct LinkedTodoControl: View {
                 Section("Later") { ForEach(rest.prefix(12)) { item($0) } }
             }
         } label: {
-            Label("Pick a task", systemImage: "checklist")
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(NonnaTheme.secondaryInk)
+            HStack(spacing: 6) {
+                Image(systemName: "checklist")
+                Text("Pick a task")
+                Image(systemName: "chevron.down").font(.system(size: 8, weight: .bold))
+            }
+            .font(.system(size: 12, weight: .medium))
+            .foregroundStyle(NonnaTheme.secondaryInk)
         }
         .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
         .fixedSize()
         .help("Link this focus block to a task so its time counts toward it")
     }

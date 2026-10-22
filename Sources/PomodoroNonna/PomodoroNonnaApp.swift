@@ -46,18 +46,13 @@ struct PomodoroNonnaApp: App {
                     .disabled(!model.canEndSession)
                     .keyboardShortcut(".", modifiers: [.command])
                 Button("Start Break") { model.startBreak() }
+                    .disabled(model.phase != .focus && model.status != .idle)
                     .keyboardShortcut("b", modifiers: [.command, .shift])
                 Button("Skip Break and Start Focus") { model.skipBreakAndStartFocus() }
                     .disabled(model.phase == .focus && !model.isOvertime)
                 Divider()
                 Button("Cinema Mode") { CinematicController.shared.toggle(model: model) }
                     .keyboardShortcut("f", modifiers: [.command, .shift])
-            }
-            CommandMenu("Canvas") {
-                Button("Paste Image") { model.pasteImageFromClipboard() }
-                    .keyboardShortcut("v", modifiers: [.command, .shift])
-                Button("Add Images from Mac…") { model.chooseImages() }
-                    .keyboardShortcut("i", modifiers: [.command, .shift])
             }
         }
 

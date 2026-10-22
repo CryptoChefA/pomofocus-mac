@@ -33,7 +33,7 @@ struct ParsedTodo: Equatable, Sendable {
 /// - time: `45m`, `1h`, `1.5h`, `1h 30m`, `2 hours`
 /// - pomodoros: `3p`, `3 pomos`, `3🍅` (converted to minutes at the focus length)
 /// - dates: `today`, `tonight`, `tomorrow`, `tmrw`, `mon`…`sunday`, `next week`
-/// - a list: `#Math`
+/// - a list: `#Math` (a tag needs a letter, so "Assignment #3" stays a title)
 /// and in pasted notes: bullets (`-`, `*`, `•`, `1.`), checkboxes (`[ ]`, `[x]`), and
 /// headings (`Math:` or `# Math`) that put the lines below them in that list.
 enum TodoParser {
@@ -65,7 +65,7 @@ enum TodoParser {
             }
         }
 
-        take(#"#([\p{L}\p{N}_\-.]+)"#) { listName = $0[1] }
+        take(#"#(?=[\p{N}_\-.]*\p{L})([\p{L}\p{N}_\-.]+)"#) { listName = $0[1] }
         take(#"(?:🍅\s*(\d{1,2})|(\d{1,2})\s*(?:🍅|p\b|poms?\b|pomos?\b|pomodoros?\b))"#) { groups in
             estimate = Int(groups[1].isEmpty ? groups[2] : groups[1])
         }
@@ -81,7 +81,7 @@ enum TodoParser {
         take(#"\b(?:due\s+)?(?:today|tonight)\b"#) { _ in due = today }
         take(#"\b(?:due\s+)?(?:tomorrow|tmrw|tmr)\b"#) { _ in due = calendar.date(byAdding: .day, value: 1, to: today) }
         take(#"\b(?:due\s+)?next\s+week\b"#) { _ in due = calendar.date(byAdding: .day, value: 7, to: today) }
-        take(#"\b(?:due\s+)?(mon|tues?|wed|thu(?:rs?)?|fri|sat|sun)(?:day|nesday|sday|urday)?\b"#) { groups in
+        take(#"\b(?:due\s+)?(?!(?-i:[A-Z]{3,}\b))(mon|tues?|wed|thu(?:rs?)?|fri|sat|sun)(?:day|nesday|sday|urday)?\b"#) { groups in
             let names = ["sun": 1, "mon": 2, "tue": 3, "wed": 4, "thu": 5, "fri": 6, "sat": 7]
             guard let weekday = names[String(groups[1].lowercased().prefix(3))] else { return }
             let current = calendar.component(.weekday, from: today)

@@ -1,5 +1,14 @@
 import Charts
+import Observation
 import SwiftUI
+
+/// Where the pointer is over the chart being hovered, so its tooltip can sit beside it.
+/// Only one chart is hovered at a time, so one shared value is enough.
+@MainActor @Observable
+final class ChartPointer {
+    static let shared = ChartPointer()
+    var location: CGPoint?
+}
 
 extension View {
     /// Reports the x-axis value under the pointer while it moves over a chart, and nil when it leaves.
@@ -22,6 +31,7 @@ extension View {
                                 perform(nil)
                                 return
                             }
+                            ChartPointer.shared.location = location
                             perform(proxy.value(atX: location.x - frame.origin.x, as: P.self))
                         case .ended:
                             perform(nil)
@@ -42,13 +52,29 @@ extension View {
     /// Keeping the tooltip out of `RuleMark.annotation` prevents the plot frame from moving
     /// underneath the pointer, which otherwise creates an enter/leave feedback loop on macOS.
     func chartHoverTooltip<Content: View>(@ViewBuilder content: () -> Content) -> some View {
-        overlay(alignment: .topTrailing) {
-            content()
-                .padding(8)
-                .allowsHitTesting(false)
-                .transaction { transaction in
-                    transaction.animation = nil
+        let tooltip = content()
+        return overlay(alignment: .topLeading) {
+            GeometryReader { geometry in
+                let point = ChartPointer.shared.location ?? .zero
+                let y = min(max(0, point.y - 44), max(0, geometry.size.height - 60))
+                Group {
+                    if point.x > geometry.size.width * 0.6 {
+                        // Near the right edge: sit to the left of the pointer.
+                        HStack(spacing: 0) {
+                            Spacer(minLength: 0)
+                            tooltip
+                        }
+                        .frame(width: max(0, point.x - 14))
+                    } else {
+                        tooltip.offset(x: point.x + 14)
+                    }
                 }
+                .offset(y: y)
+            }
+            .allowsHitTesting(false)
+            .transaction { transaction in
+                transaction.animation = nil
+            }
         }
     }
 }

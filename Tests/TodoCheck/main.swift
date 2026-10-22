@@ -44,6 +44,11 @@ check(parse("Quiz prep mon")?.due == day(6), "Monday wraps to next week")
 check(parse("Quiz prep due wednesday")?.title == "Quiz prep", "'due' is removed with the date")
 check(parse("Monitor setup")?.due == nil && parse("Monitor setup")?.title == "Monitor setup", "weekday prefixes inside words are left alone")
 
+// Things that look like tags or days but aren't.
+check(parse("Assignment #3")?.title == "Assignment #3" && parse("Assignment #3")?.listName == nil, "#3 stays in the title")
+check(parse("Study for SAT")?.title == "Study for SAT" && parse("Study for SAT")?.due == nil, "SAT isn't Saturday")
+check(parse("Quiz prep sat")?.due == day(4), "lowercase sat is Saturday")
+
 // Lists and combinations.
 let full = parse("- Problem set 5 3p tomorrow #Math")
 check(full == ParsedTodo(title: "Problem set 5", minutes: 75, due: day(1), listName: "Math"), "everything at once: \(String(describing: full))")

@@ -141,6 +141,7 @@ struct FocusView: View {
                     .overlay { Capsule().stroke(NonnaTheme.line, lineWidth: 0.8) }
                 }
                 .menuStyle(.borderlessButton)
+                .menuIndicator(.hidden)
                 .fixedSize()
 
                 Button { showingNewTask = true } label: {
@@ -155,7 +156,10 @@ struct FocusView: View {
 
             LinkedTodoControl(compact: true)
 
-            IntentionField(style: .pill)
+            // A linked task already says what this block is for.
+            if model.selectedTodo == nil {
+                IntentionField(style: .pill)
+            }
         }
     }
 
@@ -410,6 +414,7 @@ struct FocusView: View {
                             .frame(width: 30, height: 42)
                     }
                     .menuStyle(.borderlessButton)
+                    .menuIndicator(.hidden)
                     .fixedSize()
                 }
             } else if model.status == .idle {
@@ -453,6 +458,7 @@ struct FocusView: View {
                         .frame(width: 38, height: 42)
                 }
                 .menuStyle(.borderlessButton)
+                .menuIndicator(.hidden)
                 .fixedSize()
             }
         }
@@ -466,95 +472,6 @@ struct FocusView: View {
         .id(timerControlState)
         .transition(.opacity.combined(with: .scale(scale: 0.97)))
         .animation(reduceMotion ? nil : NonnaMotion.selection, value: timerControlState)
-    }
-
-    private var intentionCard: some View {
-        NonnaCard(padding: 18) {
-            VStack(alignment: .leading, spacing: 20) {
-                HStack {
-                    Text("SESSION")
-                        .font(.system(size: 9, weight: .semibold, design: .monospaced))
-                        .tracking(1.8)
-                        .foregroundStyle(NonnaTheme.terracotta)
-                    Spacer()
-                    Label("LOCAL", systemImage: "lock.fill")
-                        .font(.system(size: 8, weight: .medium, design: .monospaced))
-                        .foregroundStyle(NonnaTheme.sage)
-                }
-
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("LIST")
-                        .font(.system(size: 9, weight: .medium, design: .monospaced))
-                        .tracking(1.5)
-                        .foregroundStyle(NonnaTheme.secondaryInk)
-
-                    HStack(spacing: 9) {
-                        Menu {
-                            ForEach(model.tasks) { task in
-                                Button {
-                                    model.selectedTaskID = task.id
-                                    model.persistDraft()
-                                } label: {
-                                    Label(task.name, systemImage: model.selectedTaskID == task.id ? "checkmark.circle.fill" : "circle.fill")
-                                }
-                            }
-                            Divider()
-                            Button("New list…") { showingNewTask = true }
-                        } label: {
-                            HStack(spacing: 8) {
-                                Circle()
-                                    .fill(NonnaTheme.taskColor(for: model.selectedTask?.colorHex ?? "8D8379"))
-                                    .frame(width: 9, height: 9)
-                                Text(model.selectedTask?.name ?? "Choose a list")
-                                Image(systemName: "chevron.down")
-                                    .font(.system(size: 9, weight: .bold))
-                            }
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundStyle(NonnaTheme.ink)
-                            .padding(.horizontal, 11)
-                            .frame(height: 34)
-                            .background(NonnaTheme.raisedPaper)
-                            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                            .overlay { RoundedRectangle(cornerRadius: 8).stroke(NonnaTheme.line, lineWidth: 0.8) }
-                        }
-                        .menuStyle(.borderlessButton)
-                        .fixedSize()
-
-                        Button {
-                            showingNewTask = true
-                        } label: {
-                            Image(systemName: "plus")
-                                .frame(width: 34, height: 34)
-                                .background(NonnaTheme.raisedPaper)
-                                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                                .overlay { RoundedRectangle(cornerRadius: 8).stroke(NonnaTheme.line, lineWidth: 0.8) }
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-
-                LinkedTodoControl()
-
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("INTENTION")
-                        .font(.system(size: 9, weight: .medium, design: .monospaced))
-                        .tracking(1.5)
-                        .foregroundStyle(NonnaTheme.secondaryInk)
-                    IntentionField(style: .underline)
-                }
-
-                Spacer(minLength: 0)
-
-                HStack(spacing: 9) {
-                    Image(systemName: "wind")
-                        .foregroundStyle(accent)
-                    Text(model.settings.breathingEnabled ? "Begin with three slow, guided breaths." : "Opening breath ritual is disabled.")
-                        .font(.system(size: 10))
-                        .foregroundStyle(NonnaTheme.secondaryInk)
-                }
-            }
-            .frame(minHeight: 529, alignment: .top)
-        }
     }
 }
 

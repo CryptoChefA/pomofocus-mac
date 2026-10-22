@@ -120,12 +120,15 @@ public enum PomofocusWidgetSnapshotStore {
             .appendingPathComponent(fileName)
     }
 
-    /// The user's actual home folder. Inside the sandboxed widget,
+    /// Where the app's data lives. Inside the sandboxed widget,
     /// `homeDirectoryForCurrentUser` points at the widget's own container, where the app's
     /// snapshot never is; the password database still gives the real path, which the
     /// widget's read-only entitlement allows it to read.
     static var realHomeDirectory: URL {
-        if let entry = getpwuid(getuid()), let dir = entry.pointee.pw_dir {
+        // Only the sandboxed widget needs this. The app itself keeps using the normal home,
+        // which respects CFFIXED_USER_HOME, so test builds never touch real data.
+        if ProcessInfo.processInfo.environment["APP_SANDBOX_CONTAINER_ID"] != nil,
+           let entry = getpwuid(getuid()), let dir = entry.pointee.pw_dir {
             return URL(fileURLWithPath: String(cString: dir), isDirectory: true)
         }
         return FileManager.default.homeDirectoryForCurrentUser
