@@ -10,6 +10,11 @@ struct FocusView: View {
     @State private var timelineDrawerOpen = false
     @State private var confirmsAbandon = false
     @Namespace private var phaseSelection
+    /// Height of the timer column, so the dial can shrink and keep the controls in view.
+    @State private var columnHeight: CGFloat = 860
+
+    /// Up to 300pt on tall windows, down to 140pt on short ones, so the controls stay in view.
+    private var dialSize: CGFloat { min(300, max(140, columnHeight - 600)) }
 
     private var accent: Color { isAlerting ? NonnaTheme.alert : NonnaTheme.accent(for: model.phase) }
 
@@ -44,6 +49,11 @@ struct FocusView: View {
                         .frame(maxWidth: 690)
                     }
 
+                    if let pausedAt = model.awayPausedAt {
+                        AwayBanner(pausedAt: pausedAt)
+                            .frame(maxWidth: 690)
+                    }
+
                     VStack(spacing: 13) {
                         Text("What's your focus?")
                             .font(.system(size: 28, weight: .semibold))
@@ -56,6 +66,7 @@ struct FocusView: View {
                 .frame(maxWidth: .infinity)
                 .padding(28)
             }
+            .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { columnHeight = $0 }
 
             Divider().overlay(NonnaTheme.line)
 
@@ -242,6 +253,8 @@ struct FocusView: View {
                         }
                     }
                     .frame(width: 300, height: 300)
+                    .scaleEffect(dialSize / 300)
+                    .frame(width: dialSize, height: dialSize)
                     .animation(reduceMotion ? nil : NonnaMotion.settle, value: model.isBreathing)
 
                     if !model.isBreathing {
@@ -305,7 +318,7 @@ struct FocusView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .padding(.vertical, 24)
             }
-            .frame(maxWidth: .infinity, minHeight: 600)
+            .frame(maxWidth: .infinity, minHeight: dialSize + 300)
         }
     }
 
@@ -873,5 +886,43 @@ private struct TimelineRail: View {
         .keyboardShortcut("t", modifiers: [.command, .option])
         .help("Show the timeline (⌥⌘T)")
         .accessibilityLabel("Show the timeline")
+    }
+}
+
+/// Shown after the away guard paused a timer that was running over.
+private struct AwayBanner: View {
+    @Environment(AppModel.self) private var model
+    let pausedAt: Date
+
+    var body: some View {
+        HStack(spacing: 14) {
+            Image(systemName: "moon.zzz.fill")
+                .font(.system(size: 20))
+                .foregroundStyle(NonnaTheme.sage)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Paused at \(pausedAt.formatted(date: .omitted, time: .shortened))")
+                    .font(.system(size: 14, weight: .semibold))
+                Text("Looks like you stepped away, so the time after that wasn’t counted.")
+                    .font(.system(size: 12))
+                    .foregroundStyle(NonnaTheme.secondaryInk)
+            }
+            Spacer()
+            Button("I was here") { model.countAwayTime() }
+                .buttonStyle(.plain)
+                .font(.system(size: 12))
+                .foregroundStyle(NonnaTheme.secondaryInk)
+                .help("Count the time since then after all")
+            Button("End session") { model.endSession() }
+                .buttonStyle(NonnaButtonStyle(prominent: false))
+            Button("Resume") { model.togglePause() }
+                .buttonStyle(NonnaButtonStyle())
+        }
+        .padding(16)
+        .background {
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(NonnaTheme.sage.opacity(0.1))
+                .overlay { RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(NonnaTheme.sage.opacity(0.45), lineWidth: 0.8) }
+        }
+        .transition(.move(edge: .top).combined(with: .opacity))
     }
 }

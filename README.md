@@ -45,6 +45,8 @@ Pomofocus is a beautiful, local-first focus timer for macOS. It brings together 
 - Lifetime focused hours and session count for every list
 - Total focus time, distinct usage days, current streak, and longest streak
 - Fourteen-day activity chart and twelve-week consistency heatmap
+- Focus score: one number out of 100 for each day (time against your goal, finishing what you start, few pauses, breaks back on time, your longest unbroken stretch), with a 7-day comparison; click it to see exactly why, part by part, with the one change that would lift it most
+- Away guard: if a timer runs over and you leave the Mac (no keyboard or mouse for 10 minutes, sleep, lock, or the app closed), it pauses as of when you left, so a forgotten timer doesn't record hours of overtime; "I was here" counts the time anyway; old runaway timers can be trimmed from the dashboard
 - Clickable dashboard metrics with dedicated 7, 30, and 90-day intelligence views, rolling trends, outcome distributions, task allocation, time-of-day patterns, and transparent metric definitions
 - Insights with a 7, 30, 90-day or all-time range: week-over-week trend, six-month totals, daily goal hit rate, focus by hour and weekday, rating by task and start hour, completion rate, focus-to-break ratio, skipped breaks, and overtime trend
 - Read-only calendar overlay on the day timeline through EventKit, so any account added to macOS (Google included) appears behind your sessions, with a per-calendar picker and Start focus from an event
@@ -117,6 +119,8 @@ swiftc Sources/PomodoroNonna/ThemePalette.swift Tests/ThemeCheck/main.swift -o .
 .build/checks/theme-check
 swiftc Sources/PomodoroNonna/TodoModels.swift Tests/TodoCheck/main.swift -o .build/checks/todo-check
 .build/checks/todo-check
+swiftc Sources/PomodoroNonna/Models.swift Sources/PomodoroNonna/TodoModels.swift Sources/PomodoroNonna/FocusPlan.swift Sources/PomodoroNonna/FocusScience.swift Sources/PomodoroNonna/ThemePalette.swift Sources/PomodoroNonna/FocusScore.swift Tests/FocusScoreCheck/main.swift -o .build/checks/focus-score-check
+.build/checks/focus-score-check
 ```
 
 ## Architecture
@@ -145,6 +149,7 @@ swiftc Sources/PomodoroNonna/TodoModels.swift Tests/TodoCheck/main.swift -o .bui
 - `ThemePalette.swift`: theme palettes, presets and custom-theme colour derivation
 - `ThemePickerView.swift`: the theme picker, custom theme editor and first-launch welcome
 - `DashboardView.swift`: local charts, lifetime task totals, streaks, and usage days
+- `FocusScore.swift`: the daily focus score and runaway-timer trimming (pure, tested); `FocusScoreViews.swift` draws them
 - `HistoryView.swift`: searchable session ledger and CSV export
 - `TasksView.swift`: Tasks (board, smart views, New task form, Paste a list) and the timer's task link
 - `SettingsView.swift`: timer, rhythm, sound, and privacy controls

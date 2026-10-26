@@ -27,6 +27,10 @@ final class AppModel {
     var breathingRemaining = 0
     var completedFocusCycleCount = 0
     var reflectionSession: FocusSession?
+    /// Set when the away guard paused an overtime timer; the moment counting stopped.
+    var awayPausedAt: Date?
+    @ObservationIgnored private var awayStartedAt: Date?
+    @ObservationIgnored private var awayObserversStarted = false
     var awaitingNextPhase: TimerPhase?
     var storageError: String?
     private(set) var activityIntervals: [ActivityInterval] = []
@@ -212,6 +216,7 @@ final class AppModel {
             data = try await LocalStore.shared.load()
             applyTheme()
             hasLoaded = true
+            startAwayObservers()
             // 0.21.0 stored estimates as pomodoros; they're minutes now.
             if data.todos?.contains(where: { $0.estimate != nil }) == true {
                 data.todos = data.todos?.map { todo in
@@ -491,6 +496,7 @@ final class AppModel {
     }
 
     private func resume(at date: Date = Date()) {
+        awayPausedAt = nil
         startActivityInterval(at: date)
         status = isOvertime ? .overtime : .running
         lastTick = date
@@ -1050,6 +1056,8 @@ final class AppModel {
 
         if isOvertime {
             if status != .overtime { status = .overtime }
+            checkAway(now: now)
+            if status == .paused { return }
         } else {
             if remainingSeconds == 0 { timerReachedZero() }
         }
@@ -1112,6 +1120,7 @@ final class AppModel {
         ambientPlayer.stop()
         ambientPreviewToken = nil
         status = .idle
+        awayPausedAt = nil
         isOvertime = false
         sessionStartedAt = nil
         remainingSeconds = 0
@@ -1129,6 +1138,7 @@ final class AppModel {
         ambientPlayer.stop()
         ambientPreviewToken = nil
         status = .idle
+        awayPausedAt = nil
         breathingRemaining = 0
         breathingEndsAt = nil
         isOvertime = false
@@ -1184,6 +1194,12 @@ final class AppModel {
                 isOvertime = true
                 status = .overtime
             }
+        }
+        // The app was closed (or crashed) with a timer running: if that was a while ago,
+        // treat it like stepping away and stop counting at the last save.
+        if settings.pauseWhenAway, status == .running || status == .overtime,
+           now.timeIntervalSince(snapshot.lastSavedAt) >= TimeInterval(max(1, settings.awayMinutes) * 60) {
+            pauseForAway(leftAt: snapshot.lastSavedAt)
         }
         if isOvertime, settings.overtimeReminderMinutes > 0 {
             lastOvertimeReminderMark = max(0, elapsedSeconds - plannedSeconds) / (settings.overtimeReminderMinutes * 60)
@@ -1429,4 +1445,126 @@ final class AppModel {
 @Observable
 final class MenuPulse {
     var tick = 0
+}
+
+// MARK: - Away guard
+
+extension AppModel {
+    /// Seconds since the last keyboard, mouse or trackpad input anywhere on the Mac.
+    nonisolated static func secondsSinceLastInput() -> TimeInterval {
+        let anyInput = CGEventType(rawValue: ~0) ?? .mouseMoved
+        return CGEventSource.secondsSinceLastEventType(.combinedSessionState, eventType: anyInput)
+    }
+
+    /// When this block's planned time ran (or will run) out, following its active stretches.
+    private func plannedEndDate(now: Date = Date()) -> Date? {
+        var left = TimeInterval(plannedSeconds)
+        for interval in activityIntervals {
+            let length = interval.duration(through: now)
+            if length >= left { return interval.startedAt.addingTimeInterval(left) }
+            left -= length
+        }
+        return nil
+    }
+
+    /// Called every second while a timer runs over: if nobody has touched the Mac for a
+    /// while, stop counting from the moment they left.
+    fileprivate func checkAway(now: Date) {
+        guard settings.pauseWhenAway, status == .overtime else { return }
+        let idle = Self.secondsSinceLastInput()
+        guard idle >= TimeInterval(max(1, settings.awayMinutes) * 60) else { return }
+        pauseForAway(leftAt: now.addingTimeInterval(-idle))
+    }
+
+    /// Pauses the timer as of `leftAt`, but never before the planned time ran out, so a
+    /// block always keeps its full length.
+    func pauseForAway(leftAt: Date) {
+        guard status == .running || status == .overtime else { return }
+        let now = Date()
+        let cutoff = max(leftAt, plannedEndDate(now: now) ?? leftAt)
+        guard cutoff < now else { return }
+        closeCurrentActivityInterval(at: cutoff)
+        refreshTrackedDurations(at: now)
+        status = .paused
+        awayPausedAt = cutoff
+        ambientPlayer.pause()
+        lastTick = now
+        syncMenuPulse()
+        persistActiveTimer()
+    }
+
+    /// "I was here": count the time after an away pause after all and keep going.
+    func countAwayTime() {
+        guard awayPausedAt != nil, status == .paused,
+              let index = activityIntervals.indices.last else { return }
+        activityIntervals[index].endedAt = nil
+        let now = Date()
+        refreshTrackedDurations(at: now)
+        if remainingSeconds == 0 { isOvertime = true }
+        status = isOvertime ? .overtime : .running
+        awayPausedAt = nil
+        lastTick = now
+        syncAmbientPlayback()
+        syncMenuPulse()
+        persistActiveTimer()
+        ensureTicking()
+    }
+
+    /// Sleep and screen lock are the clearest "I've left" signals; the input check above
+    /// covers a Mac that just sits there awake.
+    fileprivate func startAwayObservers() {
+        guard !awayObserversStarted else { return }
+        awayObserversStarted = true
+        let workspace = NSWorkspace.shared.notificationCenter
+        let distributed = DistributedNotificationCenter.default()
+        workspace.addObserver(forName: NSWorkspace.willSleepNotification, object: nil, queue: .main) { [weak self] _ in
+            Task { @MainActor in self?.wentAway() }
+        }
+        workspace.addObserver(forName: NSWorkspace.didWakeNotification, object: nil, queue: .main) { [weak self] _ in
+            Task { @MainActor in self?.cameBack() }
+        }
+        distributed.addObserver(forName: Notification.Name("com.apple.screenIsLocked"), object: nil, queue: .main) { [weak self] _ in
+            Task { @MainActor in self?.wentAway() }
+        }
+        distributed.addObserver(forName: Notification.Name("com.apple.screenIsUnlocked"), object: nil, queue: .main) { [weak self] _ in
+            Task { @MainActor in self?.cameBack() }
+        }
+    }
+
+    private func wentAway() {
+        if awayStartedAt == nil { awayStartedAt = Date() }
+    }
+
+    private func cameBack() {
+        guard let left = awayStartedAt else { return }
+        awayStartedAt = nil
+        guard settings.pauseWhenAway, status == .running || status == .overtime,
+              Date().timeIntervalSince(left) >= TimeInterval(max(1, settings.awayMinutes) * 60) else { return }
+        pauseForAway(leftAt: left)
+    }
+
+    // MARK: Runaway records
+
+    /// Blocks and breaks from before the guard existed that ran for hours unattended.
+    var runawayTimerCount: Int {
+        data.sessions.filter { RunawayTimers.isRunaway($0) }.count
+            + (data.breaks ?? []).filter { RunawayTimers.isRunaway($0) }.count
+    }
+
+    /// Cuts every runaway block and break back to its planned length.
+    func trimRunawayTimers() {
+        data.sessions = data.sessions.map { RunawayTimers.isRunaway($0) ? RunawayTimers.trimmed($0) : $0 }
+        data.breaks = data.breaks?.map { RunawayTimers.isRunaway($0) ? RunawayTimers.trimmed($0) : $0 }
+        save()
+    }
+
+    // MARK: Focus score
+
+    func focusScore(on day: Date = Date()) -> FocusScore? {
+        FocusScore.compute(day: day, sessions: data.sessions, breaks: data.breaks ?? [], goalMinutes: settings.dailyGoalMinutes)
+    }
+
+    func focusScoreHistory(days: Int) -> [(day: Date, score: FocusScore?)] {
+        FocusScore.history(days: days, sessions: data.sessions, breaks: data.breaks ?? [], goalMinutes: settings.dailyGoalMinutes)
+    }
 }

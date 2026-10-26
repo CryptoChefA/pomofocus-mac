@@ -184,6 +184,10 @@ struct NonnaSettings: Codable, Equatable, Sendable {
     var showCalendarEvents = false
     var hiddenCalendarIDs: [String] = []
     var celebrateSessions = true
+    /// When a timer has run past its planned time and the Mac sees no keyboard or mouse
+    /// for `awayMinutes` (or sleeps, or locks), pause it as of the moment you left.
+    var pauseWhenAway = true
+    var awayMinutes = 10
     /// A `ThemeChoice` raw value.
     var themeID = ThemeChoice.obsidian.rawValue
     var customTheme = CustomThemeSpec()
@@ -197,6 +201,7 @@ struct NonnaSettings: Codable, Equatable, Sendable {
         case ambientSound, ambientVolume, showInMenuBar
         case showCalendarEvents, hiddenCalendarIDs, overtimeAlert
         case celebrateSessions, themeID, customTheme, hasCompletedOnboarding
+        case pauseWhenAway, awayMinutes
     }
 
     init() {}
@@ -227,6 +232,8 @@ struct NonnaSettings: Codable, Equatable, Sendable {
         overtimeAlert = try values.decodeIfPresent(Bool.self, forKey: .overtimeAlert) ?? true
         hiddenCalendarIDs = try values.decodeIfPresent([String].self, forKey: .hiddenCalendarIDs) ?? []
         celebrateSessions = try values.decodeIfPresent(Bool.self, forKey: .celebrateSessions) ?? true
+        pauseWhenAway = try values.decodeIfPresent(Bool.self, forKey: .pauseWhenAway) ?? true
+        awayMinutes = try values.decodeIfPresent(Int.self, forKey: .awayMinutes) ?? 10
         themeID = try values.decodeIfPresent(String.self, forKey: .themeID) ?? ThemeChoice.obsidian.rawValue
         customTheme = try values.decodeIfPresent(CustomThemeSpec.self, forKey: .customTheme) ?? CustomThemeSpec()
         hasCompletedOnboarding = try values.decodeIfPresent(Bool.self, forKey: .hasCompletedOnboarding) ?? true
@@ -236,6 +243,8 @@ struct NonnaSettings: Codable, Equatable, Sendable {
         var values = encoder.container(keyedBy: CodingKeys.self)
         try values.encode(focusMinutes, forKey: .focusMinutes)
         try values.encode(celebrateSessions, forKey: .celebrateSessions)
+        try values.encode(pauseWhenAway, forKey: .pauseWhenAway)
+        try values.encode(awayMinutes, forKey: .awayMinutes)
         try values.encode(themeID, forKey: .themeID)
         try values.encode(customTheme, forKey: .customTheme)
         try values.encode(hasCompletedOnboarding, forKey: .hasCompletedOnboarding)

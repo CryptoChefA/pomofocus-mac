@@ -26,6 +26,9 @@ struct DashboardView: View {
                     subtitle: "Private, local analytics"
                 )
 
+                FocusScoreCard()
+                RunawayTimersBanner()
+
                 let totalBreakSeconds = model.breakSessions.reduce(0) { $0 + $1.restedSeconds }
                 let breakOvertimeSeconds = model.breakSessions.reduce(0) { $0 + $1.overtimeSeconds }
 

@@ -60,6 +60,11 @@ struct RootView: View {
         }
         .foregroundStyle(NonnaTheme.ink)
         .tint(NonnaTheme.terracotta)
+        .onOpenURL { url in
+            // pomofocus://focus, from a click on the desktop widget.
+            if url.host == "focus" { selection = .focus }
+            NSApp.activate()
+        }
         .sheet(isPresented: Binding(get: { model.needsOnboarding }, set: { _ in })) {
             WelcomeView {
                 withAnimation(reduceMotion ? nil : NonnaMotion.page) { selection = .plan }

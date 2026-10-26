@@ -157,6 +157,20 @@ struct SettingsView: View {
                 binding: settingsBinding(\.overtimeReminderMinutes)
             )
             ToggleRow(
+                title: "Pause when I'm away",
+                subtitle: "If a timer runs over and you leave the Mac, stop counting from when you left",
+                binding: settingsBinding(\.pauseWhenAway)
+            )
+            if model.settings.pauseWhenAway {
+                StepperRow(
+                    title: "Away after",
+                    value: "\(model.settings.awayMinutes) min without keyboard or mouse",
+                    range: 5...30,
+                    step: 5,
+                    binding: settingsBinding(\.awayMinutes)
+                )
+            }
+            ToggleRow(
                 title: "Overtime alert",
                 subtitle: "Flash the time red once a timer runs over",
                 binding: settingsBinding(\.overtimeAlert)
@@ -453,7 +467,7 @@ private struct ToggleRow: View {
     @Binding var binding: Bool
 
     var body: some View {
-        Toggle(isOn: $binding) {
+        HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
                     .font(.system(size: 12, weight: .medium, design: .default))
@@ -461,7 +475,10 @@ private struct ToggleRow: View {
                     .font(.system(size: 10, design: .default))
                     .foregroundStyle(NonnaTheme.secondaryInk)
             }
+            Spacer(minLength: 12)
+            Toggle(title, isOn: $binding)
+                .toggleStyle(.switch)
+                .labelsHidden()
         }
-        .toggleStyle(.switch)
     }
 }
