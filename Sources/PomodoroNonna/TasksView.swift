@@ -38,6 +38,17 @@ struct TasksView: View {
     @State private var expandedID: UUID?
     /// The task just added without a length: the app asks how long it will take.
     @State private var estimatePromptID: UUID?
+    @State private var choseStartingScope = false
+    /// Simple tasks: when this stretch of planning began, for the "time to start" nudge.
+    @State private var planningSince = Date()
+    /// Tasks passed over with "Something else", most recent last.
+    @State private var skippedIDs: [UUID] = []
+    @State private var showsRestOfToday = false
+    /// "Not yet" puts the nudge away until the next visit to Tasks.
+    @State private var nudgeDismissed = false
+    @State private var inactiveSince: Date?
+
+    private var simple: Bool { model.settings.simpleTasks }
 
     var body: some View {
         HStack(spacing: 0) {
@@ -58,24 +69,38 @@ struct TasksView: View {
                                 self.planMessage = nil
                             }
                     }
-                    statsStrip
+                    if simple, model.status == .idle, !nudgeDismissed {
+                        PlanningNudge(since: planningSince, suggestion: upNextCandidates.first) { id in
+                            model.startFocus(on: id)
+                            model.focusScreenRequest += 1
+                        } onLater: {
+                            withAnimation(reduceMotion ? nil : NonnaMotion.selection) { nudgeDismissed = true }
+                        }
+                    }
+                    if !simple {
+                        statsStrip
+                    }
                     if scope == .board {
                         BoardView(onNewList: { showingNewList = true }, onOpen: { scope = .list($0) })
                     } else {
                         if scope != .completed {
-                            QuickAddBar(scope: scope) { id, hasLength in
+                            QuickAddBar(scope: scope, simple: simple) { id, hasLength in
                                 if !hasLength {
                                     withAnimation(reduceMotion ? nil : NonnaMotion.selection) { estimatePromptID = id }
                                 }
                             }
                         }
-                        if let id = estimatePromptID, let todo = model.todos.first(where: { $0.id == id }) {
+                        if !simple, let id = estimatePromptID, let todo = model.todos.first(where: { $0.id == id }) {
                             EstimatePrompt(todo: todo) {
                                 withAnimation(reduceMotion ? nil : NonnaMotion.quick) { estimatePromptID = nil }
                             }
                             .transition(.move(edge: .top).combined(with: .opacity))
                         }
-                        listBody
+                        if simple, scope == .today {
+                            simpleToday
+                        } else {
+                            listBody
+                        }
                     }
                 }
                 .padding(30)
@@ -91,12 +116,31 @@ struct TasksView: View {
                 .environment(model)
         }
         .sheet(isPresented: $showsNewTask) {
-            NewTodoSheet(listID: scope.listID ?? model.tasks.first?.id, due: scope.defaultDue) { showsNewTask = false }
+            NewTodoSheet(listID: scope.listID ?? (simple ? nil : model.tasks.first?.id), due: scope.defaultDue, simple: simple) { showsNewTask = false }
                 .environment(model)
         }
         .onChange(of: scope) { _, _ in
             expandedID = nil
             estimatePromptID = nil
+        }
+        .onAppear {
+            planningSince = Date()
+            nudgeDismissed = false
+            skippedIDs = []
+            // Simple tasks opens on what's due now, not on every list at once.
+            if !choseStartingScope {
+                choseStartingScope = true
+                if simple { scope = .today }
+            }
+        }
+        .onChange(of: model.status) { _, _ in planningSince = Date() }
+        // A quick look at a syllabus in the browser is still planning; a long time away isn't.
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didResignActiveNotification)) { _ in
+            inactiveSince = Date()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            if let away = inactiveSince, Date().timeIntervalSince(away) > 10 * 60 { planningSince = Date() }
+            inactiveSince = nil
         }
     }
 
@@ -140,41 +184,77 @@ struct TasksView: View {
                     .foregroundStyle(NonnaTheme.secondaryInk)
             }
             Spacer()
-            Button {
-                let today = Date()
-                let busy = calendarStore.events(on: today, hiddenIDs: model.settings.hiddenCalendarIDs)
-                    .filter { !$0.isAllDay }
-                    .map { DayPlanner.Slot(start: $0.startedAt, end: $0.endedAt) }
-                let placed = model.planDay(today, busy: busy)
-                planMessage = placed == 0 ? "Nothing due today needs a time, or the day is full." : "Planned \(placed) \(placed == 1 ? "task" : "tasks") into today's free time. See the timeline."
-            } label: {
-                Label("Plan my day", systemImage: "wand.and.stars")
+            if simple {
+                moreMenu
+            } else {
+                planningButtons
             }
-            .buttonStyle(NonnaButtonStyle(prominent: false))
-            .help("Fit what's due today into your free time on the timeline")
-            Button {
-                model.showsWrapUp = true
-            } label: {
-                Label("Wrap up day", systemImage: "moon.stars")
+            if !(simple && scope == .today) {
+                Button {
+                    showsNewTask = true
+                } label: {
+                    Label("New task", systemImage: "plus")
+                }
+                .buttonStyle(NonnaButtonStyle())
+                .keyboardShortcut("n", modifiers: [.command, .shift])
+                .help("Add a task (⇧⌘N)")
             }
-            .buttonStyle(NonnaButtonStyle(prominent: false))
-            .help("See what got done today and move the rest to tomorrow")
-            Button {
-                showsWriteItOut = true
-            } label: {
-                Label("Paste a list", systemImage: "doc.on.clipboard")
-            }
-            .buttonStyle(NonnaButtonStyle(prominent: false))
-            .help("Paste or type a whole list from your notes and add it all at once")
-            Button {
-                showsNewTask = true
-            } label: {
-                Label("New task", systemImage: "plus")
-            }
-            .buttonStyle(NonnaButtonStyle())
-            .keyboardShortcut("n", modifiers: [.command, .shift])
-            .help("Add a task (⇧⌘N)")
         }
+    }
+
+    private func planDay() {
+        let today = Date()
+        let busy = calendarStore.events(on: today, hiddenIDs: model.settings.hiddenCalendarIDs)
+            .filter { !$0.isAllDay }
+            .map { DayPlanner.Slot(start: $0.startedAt, end: $0.endedAt) }
+        let placed = model.planDay(today, busy: busy)
+        planMessage = placed == 0 ? "Nothing due today needs a time, or the day is full." : "Planned \(placed) \(placed == 1 ? "task" : "tasks") into today's free time. See the timeline."
+    }
+
+    /// The planning tools, tucked into one menu while tasks are kept simple.
+    private var moreMenu: some View {
+        Menu {
+            Button("Plan my day", action: planDay)
+            Button("Wrap up day") { model.showsWrapUp = true }
+            Button("Paste a list…") { showsWriteItOut = true }
+            Divider()
+            Button("Show all planning tools") { model.updateSettings { $0.simpleTasks = false } }
+        } label: {
+            Image(systemName: "ellipsis")
+                .font(.system(size: 13, weight: .semibold))
+                .frame(width: 34, height: 34)
+                .contentShape(Rectangle())
+        }
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+        .fixedSize()
+        .foregroundStyle(NonnaTheme.secondaryInk)
+        .help("More")
+    }
+
+    @ViewBuilder
+    private var planningButtons: some View {
+        Button {
+            planDay()
+        } label: {
+            Label("Plan my day", systemImage: "wand.and.stars")
+        }
+        .buttonStyle(NonnaButtonStyle(prominent: false))
+        .help("Fit what's due today into your free time on the timeline")
+        Button {
+            model.showsWrapUp = true
+        } label: {
+            Label("Wrap up day", systemImage: "moon.stars")
+        }
+        .buttonStyle(NonnaButtonStyle(prominent: false))
+        .help("See what got done today and move the rest to tomorrow")
+        Button {
+            showsWriteItOut = true
+        } label: {
+            Label("Paste a list", systemImage: "doc.on.clipboard")
+        }
+        .buttonStyle(NonnaButtonStyle(prominent: false))
+        .help("Paste or type a whole list from your notes and add it all at once")
     }
 
     private var scopeMenu: some View {
@@ -363,23 +443,102 @@ struct TasksView: View {
         }
 
         if scope != .completed {
-            let done = model.todos.filter { $0.isDone && includes($0, ignoringDone: true) && ($0.completedAt.map { Calendar.current.isDateInToday($0) } ?? false) }
-            if !done.isEmpty {
-                VStack(alignment: .leading, spacing: 9) {
-                    Button {
-                        withAnimation(reduceMotion ? nil : NonnaMotion.selection) { showsCompleted.toggle() }
-                    } label: {
-                        Label("\(showsCompleted ? "Hide" : "Show") \(done.count) done today", systemImage: showsCompleted ? "chevron.down" : "chevron.right")
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundStyle(NonnaTheme.secondaryInk)
+            doneToday
+        }
+    }
+
+    @ViewBuilder
+    private var doneToday: some View {
+        let done = model.todos.filter { $0.isDone && includes($0, ignoringDone: true) && ($0.completedAt.map { Calendar.current.isDateInToday($0) } ?? false) }
+        if !done.isEmpty {
+            VStack(alignment: .leading, spacing: 9) {
+                Button {
+                    withAnimation(reduceMotion ? nil : NonnaMotion.selection) { showsCompleted.toggle() }
+                } label: {
+                    Label("\(showsCompleted ? "Hide" : "Show") \(done.count) done today", systemImage: showsCompleted ? "chevron.down" : "chevron.right")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(NonnaTheme.secondaryInk)
+                }
+                .buttonStyle(.plain)
+                if showsCompleted {
+                    ForEach(done) { todo in
+                        TodoRow(todo: todo, showsList: scope.listID == nil, isExpanded: false) {}
                     }
-                    .buttonStyle(.plain)
-                    if showsCompleted {
-                        ForEach(done) { todo in
-                            TodoRow(todo: todo, showsList: scope.listID == nil, isExpanded: false) {}
+                }
+            }
+        }
+    }
+
+    // MARK: Simple Today
+
+    /// What's due today or earlier, soonest first; when nothing is, everything still open.
+    /// The task being timed right now is left out, and passed-over ones go to the back.
+    private var upNextCandidates: [TodoItem] {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let timing = model.status == .idle ? nil : model.selectedTodoID
+        let open = model.todos.filter { !$0.isDone && $0.id != timing }.sorted(by: TodoItem.dueOrder)
+        let due = open.filter { $0.due.map { calendar.startOfDay(for: $0) <= today } ?? false }
+        let pool = due.isEmpty ? open : due
+        return pool.filter { !skippedIDs.contains($0.id) } + skippedIDs.compactMap { id in pool.first { $0.id == id } }
+    }
+
+    private var hasSomethingDueToday: Bool {
+        let today = Calendar.current.startOfDay(for: Date())
+        return model.todos.contains { !$0.isDone && ($0.due.map { Calendar.current.startOfDay(for: $0) <= today } ?? false) }
+    }
+
+    /// One task to start now, the next two after it, and the rest folded away.
+    @ViewBuilder
+    private var simpleToday: some View {
+        let candidates = upNextCandidates
+        if let first = candidates.first {
+            UpNextCard(todo: first,
+                       heading: hasSomethingDueToday ? "Up next" : "Nothing's due today. If you feel like getting ahead:",
+                       // Two passes, then pick from the list; skipping shouldn't become the new sorting.
+                       canSkip: candidates.count > 1 && skippedIDs.count < 2) {
+                withAnimation(reduceMotion ? nil : NonnaMotion.selection) {
+                    skippedIDs.removeAll { $0 == first.id }
+                    skippedIDs.append(first.id)
+                }
+            }
+            let after = Array(candidates.dropFirst())
+            if !after.isEmpty {
+                VStack(alignment: .leading, spacing: 9) {
+                    Text("After that")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(NonnaTheme.secondaryInk)
+                        .padding(.leading, 4)
+                    ForEach(after.prefix(2)) { todo in simpleRow(todo) }
+                    if after.count > 2 {
+                        Button {
+                            withAnimation(reduceMotion ? nil : NonnaMotion.selection) { showsRestOfToday.toggle() }
+                        } label: {
+                            Label("\(showsRestOfToday ? "Hide" : "Show") \(after.count - 2) more", systemImage: showsRestOfToday ? "chevron.down" : "chevron.right")
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundStyle(NonnaTheme.secondaryInk)
+                        }
+                        .buttonStyle(.plain)
+                        .padding(.top, 4)
+                        if showsRestOfToday {
+                            ForEach(after.dropFirst(2)) { todo in simpleRow(todo) }
                         }
                     }
                 }
+                .animation(reduceMotion ? nil : NonnaMotion.selection, value: model.todos)
+            }
+        } else {
+            NonnaCard {
+                EmptyState(icon: "checkmark.circle", title: "All clear", message: "Nothing left to do. Add a task above when something comes up.")
+            }
+        }
+        doneToday
+    }
+
+    private func simpleRow(_ todo: TodoItem) -> some View {
+        TodoRow(todo: todo, showsList: true, showsTodayLabel: false, isExpanded: expandedID == todo.id) {
+            withAnimation(reduceMotion ? nil : NonnaMotion.selection) {
+                expandedID = expandedID == todo.id ? nil : todo.id
             }
         }
     }
@@ -399,10 +558,17 @@ private struct TaskSidebar: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 4) {
-                row(scope: .board, title: "All lists", color: nil, icon: "square.grid.2x2")
-                row(scope: .today, title: "Today", color: nil, icon: "sun.max")
-                row(scope: .upcoming, title: "Upcoming", color: nil, icon: "calendar")
-                row(scope: .completed, title: "Completed", color: nil, icon: "checkmark.circle")
+                if model.settings.simpleTasks {
+                    // Today first; the rest of the views are a click on All lists away.
+                    row(scope: .today, title: "Today", color: nil, icon: "sun.max")
+                    row(scope: .board, title: "All lists", color: nil, icon: "square.grid.2x2")
+                    row(scope: .completed, title: "Completed", color: nil, icon: "checkmark.circle")
+                } else {
+                    row(scope: .board, title: "All lists", color: nil, icon: "square.grid.2x2")
+                    row(scope: .today, title: "Today", color: nil, icon: "sun.max")
+                    row(scope: .upcoming, title: "Upcoming", color: nil, icon: "calendar")
+                    row(scope: .completed, title: "Completed", color: nil, icon: "checkmark.circle")
+                }
 
                 HStack {
                     Text("Lists")
@@ -450,7 +616,9 @@ private struct TaskSidebar: View {
                                     renameText = list.name
                                     renaming = list.id
                                 }
-                                Button("Change colour…") { colouring = list.id }
+                                if !model.settings.simpleTasks {
+                                    Button("Change colour…") { colouring = list.id }
+                                }
                                 Button("Archive list") {
                                     if scope == .list(list.id) { scope = .board }
                                     model.archiveTask(list.id)
@@ -499,7 +667,8 @@ private struct TaskSidebar: View {
                     .font(.system(size: 13, weight: selected ? .semibold : .regular))
                     .lineLimit(1)
                 Spacer(minLength: 4)
-                if !open.isEmpty {
+                // Simple tasks keeps one count, Today's; the rest only add up how far behind you feel.
+                if !open.isEmpty, !model.settings.simpleTasks || target == .today {
                     Text("\(open.count)")
                         .font(.system(size: 11, weight: .medium).monospacedDigit())
                         .foregroundStyle(NonnaTheme.secondaryInk)
@@ -552,11 +721,15 @@ private struct NewTodoSheet: View {
     @State private var minutes: Int?
     @State private var due: Date?
     @FocusState private var focused: Bool
+    @State private var showsDetails = false
+    /// Simple tasks: name, list and day only; length and colour wait behind "More".
+    let simple: Bool
     let onDone: () -> Void
 
-    init(listID: UUID?, due: Date?, onDone: @escaping () -> Void) {
+    init(listID: UUID?, due: Date?, simple: Bool = false, onDone: @escaping () -> Void) {
         _listID = State(initialValue: listID)
         _due = State(initialValue: due)
+        self.simple = simple
         self.onDone = onDone
     }
 
@@ -584,7 +757,9 @@ private struct NewTodoSheet: View {
                             listID = listID == list.id ? nil : list.id
                         }
                     }
-                    if makingList {
+                    if simple {
+                        EmptyView()
+                    } else if makingList {
                         TextField("List name", text: $newListName)
                             .textFieldStyle(.roundedBorder)
                             .frame(width: 160)
@@ -609,7 +784,7 @@ private struct NewTodoSheet: View {
                 }
             }
 
-            if let list = model.tasks.first(where: { $0.id == listID }) {
+            if !simple, let list = model.tasks.first(where: { $0.id == listID }) {
                 field("\(list.name) colour") {
                     ListColorPicker(hex: Binding(
                         get: { list.colorHex },
@@ -618,18 +793,27 @@ private struct NewTodoSheet: View {
                 }
             }
 
-            field("How long will it take?") {
-                LengthChips(selected: minutes) { minutes = $0 }
-            }
-
             field("When is it due?") {
                 DueChips(selected: due) { due = $0 }
+            }
+
+            if !simple || showsDetails {
+                field("How long will it take?") {
+                    LengthChips(selected: minutes) { minutes = $0 }
+                }
             }
 
             HStack {
                 Button("Cancel", action: onDone)
                     .buttonStyle(NonnaButtonStyle(prominent: false))
                     .keyboardShortcut(.cancelAction)
+                if simple, !showsDetails {
+                    Button("How long it takes…") { showsDetails = true }
+                        .buttonStyle(.plain)
+                        .font(.system(size: 12))
+                        .foregroundStyle(NonnaTheme.secondaryInk)
+                        .padding(.leading, 8)
+                }
                 Spacer()
                 Button("Add task", action: add)
                     .buttonStyle(NonnaButtonStyle())
@@ -680,6 +864,8 @@ private struct QuickAddBar: View {
     @Environment(AppModel.self) private var model
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let scope: TaskScope
+    /// Just a name and Return; typed shortcuts like "1h" or "tomorrow" still work.
+    var simple = false
     /// The new task's id, and whether it already has a length.
     let onAdd: (UUID, Bool) -> Void
     @State private var text = ""
@@ -688,7 +874,7 @@ private struct QuickAddBar: View {
     @State private var listID: UUID?
     @FocusState private var focused: Bool
 
-    private var expanded: Bool { !text.isEmpty }
+    private var expanded: Bool { !text.isEmpty && !simple }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -701,7 +887,7 @@ private struct QuickAddBar: View {
                     .font(.system(size: 14))
                     .focused($focused)
                     .onSubmit(add)
-                if expanded {
+                if !text.isEmpty {
                     Text("Return to add")
                         .font(.system(size: 10))
                         .foregroundStyle(NonnaTheme.secondaryInk)
@@ -1009,7 +1195,7 @@ private struct GroupHeader: View {
             Text(group.title)
                 .font(.system(size: 10, weight: .semibold).monospacedDigit())
                 .foregroundStyle(group.color == NonnaTheme.alert ? NonnaTheme.alert : NonnaTheme.secondaryInk)
-            if left > 0 {
+            if left > 0, !model.settings.simpleTasks {
                 Text("\(left.minutesString) left")
                     .font(.system(size: 10).monospacedDigit())
                     .foregroundStyle(NonnaTheme.secondaryInk.opacity(0.8))
@@ -1051,7 +1237,9 @@ private struct TodoRow: View {
                         InlineTitleField(todo: todo, size: 14, weight: .medium)
                     }
                     HStack(spacing: 10) {
-                        TaskProgress(todo: todo, tint: tint)
+                        if todo.minutes != nil || !todo.steps.isEmpty || model.stats(for: todo.id).seconds >= 60 {
+                            TaskProgress(todo: todo, tint: tint)
+                        }
                         if showsList, let list {
                             HStack(spacing: 4) {
                                 Circle().fill(tint).frame(width: 5, height: 5)
@@ -1108,6 +1296,7 @@ private struct TodoRow: View {
 }
 
 private struct DueText: View {
+    @Environment(AppModel.self) private var model
     let todo: TodoItem
     let label: String
 
@@ -1115,7 +1304,7 @@ private struct DueText: View {
         let bucket = DueBucket.of(todo.due)
         Text(label)
             .font(.system(size: 11, weight: bucket.rawValue <= DueBucket.tomorrow.rawValue ? .semibold : .regular))
-            .foregroundStyle(todo.isDone ? NonnaTheme.secondaryInk : bucket == .overdue ? NonnaTheme.alert : bucket == .today ? NonnaTheme.terracotta : NonnaTheme.secondaryInk)
+            .foregroundStyle(todo.isDone ? NonnaTheme.secondaryInk : bucket == .overdue && !model.settings.simpleTasks ? NonnaTheme.alert : bucket == .today ? NonnaTheme.terracotta : NonnaTheme.secondaryInk)
     }
 }
 
@@ -1398,7 +1587,7 @@ private struct BoardCard: View {
 
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 10) {
-                if let list {
+                if let list, !model.settings.simpleTasks {
                     Button { pickingColor = true } label: {
                         Circle().fill(tint).frame(width: 12, height: 12)
                             .padding(4)
@@ -1439,7 +1628,7 @@ private struct BoardCard: View {
                         .lineLimit(1)
                 }
                 Spacer(minLength: 6)
-                Text(open.isEmpty ? "All done" : "\(open.count) to do\(left > 0 ? ", \(left.minutesString)" : "")")
+                Text(open.isEmpty ? "All done" : "\(open.count) to do\(left > 0 && !model.settings.simpleTasks ? ", \(left.minutesString)" : "")")
                     .font(.system(size: 11, weight: .medium).monospacedDigit())
                     .foregroundStyle(NonnaTheme.secondaryInk)
                     .padding(.horizontal, 8)
@@ -1448,7 +1637,9 @@ private struct BoardCard: View {
                 if let list {
                     Menu {
                         Button("Rename") { naming = true }
-                        Button("Change colour…") { pickingColor = true }
+                        if !model.settings.simpleTasks {
+                            Button("Change colour…") { pickingColor = true }
+                        }
                         Button("Archive list") { model.archiveTask(list.id) }
                         Divider()
                         Button("Delete list…", role: .destructive) { model.confirmDeleteList(list.id) }
@@ -1540,7 +1731,7 @@ private struct BoardCard: View {
         let id = model.addTodo(parsed, defaultList: list?.id, defaultDue: nil)
         text = ""
         adding = true
-        if parsed.minutes == nil {
+        if parsed.minutes == nil, !model.settings.simpleTasks {
             withAnimation(reduceMotion ? nil : NonnaMotion.selection) { promptID = id }
         }
     }

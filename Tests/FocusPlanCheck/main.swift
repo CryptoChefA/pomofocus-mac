@@ -141,4 +141,12 @@ let splitProgress = splitPlan.progress(sessions: splitBlocks, calendar: calendar
 check(splitProgress.attempts == 4 && splitProgress.fullBlocks == 4, "split blocks count once, at full length")
 check(FocusSession.mergedBlocks(splitBlocks).count == 4, "parts merge back into blocks")
 
+// Simple tasks is on for data saved before it existed, and a choice to turn it off sticks.
+let oldSettings = try! JSONDecoder().decode(NonnaSettings.self, from: Data("{}".utf8))
+check(oldSettings.simpleTasks, "simple tasks defaults on for older data")
+var detailed = NonnaSettings()
+detailed.simpleTasks = false
+let roundTrip = try! JSONDecoder().decode(NonnaSettings.self, from: try! JSONEncoder().encode(detailed))
+check(!roundTrip.simpleTasks, "turning simple tasks off is saved")
+
 print("Focus plan checks passed")

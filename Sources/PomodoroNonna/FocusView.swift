@@ -5,6 +5,9 @@ struct FocusView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var showingNewTask = false
     @AppStorage("pomofocus.timelineCollapsed") private var timelineCollapsed = false
+    /// Simple tasks folds the planner away while a focus block runs; this remembers that it
+    /// was the app, not you, so it comes back when the block ends.
+    @AppStorage("pomofocus.timelineAutoCollapsed") private var timelineAutoCollapsed = false
     @Environment(\.compactLayout) private var compact
     /// On a narrow window the timeline slides out over the timer instead of beside it.
     @State private var timelineDrawerOpen = false
@@ -82,7 +85,7 @@ struct FocusView: View {
                     }
 
                     VStack(spacing: 13) {
-                        Text("What's your focus?")
+                        Text(isFocusing && model.settings.simpleTasks ? "Just this, for now" : "What's your focus?")
                             .font(.system(size: 28, weight: .semibold))
                         focusSetup
                     }
@@ -136,6 +139,8 @@ struct FocusView: View {
                 }
             }
         }
+        .onAppear(perform: foldPlannerWhileFocusing)
+        .onChange(of: model.status) { _, _ in foldPlannerWhileFocusing() }
         .onChange(of: compact) { _, isCompact in
             if !isCompact { timelineDrawerOpen = false }
         }
@@ -145,6 +150,23 @@ struct FocusView: View {
         }
         .onChange(of: model.intention) { _, _ in model.persistDraft() }
         .onChange(of: model.note) { _, _ in model.persistDraft() }
+    }
+
+    private var isFocusing: Bool { model.status != .idle && model.phase == .focus }
+
+    /// With simple tasks, the day planner steps aside during a focus block so starting
+    /// doesn't open another thing to arrange. Opening it by hand mid-block is left alone.
+    private func foldPlannerWhileFocusing() {
+        guard !compact else { return }
+        if isFocusing, model.settings.simpleTasks {
+            if !timelineCollapsed, !timelineAutoCollapsed {
+                timelineAutoCollapsed = true
+                toggleTimeline()
+            }
+        } else if model.status == .idle, timelineAutoCollapsed {
+            timelineAutoCollapsed = false
+            if timelineCollapsed { toggleTimeline() }
+        }
     }
 
     private func toggleDrawer() {

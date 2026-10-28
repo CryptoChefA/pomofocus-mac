@@ -64,6 +64,9 @@ struct RootView: View {
         }
         .foregroundStyle(NonnaTheme.ink)
         .tint(NonnaTheme.terracotta)
+        .onChange(of: model.focusScreenRequest) { _, _ in
+            withAnimation(reduceMotion ? nil : NonnaMotion.page) { selection = .focus }
+        }
         .onOpenURL { url in
             // pomofocus://focus, from a click on the desktop widget.
             if url.host == "focus" { selection = .focus }

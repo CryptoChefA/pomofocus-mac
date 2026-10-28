@@ -219,6 +219,11 @@ struct SettingsView: View {
                 }
             }
             ToggleRow(
+                title: "Keep tasks simple",
+                subtitle: "Tasks shows what's next, not everything at once, and nudges you to start after a few minutes of planning",
+                binding: settingsBinding(\.simpleTasks)
+            )
+            ToggleRow(
                 title: "Timer cues",
                 subtitle: "Gentle cues for starts, pauses, and endings",
                 binding: settingsBinding(\.playSounds)

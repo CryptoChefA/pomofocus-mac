@@ -804,6 +804,9 @@ final class AppModel {
     /// A task picked while another one's block was running; it's linked when that block ends.
     var queuedTodoID: UUID?
 
+    /// Bumped to ask the window to show the timer, e.g. after starting a task from Tasks.
+    var focusScreenRequest = 0
+
     func unlinkTodo() {
         selectedTodoID = nil
         if status == .idle { persistDraft() }

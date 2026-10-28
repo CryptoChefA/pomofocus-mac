@@ -254,6 +254,9 @@ struct NonnaSettings: Codable, Equatable, Sendable {
     var savedThemes: [SharedTheme] = []
     /// How the end of a session is celebrated.
     var celebrationStyle: CelebrationStyle = .confetti
+    /// Tasks shows what's next instead of everything at once, adding a task asks only for
+    /// its name, and after a few minutes of planning the app suggests starting.
+    var simpleTasks = true
     /// A `ThemeChoice` raw value.
     var themeID = ThemeChoice.obsidian.rawValue
     var customTheme = CustomThemeSpec()
@@ -267,7 +270,7 @@ struct NonnaSettings: Codable, Equatable, Sendable {
         case ambientSound, ambientVolume, showInMenuBar
         case showCalendarEvents, hiddenCalendarIDs, overtimeAlert
         case celebrateSessions, themeID, customTheme, hasCompletedOnboarding
-        case pauseWhenAway, awayMinutes, rateFocus, savedThemes, celebrationStyle
+        case pauseWhenAway, awayMinutes, rateFocus, savedThemes, celebrationStyle, simpleTasks
     }
 
     init() {}
@@ -303,6 +306,7 @@ struct NonnaSettings: Codable, Equatable, Sendable {
         rateFocus = try values.decodeIfPresent(RatingTiming.self, forKey: .rateFocus) ?? .endOfSession
         savedThemes = try values.decodeIfPresent([SharedTheme].self, forKey: .savedThemes) ?? []
         celebrationStyle = try values.decodeIfPresent(CelebrationStyle.self, forKey: .celebrationStyle) ?? .confetti
+        simpleTasks = try values.decodeIfPresent(Bool.self, forKey: .simpleTasks) ?? true
         themeID = try values.decodeIfPresent(String.self, forKey: .themeID) ?? ThemeChoice.obsidian.rawValue
         customTheme = try values.decodeIfPresent(CustomThemeSpec.self, forKey: .customTheme) ?? CustomThemeSpec()
         hasCompletedOnboarding = try values.decodeIfPresent(Bool.self, forKey: .hasCompletedOnboarding) ?? true
@@ -317,6 +321,7 @@ struct NonnaSettings: Codable, Equatable, Sendable {
         try values.encode(rateFocus, forKey: .rateFocus)
         try values.encode(savedThemes, forKey: .savedThemes)
         try values.encode(celebrationStyle, forKey: .celebrationStyle)
+        try values.encode(simpleTasks, forKey: .simpleTasks)
         try values.encode(themeID, forKey: .themeID)
         try values.encode(customTheme, forKey: .customTheme)
         try values.encode(hasCompletedOnboarding, forKey: .hasCompletedOnboarding)
