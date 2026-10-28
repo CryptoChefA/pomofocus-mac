@@ -14,6 +14,12 @@ enum WhatsNew {
 
     /// Newest first. Add an entry with every release.
     static let releases: [(version: String, items: [Item])] = [
+        ("0.22.4", [
+            Item(icon: "tray.and.arrow.down", title: "Your work, now in Tasks", detail: "Pomofocus offers to turn what you've been focusing on, and your lists, into tasks. You pick which."),
+            Item(icon: "circle.inset.filled", title: "Rate a session in one click", detail: "When you end a session, just pick how it felt, from Scattered to Flow. No writing."),
+            Item(icon: "rectangle.on.rectangle", title: "The widget is back", detail: "Pomofocus shows up in Edit Widgets again, with your timer in three sizes."),
+            Item(icon: "timer", title: "Update mid-pomodoro", detail: "Your timer keeps running through an update, and nothing pops up until the block ends."),
+        ]),
         ("0.22.3", [
             Item(icon: "leaf", title: "Tasks, kept simple", detail: "Tasks opens on one thing to do now, with a Start button. The rest of today folds away until you want it."),
             Item(icon: "text.cursor", title: "Add a task, then get going", detail: "Type it and press Return. No length, colour or list to choose unless you want to."),

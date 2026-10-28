@@ -21,7 +21,12 @@ let package = Package(
         .executableTarget(
             name: "PomofocusWidget",
             dependencies: ["PomofocusShared"],
-            path: "Sources/PomofocusWidget"
+            path: "Sources/PomofocusWidget",
+            // Link it as an app extension with the system's extension entry point, as Xcode
+            // does. Without it the widget starts, finds no extension context and quits, so
+            // it never shows in the widget gallery.
+            swiftSettings: [.unsafeFlags(["-application-extension"])],
+            linkerSettings: [.unsafeFlags(["-Xlinker", "-e", "-Xlinker", "_NSExtensionMain", "-Xlinker", "-application_extension"])]
         )
     ]
 )

@@ -32,6 +32,8 @@ final class Updater {
     var showsWhatsNew = false
     /// Saves the user's data before the app quits to update. Set by the app at launch.
     @ObservationIgnored var prepareToQuit: (() async -> Bool)?
+    /// Whether a block is running, so the update can say the timer carries on through it.
+    @ObservationIgnored var timerIsRunning: (() -> Bool)?
 
     static let releasesPage = URL(string: "https://github.com/CryptoChefA/pomofocus-mac/releases/latest")!
     private static let latestAPI = URL(string: "https://api.github.com/repos/CryptoChefA/pomofocus-mac/releases/latest")!
@@ -236,7 +238,9 @@ struct UpdateSheet: View {
         VStack(alignment: .leading, spacing: 18) {
             switch updater.phase {
             case .available(let release):
-                header("Pomofocus \(release.version) is ready", "You have \(updater.currentVersion). Your sessions, tasks and settings stay exactly as they are.")
+                header("Pomofocus \(release.version) is ready", updater.timerIsRunning?() == true
+                       ? "You have \(updater.currentVersion). Your timer keeps running through the update, and your sessions, tasks and settings stay exactly as they are."
+                       : "You have \(updater.currentVersion). Your sessions, tasks and settings stay exactly as they are.")
                 if !release.notes.isEmpty {
                     ScrollView {
                         Text(Self.markdown(release.notes))
@@ -261,7 +265,9 @@ struct UpdateSheet: View {
                 header("Checking for updates…", nil)
                 ProgressView().controlSize(.small)
             case .downloading, .installing:
-                header(updater.phase == .downloading ? "Downloading…" : "Installing…", "Pomofocus will close and reopen on its own in a moment.")
+                header(updater.phase == .downloading ? "Downloading…" : "Installing…", updater.timerIsRunning?() == true
+                       ? "Pomofocus will close and reopen on its own in a moment. Your timer keeps counting."
+                       : "Pomofocus will close and reopen on its own in a moment.")
                 ProgressView().controlSize(.small)
             case .upToDate:
                 header("You're up to date", "Pomofocus \(updater.currentVersion) is the newest version.")

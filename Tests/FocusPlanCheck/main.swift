@@ -149,4 +149,43 @@ detailed.simpleTasks = false
 let roundTrip = try! JSONDecoder().decode(NonnaSettings.self, from: try! JSONEncoder().encode(detailed))
 check(!roundTrip.simpleTasks, "turning simple tasks off is saved")
 
+// Past work offered as tasks after updating.
+let law = FocusTask(name: "Law", colorHex: "#AA5533")
+let bio = FocusTask(name: "Biology", colorHex: "#33AA55")
+let gone = FocusTask(name: "Old", colorHex: "#999999", isArchived: true)
+func worked(_ name: String, _ list: FocusTask?, day: Int, minutes: Int = 25, block: UUID? = nil) -> FocusSession {
+    var item = session(day: day, minutes: minutes)
+    item.intention = name
+    item.taskID = list?.id
+    item.blockID = block
+    return item
+}
+let shared = UUID()
+let past = [
+    worked("Case brief", law, day: 0), worked("CASE  brief ", law, day: 1), worked("case brief", bio, day: 2, minutes: 5),
+    worked("Lab report", bio, day: 3, block: shared), worked("Lab report", law, day: 3, minutes: 5, block: shared),
+    worked("Flashcards", gone, day: 4), worked("Clean room", nil, day: 5), worked("   ", law, day: 6),
+    worked("Essay", law, day: 7),
+]
+var renamed = worked("Vocab", nil, day: 6)
+renamed.taskName = "biology"
+let soon = start.addingTimeInterval(8 * 86_400)
+let offered = WorkImport.suggestions(sessions: past + [renamed], lists: [law, bio, gone], todos: [TodoItem(title: "essay")], now: soon)
+let brief = offered.first { WorkImport.key($0.title) == "case brief" }
+check(offered.filter { $0.source == .workedOn }.map(\.title).first == "Vocab", "the newest work comes first")
+check(offered.first { $0.title == "Vocab" }?.listID == bio.id, "a block whose list was remade finds it by name")
+let later = WorkImport.suggestions(sessions: past, lists: [law], todos: [], now: soon.addingTimeInterval(30 * 86_400))
+check(later.first { WorkImport.key($0.title) == "case brief" }?.startsPicked == false, "work from weeks ago starts unticked")
+check(brief?.blocks == 3 && brief?.listID == law.id, "spellings merge, filed under the list with the most time")
+check(offered.first { $0.title == "Lab report" }?.blocks == 1, "a block split across lists counts once")
+check(offered.first { $0.title == "Flashcards" }?.listID == nil, "an archived list isn't used")
+check(!offered.contains { WorkImport.key($0.title) == "essay" }, "work already in Tasks isn't offered again")
+check(!offered.contains { $0.title.trimmingCharacters(in: .whitespaces).isEmpty }, "blank names are skipped")
+check(offered.first { $0.title == "Clean room" }?.startsPicked == false, "one-off work starts unticked")
+check(brief?.startsPicked == true, "repeated work starts ticked")
+let busy = (0..<8).flatMap { n in [worked("Topic \(n)", law, day: 1), worked("Topic \(n)", law, day: 2)] }
+check(WorkImport.suggestions(sessions: busy, lists: [], todos: [], now: soon).filter(\.startsPicked).count == 5,
+      "at most five pieces of work start ticked")
+check(offered.filter { $0.source == .list }.map(\.title) == ["Law", "Biology"], "open lists are offered, archived ones aren't")
+
 print("Focus plan checks passed")

@@ -25,6 +25,7 @@ struct RootView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var selection: AppSection = .focus
+    @State private var workSuggestions: [WorkSuggestion] = []
 
     var body: some View {
         ZStack {
@@ -105,6 +106,7 @@ struct RootView: View {
         }
         .task {
             Updater.shared.prepareToQuit = { [model] in await model.flushForQuit() }
+            Updater.shared.timerIsRunning = { [model] in model.status != .idle }
             // Decide about onboarding vs What's new only once the data has loaded.
             while !model.hasLoaded, model.storageError == nil {
                 try? await Task.sleep(for: .milliseconds(100))
@@ -113,16 +115,25 @@ struct RootView: View {
             let defaults = UserDefaults.standard
             let current = Updater.shared.currentVersion
             if model.needsOnboarding {
-                // A fresh install has nothing "new" to announce.
+                // A fresh install has nothing "new" to announce, and no past work to bring in.
                 defaults.set(current, forKey: WhatsNew.lastSeenKey)
+                defaults.set(true, forKey: WorkImport.offeredKey)
             } else if defaults.string(forKey: WhatsNew.lastSeenKey) != current {
                 defaults.set(current, forKey: WhatsNew.lastSeenKey)
                 // After the welcome greeting has had its moment.
                 try? await Task.sleep(for: .seconds(2.6))
+                await waitForTimerToRest()
                 Updater.shared.showsWhatsNew = true
+                while Updater.shared.showsWhatsNew { try? await Task.sleep(for: .milliseconds(300)) }
+                await offerWorkImport()
                 return
             }
+            await offerWorkImport()
             await Updater.shared.checkAutomaticallyIfDue()
+        }
+        .sheet(isPresented: Binding(get: { !workSuggestions.isEmpty }, set: { if !$0 { workSuggestions = [] } })) {
+            WorkImportSheet(suggestions: workSuggestions) { workSuggestions = [] }
+                .environment(model)
         }
         .sheet(item: Bindable(model).reflectionSession) { session in
             ReflectionView(session: session)
@@ -136,6 +147,31 @@ struct RootView: View {
         } message: {
             Text(model.storageError ?? "Unknown error")
         }
+    }
+}
+
+extension RootView {
+    /// Holds off while a block runs, so nothing pops up over the timer, e.g. right after
+    /// updating in the middle of a pomodoro.
+    private func waitForTimerToRest() async {
+        while model.status != .idle || model.isBreathing {
+            try? await Task.sleep(for: .seconds(1))
+        }
+    }
+
+    /// Once, after updating: offer to turn what's already been timed into tasks.
+    private func offerWorkImport() async {
+        let defaults = UserDefaults.standard
+        guard !defaults.bool(forKey: WorkImport.offeredKey) else { return }
+        let found = WorkImport.suggestions(sessions: model.sessions, lists: model.tasks, todos: model.todos)
+        guard !found.isEmpty else {
+            defaults.set(true, forKey: WorkImport.offeredKey)
+            return
+        }
+        try? await Task.sleep(for: .seconds(1))
+        await waitForTimerToRest()
+        defaults.set(true, forKey: WorkImport.offeredKey)
+        workSuggestions = found
     }
 }
 

@@ -633,6 +633,13 @@ final class AppModel {
         save()
     }
 
+    /// Adds tasks picked from past work, each in the list it was timed in.
+    func addTodos(fromWork picks: [WorkSuggestion]) {
+        guard !picks.isEmpty else { return }
+        data.todos = todos + picks.map { TodoItem(title: $0.title, listID: $0.listID) }
+        save()
+    }
+
     func updateTodo(_ id: UUID, _ mutate: (inout TodoItem) -> Void) {
         guard var list = data.todos, let index = list.firstIndex(where: { $0.id == id }) else { return }
         let oldTitle = list[index].title

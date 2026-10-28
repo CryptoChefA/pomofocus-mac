@@ -113,7 +113,7 @@ The current command-line Swift installation does not bundle XCTest, so the core 
 mkdir -p .build/checks
 swiftc Sources/PomodoroNonna/Models.swift Sources/PomodoroNonna/TodoModels.swift Sources/PomodoroNonna/FocusPlan.swift Sources/PomodoroNonna/FocusScience.swift Sources/PomodoroNonna/ThemePalette.swift Sources/PomodoroNonna/Insights.swift Sources/PomodoroNonna/DeepDiveAnalytics.swift Tests/AnalyticsCheck/main.swift -o .build/checks/analytics-check
 .build/checks/analytics-check
-swiftc Sources/PomodoroNonna/Models.swift Sources/PomodoroNonna/TodoModels.swift Sources/PomodoroNonna/FocusPlan.swift Sources/PomodoroNonna/FocusScience.swift Sources/PomodoroNonna/ThemePalette.swift Tests/FocusPlanCheck/main.swift -o .build/checks/focus-plan-check
+swiftc Sources/PomodoroNonna/Models.swift Sources/PomodoroNonna/TodoModels.swift Sources/PomodoroNonna/FocusPlan.swift Sources/PomodoroNonna/FocusScience.swift Sources/PomodoroNonna/ThemePalette.swift Sources/PomodoroNonna/WorkImport.swift Tests/FocusPlanCheck/main.swift -o .build/checks/focus-plan-check
 .build/checks/focus-plan-check
 swiftc Sources/PomodoroNonna/ThemePalette.swift Sources/PomodoroNonna/ThemeCodes.swift Tests/ThemeCheck/main.swift -o .build/checks/theme-check
 .build/checks/theme-check
