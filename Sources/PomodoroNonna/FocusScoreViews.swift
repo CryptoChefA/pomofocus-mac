@@ -221,7 +221,7 @@ struct FocusScoreDetail: View {
                             Label {
                                 Text("Biggest lift: \(weakest.title.lowercased()). \(weakest.tip)")
                             } icon: {
-                                Image(systemName: "sparkle")
+                                Image(systemName: "arrow.up.forward")
                             }
                             .font(.system(size: 12))
                             .foregroundStyle(NonnaTheme.terracotta)

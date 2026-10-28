@@ -61,7 +61,7 @@ struct TasksView: View {
                 VStack(alignment: .leading, spacing: 20) {
                     header
                     if let planMessage {
-                        Label(planMessage, systemImage: "wand.and.stars")
+                        Label(planMessage, systemImage: "calendar.badge.checkmark")
                             .font(.system(size: 12))
                             .foregroundStyle(NonnaTheme.secondaryInk)
                             .task(id: planMessage) {
@@ -237,7 +237,7 @@ struct TasksView: View {
         Button {
             planDay()
         } label: {
-            Label("Plan my day", systemImage: "wand.and.stars")
+            Label("Plan my day", systemImage: "calendar.badge.clock")
         }
         .buttonStyle(NonnaButtonStyle(prominent: false))
         .help("Fit what's due today into your free time on the timeline")

@@ -711,7 +711,7 @@ private struct PlanIntro: View {
 
             HStack(spacing: 14) {
                 Button(action: onBegin) {
-                    Label("Build my plan", systemImage: "sparkles")
+                    Label("Build my plan", systemImage: "list.bullet.clipboard")
                 }
                 .buttonStyle(NonnaButtonStyle())
                 .keyboardShortcut(.defaultAction)

@@ -609,7 +609,7 @@ struct DayTimelineView: View {
                             model.planDay(selectedDay, busy: busy)
                         }
                     } label: {
-                        Label("Plan my day", systemImage: "wand.and.stars")
+                        Label("Plan my day", systemImage: "calendar.badge.clock")
                             .font(.system(size: 11, weight: .semibold))
                     }
                     .buttonStyle(.plain)

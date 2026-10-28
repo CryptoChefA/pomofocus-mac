@@ -1,3 +1,5 @@
+import AppKit
+import QuartzCore
 import SwiftUI
 
 // MARK: - Autumn
@@ -119,99 +121,276 @@ struct Snowflake: Shape {
 
 /// Frost that lives: crystals grow in from two corners the way ice spreads over a cold
 /// window, hold with a faint shimmer, thaw back from their tips, and grow again in a new
-/// pattern. The crystals are one shape driven by one value, so a frame of growth is a
-/// few hundred short lines; the shimmer is a layer's opacity, which costs nothing. The
-/// cycle rests while the window is in the background, and with Reduce Motion the frost
-/// simply stays.
-private struct FrostCorners: View {
+/// pattern. Core Animation does the moving: the finished crystals sit behind a mask made
+/// of one short stroke per line, and the window server lengthens each mask stroke along
+/// its line, so growing and thawing cost the app nothing per frame. The cycle rests while
+/// the window is in the background, and with Reduce Motion the frost simply stays.
+private struct FrostCorners: NSViewRepresentable {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.controlActiveState) private var activeState
-    @State private var growth = 0.0
-    @State private var shimmer = false
-    @State private var seed: UInt64 = 77
 
-    private var resting: Bool { reduceMotion || activeState == .inactive }
+    func makeNSView(context: Context) -> FrostView { FrostView() }
 
-    var body: some View {
-        GeometryReader { proxy in
-            // Each corner draws in a square of its own, so a frame of growth only touches
-            // the corners, never a window-sized layer.
-            let scale = max(0.7, min(1.3, min(proxy.size.width, proxy.size.height) / 820))
-            let extent = min(470 * scale, min(proxy.size.width, proxy.size.height))
-            ZStack {
-                FrostCorner(pattern: FrostPattern(extent: extent, scale: scale, corner: .topLeading, seed: seed),
-                            growth: growth, shimmer: shimmer)
-                    .frame(width: extent, height: extent)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                FrostCorner(pattern: FrostPattern(extent: extent, scale: scale, corner: .bottomTrailing, seed: seed &+ 11),
-                            growth: growth, shimmer: shimmer)
-                    .frame(width: extent, height: extent)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
-            }
+    func updateNSView(_ view: FrostView, context: Context) {
+        view.mode = reduceMotion ? .still : activeState == .inactive ? .resting : .living
+    }
+}
+
+@MainActor
+private final class FrostView: NSView {
+    enum Mode { case living, resting, still }
+
+    var mode: Mode = .living {
+        didSet { if mode != oldValue { restart() } }
+    }
+
+    private var corners: [FrostCorner] = []
+    private var seed: UInt64 = 77
+    private var laidOut = CGSize.zero
+    private var cycle: Task<Void, Never>?
+
+    override init(frame: NSRect) {
+        super.init(frame: frame)
+        wantsLayer = true
+        layer?.masksToBounds = true
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) { nil }
+
+    override var isFlipped: Bool { true }
+    override func hitTest(_ point: NSPoint) -> NSView? { nil }
+
+    override func layout() {
+        super.layout()
+        guard bounds.size != laidOut, bounds.width > 0, bounds.height > 0 else { return }
+        laidOut = bounds.size
+        rebuild(keepingProgress: true)
+        restart()
+    }
+
+    override func viewDidChangeBackingProperties() {
+        super.viewDidChangeBackingProperties()
+        let scale = window?.backingScaleFactor ?? 2
+        for corner in corners { corner.setContentsScale(scale) }
+    }
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        if window == nil {
+            cycle?.cancel()
+            cycle = nil
+        } else {
+            viewDidChangeBackingProperties()
+            restart()
         }
-        .task(id: resting) {
-            if reduceMotion {
-                var still = Transaction()
-                still.disablesAnimations = true
-                withTransaction(still) {
-                    growth = 1
-                    shimmer = false
+    }
+
+    /// Lays the two corners out for the current size. The same seed gives the same lines,
+    /// so after a resize each line carries on from where it was.
+    private func rebuild(keepingProgress: Bool) {
+        let size = bounds.size
+        let scale = max(0.7, min(1.3, min(size.width, size.height) / 820))
+        let extent = min(470 * scale, min(size.width, size.height))
+        let previous = keepingProgress ? corners : []
+        for corner in corners { corner.container.removeFromSuperlayer() }
+        let placed = [
+            (FrostPattern.Corner.topLeading, CGRect(x: 0, y: 0, width: extent, height: extent), seed),
+            (FrostPattern.Corner.bottomTrailing, CGRect(x: size.width - extent, y: size.height - extent, width: extent, height: extent), seed &+ 11),
+        ]
+        corners = placed.enumerated().map { index, place in
+            let corner = FrostCorner(pattern: FrostPattern(extent: extent, scale: scale, corner: place.0, seed: place.2), frame: place.1)
+            if index < previous.count { corner.copyProgress(from: previous[index]) }
+            corner.setContentsScale(window?.backingScaleFactor ?? 2)
+            layer?.addSublayer(corner.container)
+            return corner
+        }
+    }
+
+    private func restart() {
+        cycle?.cancel()
+        cycle = nil
+        guard !corners.isEmpty, window != nil else { return }
+        switch mode {
+        case .still:
+            for corner in corners { corner.stay() }
+        case .resting:
+            // Finish growing if need be, then hold: the shimmer stops so nothing keeps
+            // moving in a window nobody is looking at.
+            for corner in corners {
+                corner.shimmer(false, over: 0.6)
+                corner.reveal(to: 1, over: 9, curve: .easeOut)
+            }
+        case .living:
+            cycle = Task { @MainActor [weak self] in
+                while let self, !Task.isCancelled {
+                    for corner in corners { corner.reveal(to: 1, over: 9, curve: .easeOut) }
+                    try? await Task.sleep(for: .seconds(9))
+                    guard !Task.isCancelled else { return }
+                    for corner in corners { corner.shimmer(true) }
+                    try? await Task.sleep(for: .seconds(16))
+                    guard !Task.isCancelled else { return }
+                    for corner in corners {
+                        corner.shimmer(false, over: 1)
+                        corner.reveal(to: 0, over: 5, curve: .easeIn)
+                    }
+                    try? await Task.sleep(for: .seconds(5.3))
+                    guard !Task.isCancelled else { return }
+                    // A fresh pattern, still folded into the corner, ready to grow.
+                    seed = seed &* 6364136223846793005 &+ 1442695040888963407
+                    rebuild(keepingProgress: false)
+                    try? await Task.sleep(for: .seconds(0.8))
                 }
-                return
-            }
-            if activeState == .inactive {
-                // Finish growing if need be, then hold: the shimmer stops so nothing keeps
-                // moving in a window nobody is looking at.
-                withAnimation(.easeOut(duration: 0.6)) { shimmer = false }
-                withAnimation(.easeOut(duration: 9)) { growth = 1 }
-                return
-            }
-            while !Task.isCancelled {
-                withAnimation(.easeOut(duration: 9)) { growth = 1 }
-                try? await Task.sleep(for: .seconds(9))
-                guard !Task.isCancelled else { return }
-                withAnimation(.easeInOut(duration: 2.8).repeatForever(autoreverses: true)) { shimmer = true }
-                try? await Task.sleep(for: .seconds(16))
-                guard !Task.isCancelled else { return }
-                withAnimation(.easeOut(duration: 1)) { shimmer = false }
-                withAnimation(.easeIn(duration: 5)) { growth = 0 }
-                try? await Task.sleep(for: .seconds(5.3))
-                guard !Task.isCancelled else { return }
-                // A fresh pattern, still folded into the corner, ready to grow.
-                var fresh = Transaction()
-                fresh.disablesAnimations = true
-                withTransaction(fresh) { seed = seed &* 6364136223846793005 &+ 1442695040888963407 }
-                try? await Task.sleep(for: .seconds(0.8))
             }
         }
     }
 }
 
-/// One corner of frost at one stage of growth, in four strokes: a soft halo, fine twigs,
-/// the main crystals, and a brighter copy of the crystals that breathes.
-private struct FrostCorner: View {
+/// One corner of frost: the finished crystals in four strokes (a soft halo, fine twigs,
+/// the main crystals, and a brighter copy of the crystals that breathes), seen through a
+/// mask of one stroke per line that grows and shrinks along it.
+@MainActor
+private final class FrostCorner {
     let pattern: FrostPattern
-    let growth: Double
-    let shimmer: Bool
+    let container = CALayer()
+    private let mask = CALayer()
+    private let shimmer: CAShapeLayer
+    private var reveals: [CAShapeLayer] = []
+    private var everything: [CALayer] { [container, mask, shimmer] + reveals + (container.sublayers ?? []) }
 
-    var body: some View {
-        ZStack {
-            ZStack {
-                FrostShape(pattern: pattern, growth: growth, detail: .all)
-                    .stroke(Color(hex: "BFEAFF").opacity(0.09), style: StrokeStyle(lineWidth: 3.4, lineCap: .round))
-                FrostShape(pattern: pattern, growth: growth, detail: .twigs)
-                    .stroke(Color(hex: "D6F2FF").opacity(0.34), style: StrokeStyle(lineWidth: 0.7, lineCap: .round))
-                FrostShape(pattern: pattern, growth: growth, detail: .trunks)
-                    .stroke(Color(hex: "E9F6FF").opacity(0.5), style: StrokeStyle(lineWidth: 1.1, lineCap: .round))
+    init(pattern: FrostPattern, frame: CGRect) {
+        self.pattern = pattern
+        container.frame = frame
+        let bounds = CGRect(origin: .zero, size: frame.size)
+        mask.frame = bounds
+
+        func strokes(_ keep: (FrostPattern.Segment) -> Bool, _ hex: UInt32, _ alpha: CGFloat, _ width: CGFloat) -> CAShapeLayer {
+            let path = CGMutablePath()
+            for segment in pattern.segments where keep(segment) {
+                path.move(to: segment.start)
+                path.addLine(to: segment.end)
             }
-            // Flattened on the graphics chip, so a frame of growth never rasterises on the CPU.
-            .drawingGroup()
-            if shimmer {
-                FrostShape(pattern: pattern, growth: growth, detail: .trunks)
-                    .stroke(Color.white.opacity(0.22), style: StrokeStyle(lineWidth: 1.6, lineCap: .round))
-                    .transition(.opacity)
-            }
+            let shape = CAShapeLayer()
+            shape.frame = bounds
+            shape.path = path
+            shape.fillColor = nil
+            shape.lineCap = .round
+            shape.lineWidth = width
+            shape.strokeColor = CGColor(srgbRed: CGFloat((hex >> 16) & 0xFF) / 255, green: CGFloat((hex >> 8) & 0xFF) / 255,
+                                        blue: CGFloat(hex & 0xFF) / 255, alpha: alpha)
+            return shape
         }
+        container.addSublayer(strokes({ _ in true }, 0xBFEAFF, 0.09, 3.4))
+        container.addSublayer(strokes({ $0.depth < 2 }, 0xD6F2FF, 0.34, 0.7))
+        container.addSublayer(strokes({ $0.depth >= 2 }, 0xE9F6FF, 0.5, 1.1))
+        shimmer = strokes({ $0.depth >= 2 }, 0xFFFFFF, 0.22, 1.6)
+        shimmer.opacity = 0
+        container.addSublayer(shimmer)
+
+        // Each line is revealed by its own stroke, a touch wider than the halo so the
+        // halo's soft edge comes with it.
+        let margin: CGFloat = 3.5
+        for segment in pattern.segments {
+            let box = CGRect(x: min(segment.start.x, segment.end.x) - margin, y: min(segment.start.y, segment.end.y) - margin,
+                             width: abs(segment.end.x - segment.start.x) + margin * 2, height: abs(segment.end.y - segment.start.y) + margin * 2)
+            let path = CGMutablePath()
+            path.move(to: CGPoint(x: segment.start.x - box.minX, y: segment.start.y - box.minY))
+            path.addLine(to: CGPoint(x: segment.end.x - box.minX, y: segment.end.y - box.minY))
+            let reveal = CAShapeLayer()
+            reveal.frame = box
+            reveal.path = path
+            reveal.fillColor = nil
+            reveal.strokeColor = CGColor(gray: 1, alpha: 1)
+            reveal.lineCap = .round
+            reveal.lineWidth = 4.6
+            reveal.strokeEnd = 0
+            mask.addSublayer(reveal)
+            reveals.append(reveal)
+        }
+        container.mask = mask
+    }
+
+    func setContentsScale(_ scale: CGFloat) {
+        for layer in everything { layer.contentsScale = scale }
+    }
+
+    /// Picks up each line's current reveal from the same pattern laid out at another size.
+    func copyProgress(from other: FrostCorner) {
+        guard other.reveals.count == reveals.count else { return }
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        for (reveal, previous) in zip(reveals, other.reveals) {
+            reveal.strokeEnd = (previous.presentation() ?? previous).strokeEnd
+        }
+        shimmer.opacity = (other.shimmer.presentation() ?? other.shimmer).opacity
+        CATransaction.commit()
+    }
+
+    /// Moves the whole pattern's growth to `target` over `duration`: the ice's reach runs
+    /// along `curve`, and every line grows (or thaws) as the reach passes over it. A line
+    /// never jumps: it keeps what it shows until the moving front catches up with it.
+    func reveal(to target: Double, over duration: TimeInterval, curve: UnitCurve) {
+        let steps = 48
+        let from = 1 - target
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        for (reveal, segment) in zip(reveals, pattern.segments) {
+            let now = (reveal.presentation() ?? reveal).strokeEnd
+            let final = CGFloat(min(1, max(0, (target * pattern.fullReach - segment.reachAtStart) / segment.length)))
+            let values = (0...steps).map { step -> CGFloat in
+                let growth = from + (target - from) * curve.value(at: Double(step) / Double(steps))
+                let grown = CGFloat(min(1, max(0, (growth * pattern.fullReach - segment.reachAtStart) / segment.length)))
+                return target > from ? max(grown, now) : min(grown, now)
+            }
+            reveal.removeAnimation(forKey: "reveal")
+            reveal.strokeEnd = final
+            guard values.contains(where: { $0 != now }) else { continue }
+            let animation = CAKeyframeAnimation(keyPath: "strokeEnd")
+            animation.values = values
+            animation.duration = duration
+            animation.calculationMode = .linear
+            reveal.add(animation, forKey: "reveal")
+        }
+        CATransaction.commit()
+    }
+
+    func shimmer(_ on: Bool, over fade: TimeInterval = 0) {
+        let now = (shimmer.presentation() ?? shimmer).opacity
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        shimmer.removeAnimation(forKey: "breathe")
+        shimmer.opacity = 0
+        if on {
+            let breathe = CABasicAnimation(keyPath: "opacity")
+            breathe.fromValue = now
+            breathe.toValue = 1
+            breathe.duration = 2.8
+            breathe.autoreverses = true
+            breathe.repeatCount = .infinity
+            breathe.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+            shimmer.add(breathe, forKey: "breathe")
+        } else if now > 0, fade > 0 {
+            let settle = CABasicAnimation(keyPath: "opacity")
+            settle.fromValue = now
+            settle.toValue = 0
+            settle.duration = fade
+            settle.timingFunction = CAMediaTimingFunction(name: .easeOut)
+            shimmer.add(settle, forKey: "breathe")
+        }
+        CATransaction.commit()
+    }
+
+    /// Fully grown and still, for Reduce Motion.
+    func stay() {
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        for reveal in reveals {
+            reveal.removeAllAnimations()
+            reveal.strokeEnd = 1
+        }
+        shimmer.removeAllAnimations()
+        shimmer.opacity = 0
+        CATransaction.commit()
     }
 }
 
@@ -263,41 +442,6 @@ struct FrostPattern: Equatable {
             grow(&segments, from: origin, reach: reach + length * t, angle: angle + side * .pi / 3,
                  length: length * (0.26 + random.next() * 0.22), depth: depth - 1, random: &random)
         }
-    }
-}
-
-/// A frost pattern at one stage of growth: every line has grown as far as the ice has
-/// reached, so the whole pattern spreads outward from the corner at once, and thaws back
-/// from the tips when growth falls.
-struct FrostShape: Shape {
-    enum Detail { case all, trunks, twigs }
-
-    let pattern: FrostPattern
-    var growth: Double
-    let detail: Detail
-
-    var animatableData: Double {
-        get { growth }
-        set { growth = newValue }
-    }
-
-    func path(in rect: CGRect) -> Path {
-        var path = Path()
-        let reach = growth * pattern.fullReach
-        for segment in pattern.segments {
-            switch detail {
-            case .all: break
-            case .trunks where segment.depth < 2: continue
-            case .twigs where segment.depth >= 2: continue
-            default: break
-            }
-            let grown = min(1, max(0, (reach - segment.reachAtStart) / segment.length))
-            guard grown > 0 else { continue }
-            path.move(to: segment.start)
-            path.addLine(to: CGPoint(x: segment.start.x + (segment.end.x - segment.start.x) * grown,
-                                     y: segment.start.y + (segment.end.y - segment.start.y) * grown))
-        }
-        return path
     }
 }
 

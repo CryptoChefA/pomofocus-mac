@@ -100,7 +100,7 @@ struct SettingsView: View {
     }
 
     private var experienceSettings: some View {
-        SettingsCard(title: "Experience", icon: "sparkles") {
+        SettingsCard(title: "Experience", icon: "slider.horizontal.3") {
             VStack(alignment: .leading, spacing: 11) {
                 HStack(spacing: 12) {
                     Image(systemName: model.settings.ambientSound.icon)

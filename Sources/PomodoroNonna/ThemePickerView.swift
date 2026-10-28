@@ -96,7 +96,7 @@ private struct SavedThemeSwatch: View {
                                     lineWidth: isSelected ? 2 : (theme.isRare ? 1.2 : 0.8))
                     }
                     .overlay(alignment: .topLeading) {
-                        Label(theme.isRare ? "Rare" : "Shared", systemImage: theme.isRare ? "sparkles" : "person.2")
+                        Label(theme.isRare ? "Rare" : "Shared", systemImage: theme.isRare ? "seal.fill" : "person.2")
                             .font(.system(size: 9, weight: .semibold))
                             .foregroundStyle(theme.isRare ? Color(hex: "1A1408") : .white)
                             .padding(.horizontal, 7)

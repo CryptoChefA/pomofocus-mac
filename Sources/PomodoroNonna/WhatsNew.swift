@@ -19,6 +19,7 @@ enum WhatsNew {
             Item(icon: "circle.inset.filled", title: "Rate a session in one click", detail: "When you end a session, just pick how it felt, from Scattered to Flow. No writing."),
             Item(icon: "rectangle.on.rectangle", title: "The widget is back", detail: "Pomofocus shows up in Edit Widgets again, with your timer in three sizes."),
             Item(icon: "timer", title: "Update mid-pomodoro", detail: "Your timer keeps running through an update, and nothing pops up until the block ends."),
+            Item(icon: "snowflake", title: "Black Ice, lighter", detail: "The frost grows and thaws on the graphics side now, so the theme leaves the processor alone while it moves."),
         ]),
         ("0.22.3", [
             Item(icon: "leaf", title: "Tasks, kept simple", detail: "Tasks opens on one thing to do now, with a Start button. The rest of today folds away until you want it."),
@@ -45,7 +46,7 @@ enum WhatsNew {
             Item(icon: "arrow.up.arrow.down", title: "Arrange the sidebar", detail: "Drag the icons into the order you like. Settings now lives at the bottom."),
             Item(icon: "questionmark.circle", title: "What the numbers mean", detail: "Click the small ? next to any dashboard number for a plain explanation."),
             Item(icon: "waveform", title: "Real sounds", detail: "A real wall clock, rain on a window and ocean waves, plus softer brown and white noise that loop without a seam."),
-            Item(icon: "sparkles", title: "A new breathing flower", detail: "The breaths before a block bloom and fold in your theme's colours."),
+            Item(icon: "camera.macro", title: "A new breathing flower", detail: "The breaths before a block bloom and fold in your theme's colours."),
             Item(icon: "text.cursor", title: "Your intention carries on", detail: "What you're working on stays for the next block until you change it."),
         ]),
     ]

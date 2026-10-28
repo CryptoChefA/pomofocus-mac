@@ -61,7 +61,7 @@ struct FocusView: View {
                         Button {
                             CinematicController.shared.enter(model: model)
                         } label: {
-                            Label("Cinema", systemImage: "sparkles.tv")
+                            Label("Cinema", systemImage: "tv")
                         }
                         .buttonStyle(NonnaButtonStyle(prominent: false))
                         .help("Show the timer full screen (⇧⌘F)")
@@ -349,7 +349,7 @@ struct FocusView: View {
         } else {
             end = now.addingTimeInterval(TimeInterval(model.remainingSeconds))
         }
-        return "\(start.formatted(date: .omitted, time: .shortened)) → \(end.formatted(date: .omitted, time: .shortened))"
+        return (start..<max(end, start)).formatted(date: .omitted, time: .shortened)
     }
 
     /// How often the dial redraws while it runs. The progress ring (r ≈ 123 pt) is the

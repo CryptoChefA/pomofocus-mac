@@ -354,7 +354,7 @@ struct MenuBarTimerView: View {
             Button {
                 CinematicController.shared.enter(model: model)
             } label: {
-                Image(systemName: "sparkles.tv")
+                Image(systemName: "tv")
                     .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(NonnaTheme.secondaryInk)
                     .frame(width: 26, height: 26)
