@@ -14,6 +14,10 @@ enum WhatsNew {
 
     /// Newest first. Add an entry with every release.
     static let releases: [(version: String, items: [Item])] = [
+        ("0.22.2", [
+            Item(icon: "circle.fill", title: "Updates you won't miss", detail: "When a new version is out, a red dot appears on Settings and a banner there lets you update with one click."),
+            Item(icon: "textformat", title: "A cleaner Bespoke", detail: "Bespoke now greets you with just your handwritten note."),
+        ]),
         ("0.22.1", [
             Item(icon: "calendar.day.timeline.left", title: "Plan your day", detail: "Drag tasks onto the timeline, or press Plan my day to fit them into your free time."),
             Item(icon: "checklist", title: "Steps inside tasks", detail: "Break a task into small steps. The next one shows on the timer while you work."),
