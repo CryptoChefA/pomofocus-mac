@@ -170,6 +170,14 @@ The project deliberately starts with a reliable focus and analytics core. Suitab
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) before proposing a change.
 
+## Updating
+
+Your sessions, tasks and settings stay on your Mac and are kept when you update.
+
+- **Version 0.22.1 or newer:** Pomofocus updates itself. When a new version is out it shows **Pomofocus is ready**; click **Update now**. To check yourself, choose **Pomofocus → Check for Updates** or **Settings → Updates → Update Pomofocus**.
+- **Version 0.22.0 or older:** quit Pomofocus, download [Pomofocus.zip](https://github.com/CryptoChefA/pomofocus-mac/releases/latest/download/Pomofocus.zip), unzip it and drag Pomofocus into Applications, choosing **Replace**. From then on it updates itself.
+- **Which version do I have?** The top line of **Settings** says.
+
 ## Theme codes
 
 Anyone can share a custom theme: **Settings → Appearance → Build your theme → Share this theme** copies a code, and pasting it into **Paste a theme code** adds it.

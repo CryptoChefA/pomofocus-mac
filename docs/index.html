@@ -346,10 +346,16 @@ kbd {
 .install { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; max-width: 1200px; margin: 100px auto 0; text-align: left; }
 @media (max-width: 1000px) { .install { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 620px) { .install { grid-template-columns: 1fr; } }
-.install .step { padding: 30px; border-radius: 24px; background: var(--tile); box-shadow: 0 0 0 1px rgba(255,255,255,.07) inset; }
-.install .n { font: 600 13px/1 var(--display); color: var(--gold-2); margin-bottom: 14px; }
-.install h4 { margin: 0 0 8px; font-family: var(--display); font-size: 21px; letter-spacing: -.02em; }
-.install p { margin: 0; color: var(--ink-2); font-size: 15px; }
+.update { max-width: 1200px; margin: 90px auto 0; text-align: left; }
+.update h3 { text-align: center; font-family: var(--display); font-size: 30px; font-weight: 600; letter-spacing: -0.02em; margin: 0 0 10px; }
+.update-lead { color: var(--ink-2); margin: 0 auto 28px; max-width: 640px; text-align: center; }
+.update-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+.update-grid .step p + p { margin-top: 10px; }
+@media (max-width: 1000px) { .update-grid { grid-template-columns: 1fr; } }
+.install .step, .update-grid .step { padding: 30px; border-radius: 24px; background: var(--tile); box-shadow: 0 0 0 1px rgba(255,255,255,.07) inset; }
+.install .n, .update-grid .n { font: 600 13px/1 var(--display); color: var(--gold-2); margin-bottom: 14px; }
+.install h4, .update-grid h4 { margin: 0 0 8px; font-family: var(--display); font-size: 21px; letter-spacing: -.02em; }
+.install p, .update-grid p { margin: 0; color: var(--ink-2); font-size: 15px; }
 .install code { display: block; margin-top: 14px; padding: 12px 14px; border-radius: 12px; background: #000; box-shadow: 0 0 0 1px rgba(255,255,255,.1) inset; font: 12px/1.6 var(--mono); color: var(--gold-2); overflow-x: auto; white-space: pre; cursor: copy; }
 .install code:hover { box-shadow: 0 0 0 1px rgba(201,176,122,.5) inset; }
 
@@ -607,12 +613,22 @@ footer a:hover { color: var(--ink); text-decoration: underline; }
     <div class="step rv d2"><div class="n">Step 3</div><h4>Open it once</h4><p>This build isn't notarized by Apple, so allow it under <b>System Settings → Privacy &amp; Security → Open Anyway</b>, or run:</p><code title="Click to copy" data-copy>xattr -dr com.apple.quarantine /Applications/Pomofocus.app</code></div>
     <div class="step rv d3"><div class="n">Step 4</div><h4>That's it</h4><p>From version 0.22.1 on, Pomofocus updates itself: it lets you know when a new version is out, or choose <b>Pomofocus → Check for Updates</b>. To pass it on, use <b>Settings → Share Pomofocus</b>.</p></div>
   </div>
+
+  <div class="update" id="update">
+    <h3 class="rv">Updating Pomofocus</h3>
+    <p class="update-lead rv d1">Your sessions, tasks, lists and settings are kept on your Mac and stay exactly as they are when you update.</p>
+    <div class="update-grid">
+      <div class="step rv"><div class="n">Version 0.22.1 or newer</div><h4>One click</h4><p>When a new version is out, Pomofocus shows <b>Pomofocus is ready</b>. Click <b>Update now</b>: it downloads, closes and reopens on its own.</p><p>To check yourself, choose <b>Pomofocus → Check for Updates</b>, or <b>Settings → Updates → Update Pomofocus</b>.</p></div>
+      <div class="step rv d1"><div class="n">Version 0.22.0 or older</div><h4>Update once by hand</h4><p>Quit Pomofocus. Download <b>Pomofocus.zip</b> with the button above, unzip it, and drag Pomofocus into Applications. Choose <b>Replace</b>, then open it.</p><p>From then on it updates itself.</p></div>
+      <div class="step rv d2"><div class="n">Not sure which you have?</div><h4>Look in Settings</h4><p>Open <b>Settings</b>: the top line says which version you're on. You can also choose <b>Pomofocus → About Pomofocus</b>.</p></div>
+    </div>
+  </div>
 </section>
 
 <footer>
   <div class="wrap">
     <span>Pomofocus is free, open source software released under the MIT license.</span>
-    <span><a href="https://github.com/CryptoChefA/pomofocus-mac">Source</a> · <a href="https://github.com/CryptoChefA/pomofocus-mac/releases">Releases</a> · <a href="https://github.com/CryptoChefA/pomofocus-mac/issues">Report an issue</a></span>
+    <span><a href="https://github.com/CryptoChefA/pomofocus-mac">Source</a> · <a href="https://github.com/CryptoChefA/pomofocus-mac/releases">Releases</a> · <a href="#update">How to update</a> · <a href="https://github.com/CryptoChefA/pomofocus-mac/issues">Report an issue</a></span>
   </div>
 </footer>
 
