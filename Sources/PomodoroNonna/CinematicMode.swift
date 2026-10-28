@@ -261,26 +261,24 @@ struct CinematicView: View {
     private func topBar(unit: CGFloat) -> some View {
         HStack(alignment: .firstTextBaseline) {
             HStack(spacing: unit * 0.012) {
-                Text("POMOFOCUS")
+                Text("Pomofocus")
                     .foregroundStyle(NonnaTheme.terracotta)
-                Text("·")
-                    .foregroundStyle(NonnaTheme.secondaryInk.opacity(0.6))
-                Text("CINEMA")
+                Text("Cinema")
                     .foregroundStyle(NonnaTheme.secondaryInk)
             }
-            .font(.system(size: max(10, unit * 0.0115), weight: .semibold, design: .monospaced))
+            .font(.system(size: max(10, unit * 0.0115), weight: .semibold).monospacedDigit())
             .tracking(max(1.8, unit * 0.0035))
 
             Spacer()
 
             TimelineView(.everyMinute) { context in
                 HStack(spacing: unit * 0.012) {
-                    Text(context.date.formatted(.dateTime.weekday(.wide).month(.abbreviated).day()).uppercased())
+                    Text(context.date.formatted(.dateTime.weekday(.wide).month(.abbreviated).day()))
                         .foregroundStyle(NonnaTheme.secondaryInk)
                     Text(context.date.formatted(date: .omitted, time: .shortened))
                         .foregroundStyle(NonnaTheme.ink.opacity(0.82))
                 }
-                .font(.system(size: max(10, unit * 0.0115), weight: .medium, design: .monospaced))
+                .font(.system(size: max(10, unit * 0.0115), weight: .medium).monospacedDigit())
                 .tracking(max(1.2, unit * 0.002))
             }
         }
@@ -296,7 +294,7 @@ struct CinematicView: View {
                     .frame(width: unit * 0.007, height: unit * 0.007)
                     .shadow(color: accent.opacity(0.7), radius: unit * 0.006)
                 Text(eyebrow)
-                    .font(.system(size: max(11, unit * 0.014), weight: .semibold, design: .monospaced))
+                    .font(.system(size: max(11, unit * 0.014), weight: .semibold).monospacedDigit())
                     .tracking(max(2.4, unit * 0.005))
                     .foregroundStyle(accent)
                     .contentTransition(.opacity)
@@ -340,22 +338,15 @@ struct CinematicView: View {
                         .lineLimit(1)
                         .truncationMode(.tail)
                         .frame(maxWidth: unit * 1.4)
-                } else if model.status != .idle, let idea = model.currentBreakIdea {
-                    Text(idea)
-                        .font(.system(size: max(15, unit * 0.026), weight: .regular, design: .serif))
-                        .italic()
-                        .foregroundStyle(NonnaTheme.sage)
-                        .lineLimit(1)
-                        .frame(maxWidth: unit * 1.4)
                 }
                 if model.phase == .focus, let task = model.selectedTask {
                     HStack(spacing: unit * 0.008) {
                         Circle()
                             .fill(NonnaTheme.taskColor(for: task.colorHex))
                             .frame(width: unit * 0.0055, height: unit * 0.0055)
-                        Text(task.name.uppercased())
+                        Text(task.name)
                     }
-                    .font(.system(size: max(10, unit * 0.0105), weight: .medium, design: .monospaced))
+                    .font(.system(size: max(10, unit * 0.0105), weight: .medium).monospacedDigit())
                     .tracking(max(1.5, unit * 0.003))
                     .foregroundStyle(NonnaTheme.secondaryInk)
                 }
@@ -388,7 +379,7 @@ struct CinematicView: View {
                 Text(rightCaption)
                     .frame(maxWidth: .infinity, alignment: .trailing)
             }
-            .font(.system(size: max(10, unit * 0.011), weight: .medium, design: .monospaced))
+            .font(.system(size: max(10, unit * 0.011), weight: .medium).monospacedDigit())
             .tracking(max(1.4, unit * 0.0026))
             .foregroundStyle(NonnaTheme.secondaryInk)
             .lineLimit(1)
@@ -411,7 +402,7 @@ struct CinematicView: View {
                         .frame(width: index < filled ? unit * 0.014 : unit * 0.007, height: max(2, unit * 0.0028))
                 }
             }
-            Text("TODAY \(today.focusDurationString.uppercased()) / \(goal.focusDurationString.uppercased())")
+            Text("Today \(today.focusDurationString) / \(goal.focusDurationString)")
         }
     }
 
@@ -462,9 +453,8 @@ struct CinematicView: View {
                 .buttonStyle(NonnaButtonStyle(prominent: false))
             }
 
-            Text("SPACE  \(model.status == .idle ? "BEGIN" : "PAUSE")   ·   →  NEXT   ·   E  END SESSION   ·   ESC  LEAVE")
-                .font(.system(size: 9, weight: .medium, design: .monospaced))
-                .tracking(1.6)
+            Text("Space to \(model.status == .idle ? "begin" : "pause"), → for next, E to end the session, Esc to leave")
+                .font(.system(size: 11, weight: .medium).monospacedDigit())
                 .foregroundStyle(NonnaTheme.secondaryInk.opacity(0.7))
         }
         .allowsHitTesting(controlsVisible)
@@ -484,12 +474,12 @@ struct CinematicView: View {
     // MARK: Words and numbers
 
     private var eyebrow: String {
-        if model.awaitingNextPhase != nil { return "BREAK COMPLETE" }
-        if model.isBreathing { return "BREATH \(model.breathingCycle) OF \(AppModel.breathingCycleCount)" }
+        if model.awaitingNextPhase != nil { return "Break complete" }
+        if model.isBreathing { return "Breath \(model.breathingCycle) of \(AppModel.breathingCycleCount)" }
         switch model.status {
-        case .idle: return "\(model.phase.compactTitle) · READY"
-        case .paused: return "\(model.phase.compactTitle) · PAUSED"
-        case .overtime: return model.phase == .focus ? "FOCUS OVERTIME" : "BREAK OVERTIME"
+        case .idle: return "\(model.phase.compactTitle), ready"
+        case .paused: return "\(model.phase.compactTitle), paused"
+        case .overtime: return model.phase == .focus ? "Focus overtime" : "Break overtime"
         case .running: return model.phase.compactTitle
         }
     }
@@ -501,34 +491,34 @@ struct CinematicView: View {
 
     private var minutesLeftText: String {
         let minutes = Int((Double(model.remainingSeconds) / 60).rounded(.up))
-        return minutes <= 1 ? "UNDER A MINUTE LEFT" : "\(minutes) MIN LEFT"
+        return minutes <= 1 ? "Under a minute left" : "\(minutes) min left"
     }
 
     private var leftCaption: String {
-        if model.isBreathing { return "SETTLING IN" }
-        if model.awaitingNextPhase != nil { return "BLOCK FINISHED" }
+        if model.isBreathing { return "Settling in" }
+        if model.awaitingNextPhase != nil { return "Block finished" }
         guard model.status != .idle, let started = model.activeTimerStartedAt else {
-            return "\(model.plannedSeconds / 60) MIN \(model.phase == .focus ? "FOCUS" : "REST")"
+            return "\(model.plannedSeconds / 60) min \(model.phase == .focus ? "focus" : "rest")"
         }
-        return "STARTED \(started.formatted(date: .omitted, time: .shortened))"
+        return "Started \(started.formatted(date: .omitted, time: .shortened))"
     }
 
     private var rightCaption: String {
-        if model.isBreathing { return "\(model.breathingRemaining)S OF BREATHING" }
+        if model.isBreathing { return "\(model.breathingRemaining)s of breathing" }
         if let next = model.awaitingNextPhase {
-            return "NEXT · \(next == .focus ? "FOCUS" : "REST")"
+            return "Next: \(next == .focus ? "focus" : "rest")"
         }
         let percent = Int((model.progress * 100).rounded(.down))
         switch model.status {
         case .idle:
-            return "SPACE TO BEGIN"
+            return "Space to begin"
         case .paused:
-            return "\(percent)% · \(minutesLeftText)"
+            return "\(percent)%, \(minutesLeftText)"
         case .overtime:
-            return "PLANNED \(model.plannedSeconds / 60) MIN · OVER BY \(max(0, model.elapsedSeconds - model.plannedSeconds).clockString)"
+            return "Planned \(model.plannedSeconds / 60) min, over by \(max(0, model.elapsedSeconds - model.plannedSeconds).clockString)"
         case .running:
             let end = Date().addingTimeInterval(TimeInterval(model.remainingSeconds))
-            return "\(percent)% · \(minutesLeftText) · ENDS \(end.formatted(date: .omitted, time: .shortened))"
+            return "\(percent)%, \(minutesLeftText), ends \(end.formatted(date: .omitted, time: .shortened))"
         }
     }
 

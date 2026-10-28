@@ -6,8 +6,12 @@ struct DayTimelineView: View {
     @EnvironmentObject private var calendarStore: CalendarStore
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var selectedDay = Calendar.current.startOfDay(for: Date())
+    /// The day that was "today" when last checked, so a new day can move the view along.
+    @State private var knownToday = Calendar.current.startOfDay(for: Date())
     @State private var selectedEventID: String?
     @Namespace private var daySelection
+    /// Where a dragged task would land, while it's over the timeline.
+    @State private var dropPreview: Date?
 
     private let calendar = Calendar.current
     private let hourHeight: CGFloat = 58
@@ -22,6 +26,10 @@ struct DayTimelineView: View {
         VStack(spacing: 0) {
             timelineHeader
             Divider().overlay(NonnaTheme.line)
+            if showsPlanTray {
+                planTray
+                Divider().overlay(NonnaTheme.line)
+            }
             ScrollView(.vertical, showsIndicators: false) {
                 // The live block grows about a pixel a minute, so the grid follows this
                 // 15-second clock rather than redrawing on every tick of the timer.
@@ -32,7 +40,7 @@ struct DayTimelineView: View {
                 }
             }
         }
-        .background(NonnaTheme.sunken.opacity(0.72))
+        .background(NonnaTheme.sunken.opacity(0.72).ignoresSafeArea())
     }
 
     private var timelineHeader: some View {
@@ -75,47 +83,50 @@ struct DayTimelineView: View {
                                     .matchedGeometryEffect(id: "selected-day", in: daySelection)
                             }
                             VStack(spacing: 3) {
-                                Text(day.formatted(.dateTime.weekday(.abbreviated)).uppercased())
-                                    .font(.system(size: 7, weight: .semibold, design: .monospaced))
+                                Text(day.formatted(.dateTime.weekday(.abbreviated)))
+                                    .font(.system(size: 9, weight: .semibold).monospacedDigit())
                                     .foregroundStyle(NonnaTheme.secondaryInk)
                                 Text(day.formatted(.dateTime.day()))
-                                    .font(.system(size: 14, weight: .medium, design: .monospaced))
+                                    .font(.system(size: 14, weight: .medium).monospacedDigit())
                                 Text((weekTotals[calendar.startOfDay(for: day)] ?? 0).timelineDuration)
-                                    .font(.system(size: 7, weight: .medium, design: .monospaced))
+                                    .font(.system(size: 9, weight: .medium).monospacedDigit())
                                     .foregroundStyle(NonnaTheme.secondaryInk)
                             }
                         }
                         .frame(maxWidth: .infinity)
                         .frame(height: 52)
                         .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                        .contentShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                         .overlay {
                             RoundedRectangle(cornerRadius: 8, style: .continuous)
                                 .stroke(calendar.isDate(day, inSameDayAs: selectedDay) ? NonnaTheme.strongLine : NonnaTheme.line.opacity(0.7), lineWidth: 0.8)
                         }
                     }
                     .buttonStyle(.plain)
+                    .help(day.formatted(.dateTime.weekday(.wide).month(.abbreviated).day()))
                 }
             }
+            .onAppear { showToday() }
+            .onReceive(NotificationCenter.default.publisher(for: .NSCalendarDayChanged).receive(on: RunLoop.main)) { _ in followNewDay() }
+            .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in followNewDay() }
 
-            HStack(spacing: 8) {
+            HStack(spacing: 14) {
                 Label("\(dayFocusSessions.count)", systemImage: "arrow.up.right")
-                Text("·")
                 Label("\(dayBreakSessions.count)", systemImage: "cup.and.saucer")
                 if model.settings.showCalendarEvents {
-                    Text("·")
                     Label(calendarTimelineStatus, systemImage: calendarTimelineIcon)
                         .foregroundStyle(calendarTimelineColor)
                         .help(calendarTimelineHelp)
                 }
                 Spacer()
-                Text(focusSeconds(on: selectedDay).focusDurationString.uppercased() + " FOCUS")
+                Text(focusSeconds(on: selectedDay).focusDurationString + " focus")
                 if breakOvertimeSeconds > 0 {
                     Text("+")
-                    Text(breakOvertimeSeconds.focusDurationString.uppercased() + " BREAK OT")
+                    Text(breakOvertimeSeconds.focusDurationString + " break overtime")
                         .foregroundStyle(NonnaTheme.gold)
                 }
             }
-            .font(.system(size: 9, weight: .semibold, design: .monospaced))
+            .font(.system(size: 11, weight: .semibold).monospacedDigit())
             .foregroundStyle(NonnaTheme.secondaryInk)
 
             if !allDayEvents.isEmpty {
@@ -130,9 +141,8 @@ struct DayTimelineView: View {
     private var allDayRow: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 6) {
-                Text("ALL DAY")
-                    .font(.system(size: 7, weight: .semibold, design: .monospaced))
-                    .tracking(1.2)
+                Text("All day")
+                    .font(.system(size: 9, weight: .semibold).monospacedDigit())
                     .foregroundStyle(NonnaTheme.secondaryInk)
                 ForEach(allDayEvents) { event in
                     HStack(spacing: 5) {
@@ -140,7 +150,7 @@ struct DayTimelineView: View {
                             .fill(event.color)
                             .frame(width: 5, height: 5)
                         Text(event.title)
-                            .font(.system(size: 9, weight: .medium))
+                            .font(.system(size: 11, weight: .medium))
                             .lineLimit(1)
                     }
                     .padding(.horizontal, 8)
@@ -148,7 +158,7 @@ struct DayTimelineView: View {
                     .background(event.color.opacity(0.12))
                     .clipShape(Capsule())
                     .overlay { Capsule().stroke(event.color.opacity(0.35), lineWidth: 0.8) }
-                    .help("\(event.calendarName) · all day")
+                    .help("\(event.calendarName), all day")
                 }
             }
         }
@@ -167,7 +177,7 @@ struct DayTimelineView: View {
             ForEach(Array(range), id: \.self) { hour in
                 HStack(spacing: 10) {
                     Text(hourLabel(hour))
-                        .font(.system(size: 8, weight: .medium, design: .monospaced))
+                        .font(.system(size: 10, weight: .medium).monospacedDigit())
                         .foregroundStyle(NonnaTheme.secondaryInk)
                         .frame(width: 52, alignment: .trailing)
                     Rectangle()
@@ -196,6 +206,41 @@ struct DayTimelineView: View {
                 .offset(x: 68 + CGFloat(placed.column) * columnWidth, y: position.y)
             }
 
+            // Tasks planned for this day, behind what you actually tracked.
+            ForEach(scheduledHere) { todo in
+                if let start = todo.scheduledAt {
+                    let position = blockPosition(from: start, to: start.addingTimeInterval(TimeInterval(todo.plannedMinutes * 60)), in: range)
+                    PlannedTaskBlock(
+                        todo: todo,
+                        list: model.data.tasks.first { $0.id == todo.listID },
+                        canStart: calendar.isDateInToday(selectedDay) && model.status == .idle && !model.isBreathing
+                    )
+                    .frame(maxWidth: .infinity)
+                    .frame(height: max(22, position.height))
+                    .padding(.leading, 68 + sessionInset)
+                    .padding(.trailing, 14)
+                    .offset(y: position.y)
+                }
+            }
+
+            if let preview = dropPreview {
+                let y = blockPosition(from: preview, to: preview.addingTimeInterval(60), in: range).y
+                HStack(spacing: 6) {
+                    Text(preview.formatted(date: .omitted, time: .shortened))
+                        .font(.system(size: 10, weight: .semibold).monospacedDigit())
+                        .padding(.horizontal, 5)
+                        .frame(height: 18)
+                        .background(NonnaTheme.ink)
+                        .foregroundStyle(NonnaTheme.cream)
+                        .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
+                    Rectangle()
+                        .fill(NonnaTheme.ink.opacity(0.6))
+                        .frame(height: 1.5)
+                }
+                .offset(x: 4, y: y - 9)
+                .allowsHitTesting(false)
+            }
+
             ForEach(entries) { entry in
                 let position = blockPosition(for: entry, in: range)
                 TimelineEntryBlock(entry: entry)
@@ -210,7 +255,7 @@ struct DayTimelineView: View {
             if let currentY = currentTimePosition(in: range) {
                 HStack(spacing: 6) {
                     Text(Date().formatted(date: .omitted, time: .shortened))
-                        .font(.system(size: 8, weight: .semibold, design: .monospaced))
+                        .font(.system(size: 10, weight: .semibold).monospacedDigit())
                         .padding(.horizontal, 5)
                         .frame(height: 18)
                         .background(NonnaTheme.terracotta)
@@ -225,6 +270,15 @@ struct DayTimelineView: View {
         }
         .frame(maxWidth: .infinity)
         .frame(height: height, alignment: .top)
+        .contentShape(Rectangle())
+        .onDrop(of: [.text], delegate: TimelineDropDelegate(
+            time: { y in dropTime(atY: y, in: range) },
+            preview: $dropPreview,
+            onDrop: { id, start in
+                withAnimation(reduceMotion ? nil : .spring(duration: 0.35, bounce: 0.1)) { model.schedule(id, at: start) }
+            }
+        ))
+        .animation(reduceMotion ? nil : .spring(duration: 0.35, bounce: 0.1), value: scheduledHere.map(\.scheduledAt))
         .animation(reduceMotion ? nil : NonnaMotion.page, value: selectedDay)
         // Blocks animate when they appear, split, or finish. The live block grows about a
         // pixel a minute, so animating every second of that kept the whole timeline
@@ -244,9 +298,9 @@ struct DayTimelineView: View {
 
     private var calendarTimelineStatus: String {
         switch calendarStore.access {
-        case .granted: "CALENDAR"
-        case .notDetermined: "CALENDAR SETUP"
-        case .denied: "CALENDAR OFF"
+        case .granted: "Calendar"
+        case .notDetermined: "Calendar setup"
+        case .denied: "Calendar off"
         }
     }
 
@@ -455,8 +509,13 @@ struct DayTimelineView: View {
         let nextDay = calendar.date(byAdding: .day, value: 1, to: dayStart) ?? dayStart.addingTimeInterval(86_400)
         let eventStartHours = timedEvents.map { $0.startedAt < dayStart ? 0 : calendar.component(.hour, from: $0.startedAt) }
         let eventEndHours = timedEvents.map { $0.endedAt >= nextDay ? 24 : calendar.component(.hour, from: $0.endedAt) + 1 }
-        let earliest = (entries.map { calendar.component(.hour, from: $0.startedAt) } + eventStartHours).min() ?? 9
-        let latest = (entries.map { calendar.component(.hour, from: $0.endedAt) + 1 } + eventEndHours).max() ?? 21
+        let planned = scheduledHere.compactMap(\.scheduledAt)
+        let plannedStart = planned.map { calendar.component(.hour, from: $0) }
+        let plannedEnd = scheduledHere.compactMap { todo in
+            todo.scheduledAt.map { calendar.component(.hour, from: $0.addingTimeInterval(TimeInterval(todo.plannedMinutes * 60))) + 1 }
+        }
+        let earliest = (entries.map { calendar.component(.hour, from: $0.startedAt) } + eventStartHours + plannedStart).min() ?? 9
+        let latest = (entries.map { calendar.component(.hour, from: $0.endedAt) + 1 } + eventEndHours + plannedEnd).max() ?? 21
         let start = max(0, min(8, earliest))
         let end = min(24, max(22, latest))
         return start..<max(start + 1, end)
@@ -508,6 +567,78 @@ struct DayTimelineView: View {
             .reduce(0) { $0 + $1.focusedSeconds }
     }
 
+    /// Opening the timeline always starts on today.
+    private func showToday() {
+        knownToday = calendar.startOfDay(for: Date())
+        selectedDay = knownToday
+    }
+
+    /// After midnight (or waking the Mac on a later day), move on from yesterday unless
+    /// another day was picked on purpose.
+    private func followNewDay() {
+        let today = calendar.startOfDay(for: Date())
+        guard today != knownToday else { return }
+        if calendar.isDate(selectedDay, inSameDayAs: knownToday) { selectedDay = today }
+        knownToday = today
+    }
+
+    // MARK: Planning
+
+    private var scheduledHere: [TodoItem] { model.scheduledTodos(on: selectedDay) }
+
+    /// Planning only makes sense for today and later.
+    private var showsPlanTray: Bool {
+        selectedDay >= calendar.startOfDay(for: Date()) && !model.planCandidates(for: selectedDay).isEmpty
+    }
+
+    /// Tasks you could do this day. Drag one onto a time, or let Plan my day fill the gaps.
+    private var planTray: some View {
+        let candidates = model.planCandidates(for: selectedDay)
+        let dayStart = calendar.startOfDay(for: selectedDay)
+        let dueCount = candidates.filter { ($0.due.map { $0 <= dayStart }) ?? false }.count
+        return VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("Drag a task onto a time")
+                    .font(.system(size: 11))
+                    .foregroundStyle(NonnaTheme.secondaryInk)
+                Spacer()
+                if dueCount > 0 {
+                    Button {
+                        let busy = timedEvents.map { DayPlanner.Slot(start: $0.startedAt, end: $0.endedAt) }
+                        withAnimation(reduceMotion ? nil : .spring(duration: 0.45, bounce: 0.1)) {
+                            model.planDay(selectedDay, busy: busy)
+                        }
+                    } label: {
+                        Label("Plan my day", systemImage: "wand.and.stars")
+                            .font(.system(size: 11, weight: .semibold))
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(NonnaTheme.terracotta)
+                    .help("Fit the \(dueCount) \(dueCount == 1 ? "task" : "tasks") due by this day into its free time")
+                }
+            }
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 6) {
+                    ForEach(candidates.prefix(20)) { todo in
+                        PlanChip(todo: todo, list: model.data.tasks.first { $0.id == todo.listID }, isDue: (todo.due.map { $0 <= dayStart }) ?? false)
+                    }
+                }
+                .padding(.vertical, 1)
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+    }
+
+    /// The time under a point on the grid, to the nearest quarter hour.
+    private func dropTime(atY y: CGFloat, in range: Range<Int>) -> Date {
+        let dayStart = calendar.startOfDay(for: selectedDay)
+        let minutes = Double(range.lowerBound * 60) + Double(max(0, y)) / Double(hourHeight) * 60
+        let snapped = Int((minutes / 15).rounded()) * 15
+        let clamped = min(max(snapped, range.lowerBound * 60), range.upperBound * 60 - 15)
+        return calendar.date(byAdding: .minute, value: clamped, to: dayStart) ?? dayStart.addingTimeInterval(TimeInterval(clamped * 60))
+    }
+
     private func moveDay(by offset: Int) {
         withAnimation(reduceMotion ? nil : NonnaMotion.selection) {
             selectedDay = calendar.date(byAdding: .day, value: offset, to: selectedDay) ?? selectedDay
@@ -544,12 +675,12 @@ private struct CalendarEventBlock: View {
                         .frame(width: 2.5)
                     VStack(alignment: .leading, spacing: 2) {
                         Text(event.title)
-                            .font(.system(size: 9, weight: .medium))
+                            .font(.system(size: 11, weight: .medium))
                             .foregroundStyle(NonnaTheme.ink.opacity(0.78))
                             .lineLimit(proxy.size.height < 40 ? 1 : 2)
                         if proxy.size.height >= 30 {
                             Text(timeRange)
-                                .font(.system(size: 7, weight: .medium, design: .monospaced))
+                                .font(.system(size: 9, weight: .medium).monospacedDigit())
                                 .foregroundStyle(NonnaTheme.secondaryInk)
                                 .lineLimit(1)
                         }
@@ -568,7 +699,7 @@ private struct CalendarEventBlock: View {
             }
         }
         .buttonStyle(.plain)
-        .help("\(event.title) · \(event.calendarName)")
+        .help("\(event.title), \(event.calendarName)")
         .popover(
             isPresented: Binding(get: { isSelected }, set: { if !$0 { onDismiss() } }),
             arrowEdge: .leading
@@ -588,7 +719,7 @@ private struct CalendarEventBlock: View {
                     .font(.system(size: 14, weight: .semibold))
                     .fixedSize(horizontal: false, vertical: true)
                 Text(timeRange)
-                    .font(.system(size: 10, weight: .medium, design: .monospaced))
+                    .font(.system(size: 10, weight: .medium).monospacedDigit())
                     .foregroundStyle(NonnaTheme.secondaryInk)
             }
             HStack(spacing: 6) {
@@ -612,7 +743,7 @@ private struct CalendarEventBlock: View {
             .buttonStyle(NonnaButtonStyle())
             .disabled(!canStartFocus)
             Text(canStartFocus ? "Read-only. Nothing is written to your calendar." : "Finish the current timer first.")
-                .font(.system(size: 9))
+                .font(.system(size: 11))
                 .foregroundStyle(NonnaTheme.secondaryInk)
         }
         .padding(16)
@@ -671,11 +802,11 @@ private struct TimelineEntryBlock: View {
                     HStack(alignment: proxy.size.height < 34 ? .center : .top) {
                         if proxy.size.height < 34 {
                             Text(entry.title)
-                                .font(.system(size: 8, weight: .semibold))
+                                .font(.system(size: 10, weight: .semibold))
                                 .lineLimit(1)
                             Spacer(minLength: 6)
-                            Text(entry.subtitle.uppercased())
-                                .font(.system(size: 7, weight: .medium, design: .monospaced))
+                            Text(entry.subtitle)
+                                .font(.system(size: 9, weight: .medium).monospacedDigit())
                                 .foregroundStyle(NonnaTheme.ink.opacity(0.68))
                                 .lineLimit(1)
                         } else {
@@ -684,7 +815,7 @@ private struct TimelineEntryBlock: View {
                                     .font(.system(size: 10, weight: .semibold))
                                     .lineLimit(1)
                                 Text(detail)
-                                    .font(.system(size: 8, weight: .medium, design: .monospaced))
+                                    .font(.system(size: 10, weight: .medium).monospacedDigit())
                                     .foregroundStyle(NonnaTheme.ink.opacity(0.72))
                                     .lineLimit(1)
                             }
@@ -730,9 +861,9 @@ private struct TimelineEntryBlock: View {
     private var detail: String {
         let range = "\(entry.startedAt.formatted(date: .omitted, time: .shortened))–\(entry.endedAt.formatted(date: .omitted, time: .shortened))"
         if entry.overtimeSeconds > 0 {
-            return "\(range) · +\(entry.overtimeSeconds.timelineDuration) OT"
+            return "\(range), +\(entry.overtimeSeconds.timelineDuration) OT"
         }
-        return "\(range) · \(entry.subtitle.uppercased())"
+        return "\(range), \(entry.subtitle)"
     }
 
     private func overtimeHeight(in totalHeight: CGFloat) -> CGFloat {
@@ -850,5 +981,152 @@ private struct LivePulseRing: NSViewRepresentable {
             ring.transform = CATransform3DMakeScale(0.8, 0.8, 1)
             ring.opacity = 0.8
         }
+    }
+}
+
+
+// MARK: - Planning pieces
+
+/// The drag payload for a task: "todo:<uuid>".
+enum TodoDrag {
+    static func provider(for id: UUID) -> NSItemProvider {
+        NSItemProvider(object: "todo:\(id.uuidString)" as NSString)
+    }
+
+    static func payload(for id: UUID) -> String { "todo:\(id.uuidString)" }
+
+    /// Reads "todo:<uuid>", or a bare uuid from older drags.
+    static func id(from text: String) -> UUID? {
+        UUID(uuidString: text.hasPrefix("todo:") ? String(text.dropFirst(5)) : text)
+    }
+}
+
+/// Shows where a task would land while it's dragged over the timeline, and plans it there.
+private struct TimelineDropDelegate: DropDelegate {
+    let time: (CGFloat) -> Date
+    @Binding var preview: Date?
+    let onDrop: (UUID, Date) -> Void
+
+    func validateDrop(info: DropInfo) -> Bool { info.hasItemsConforming(to: [.text]) }
+
+    func dropUpdated(info: DropInfo) -> DropProposal? {
+        let next = time(info.location.y)
+        if preview != next { preview = next }
+        return DropProposal(operation: .move)
+    }
+
+    func dropExited(info: DropInfo) { preview = nil }
+
+    func performDrop(info: DropInfo) -> Bool {
+        let start = time(info.location.y)
+        preview = nil
+        guard let provider = info.itemProviders(for: [.text]).first else { return false }
+        _ = provider.loadObject(ofClass: NSString.self) { object, _ in
+            guard let text = object as? String, let id = TodoDrag.id(from: text) else { return }
+            Task { @MainActor in onDrop(id, start) }
+        }
+        return true
+    }
+}
+
+/// A task in the tray, ready to drag onto the timeline.
+private struct PlanChip: View {
+    let todo: TodoItem
+    let list: FocusTask?
+    let isDue: Bool
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Circle()
+                .fill(list.map { NonnaTheme.taskColor(for: $0.colorHex) } ?? NonnaTheme.secondaryInk)
+                .frame(width: 6, height: 6)
+            Text(todo.title)
+                .font(.system(size: 11, weight: .medium))
+                .lineLimit(1)
+            Text(todo.plannedMinutes.minutesString)
+                .font(.system(size: 10).monospacedDigit())
+                .foregroundStyle(NonnaTheme.secondaryInk)
+        }
+        .padding(.horizontal, 9)
+        .frame(height: 26)
+        .background(isDue ? NonnaTheme.raisedPaper : NonnaTheme.paper, in: Capsule())
+        .overlay { Capsule().stroke(isDue ? NonnaTheme.strongLine : NonnaTheme.line, lineWidth: 0.8) }
+        .contentShape(Capsule())
+        .onDrag { TodoDrag.provider(for: todo.id) }
+        .help(isDue ? "Due by this day. Drag it onto a time." : "Drag it onto a time.")
+    }
+}
+
+/// A planned task on the timeline: dashed, in its list's colour, draggable to a new time.
+private struct PlannedTaskBlock: View {
+    @Environment(AppModel.self) private var model
+    let todo: TodoItem
+    let list: FocusTask?
+    let canStart: Bool
+    @State private var hovering = false
+
+    private var tint: Color { list.map { NonnaTheme.taskColor(for: $0.colorHex) } ?? NonnaTheme.terracotta }
+
+    var body: some View {
+        let start = todo.scheduledAt ?? Date()
+        let end = start.addingTimeInterval(TimeInterval(todo.plannedMinutes * 60))
+        let steps = todo.steps
+        HStack(alignment: .top, spacing: 8) {
+            Button { model.toggleDone(todo.id) } label: {
+                Image(systemName: todo.isDone ? "checkmark.circle.fill" : "circle")
+                    .font(.system(size: 12))
+                    .foregroundStyle(tint)
+            }
+            .buttonStyle(.plain)
+            .help(todo.isDone ? "Mark as not done" : "Mark as done")
+            VStack(alignment: .leading, spacing: 2) {
+                Text(todo.title)
+                    .font(.system(size: 11, weight: .semibold))
+                    .strikethrough(todo.isDone)
+                    .lineLimit(1)
+                Text("\(start.formatted(date: .omitted, time: .shortened)) to \(end.formatted(date: .omitted, time: .shortened))\(steps.isEmpty ? "" : ", \(steps.filter(\.isDone).count) of \(steps.count) steps")")
+                    .font(.system(size: 10).monospacedDigit())
+                    .foregroundStyle(NonnaTheme.secondaryInk)
+                    .lineLimit(1)
+            }
+            Spacer(minLength: 4)
+            if canStart, !todo.isDone, hovering {
+                Button { model.startFocus(on: todo.id) } label: {
+                    Image(systemName: "play.fill")
+                        .font(.system(size: 9, weight: .bold))
+                        .frame(width: 22, height: 22)
+                        .background(tint.opacity(0.18), in: Circle())
+                        .foregroundStyle(tint)
+                }
+                .buttonStyle(.plain)
+                .help("Start focusing on this")
+            }
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 5)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .background(tint.opacity(todo.isDone ? 0.05 : 0.11), in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 7, style: .continuous)
+                .strokeBorder(tint.opacity(hovering ? 0.9 : 0.6), style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
+        }
+        .opacity(todo.isDone ? 0.6 : 1)
+        .contentShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+        .onHover { hovering = $0 }
+        .onDrag { TodoDrag.provider(for: todo.id) }
+        .contextMenu {
+            if canStart, !todo.isDone {
+                Button("Start focusing on this") { model.startFocus(on: todo.id) }
+            }
+            Button(todo.isDone ? "Mark as not done" : "Mark as done") { model.toggleDone(todo.id) }
+            Menu("How long") {
+                ForEach(TaskLength.choices, id: \.self) { minutes in
+                    Button(minutes.minutesString) { model.updateTodo(todo.id) { $0.minutes = minutes } }
+                }
+            }
+            Divider()
+            Button("Take off the timeline") { model.schedule(todo.id, at: nil) }
+        }
+        .help("Drag to move. Right-click for more.")
     }
 }

@@ -24,10 +24,12 @@ struct CelebrationSummary: Sendable {
     let pausedSeconds: Int
     let overtimeSeconds: Int
     let todaySeconds: Int
-    /// "TODAY", or "SINCE YESTERDAY" when the sitting crossed midnight.
+    /// "Today", or "Since yesterday" when the sitting crossed midnight.
     let todayLabel: String
     let goalSeconds: Int
     let streakDays: Int
+    /// Which show plays.
+    var style: CelebrationStyle = .confetti
 
     var focusedSeconds: Int { blocks.reduce(0) { $0 + $1.focusedSeconds } }
     var completedCount: Int { blocks.filter(\.completed).count }
@@ -38,9 +40,8 @@ extension AppModel {
     /// Gathers every block and break since the sitting began and puts on the show.
     func celebrateRun(since start: Date) {
         guard settings.celebrateSessions else { return }
-        let focus = data.sessions
-            .filter { $0.startedAt >= start && $0.outcome != .abandoned && $0.focusedSeconds > 0 }
-            .sorted { $0.startedAt < $1.startedAt }
+        let focus = FocusSession.mergedBlocks(data.sessions
+            .filter { $0.startedAt >= start && $0.outcome != .abandoned && $0.focusedSeconds > 0 })
         guard focus.reduce(0, { $0 + $1.focusedSeconds }) >= 60 else { return }
         let rests = (data.breaks ?? []).filter { $0.startedAt >= start }
         let colors = Dictionary(uniqueKeysWithValues: data.tasks.map { ($0.id, $0.colorHex) })
@@ -72,12 +73,13 @@ extension AppModel {
             pausedSeconds: focus.reduce(0) { $0 + $1.pausedSeconds },
             overtimeSeconds: focus.reduce(0) { $0 + max(0, $1.focusedSeconds - $1.plannedSeconds) },
             todaySeconds: dayFocus(from: start),
-            todayLabel: Calendar.current.isDateInToday(start) ? "TODAY"
-                : Calendar.current.isDateInYesterday(start) ? "SINCE YESTERDAY"
-                : "SINCE \(start.formatted(.dateTime.weekday(.wide)).uppercased())",
+            todayLabel: Calendar.current.isDateInToday(start) ? "Today"
+                : Calendar.current.isDateInYesterday(start) ? "Since yesterday"
+                : "Since \(start.formatted(.dateTime.weekday(.wide)))",
             goalSeconds: max(60, settings.dailyGoalMinutes * 60),
             streakDays: analytics.currentStreak
         )
+        summary.style = settings.celebrationStyle.resolved
         summary.checkedOff = todos
             .filter { $0.isDone && ($0.completedAt ?? .distantPast) >= start }
             .sorted { ($0.completedAt ?? .distantPast) < ($1.completedAt ?? .distantPast) }
@@ -107,6 +109,10 @@ final class CelebrationController {
     private var panel: NSPanel?
     private var dismissTask: Task<Void, Never>?
     private var keyMonitor: Any?
+    /// Runs once, after the celebration goes away (used to ask for the session rating).
+    var onDismiss: (() -> Void)?
+
+    var isShowing: Bool { panel != nil }
 
     static let displaySeconds: Double = 10
 
@@ -162,6 +168,13 @@ final class CelebrationController {
         keyMonitor = nil
         guard let panel else { return }
         self.panel = nil
+        if let onDismiss {
+            self.onDismiss = nil
+            Task { @MainActor in
+                try? await Task.sleep(for: .milliseconds(animated ? 650 : 0))
+                onDismiss()
+            }
+        }
         guard animated else {
             panel.orderOut(nil)
             panel.contentView = nil
@@ -193,11 +206,11 @@ private struct CelebrationView: View {
 
     private var accent: Color { NonnaTheme.terracotta }
 
-    private var pomodoroWord: String { summary.blocks.count == 1 ? "POMODORO" : "POMODOROS" }
+    private var pomodoroWord: String { summary.blocks.count == 1 ? "Pomodoro" : "Pomodoros" }
 
     private var eyebrow: String {
-        if summary.reachedGoalNow { return "SESSION COMPLETE · DAILY GOAL REACHED" }
-        return "SESSION COMPLETE · \(summary.blocks.count) \(pomodoroWord)"
+        if summary.reachedGoalNow { return "Session complete, daily goal reached" }
+        return "Session complete, \(summary.blocks.count) \(pomodoroWord)"
     }
 
     private var title: String {
@@ -215,13 +228,13 @@ private struct CelebrationView: View {
         let style: Date.FormatStyle = sameDay
             ? .dateTime.hour().minute()
             : .dateTime.weekday(.abbreviated).hour().minute()
-        return "\(summary.startedAt.formatted(style).uppercased()) – \(summary.endedAt.formatted(style).uppercased())"
+        return "\(summary.startedAt.formatted(style)) – \(summary.endedAt.formatted(style))"
     }
 
     private var intentionLine: String {
-        let shown = summary.intentions.prefix(3).joined(separator: "  ·  ")
+        let shown = summary.intentions.prefix(3).joined(separator: ", ")
         let more = summary.intentions.count - 3
-        return more > 0 ? "\(shown)  ·  +\(more) more" : shown
+        return more > 0 ? "\(shown), +\(more) more" : shown
     }
 
     private var checkedOffLine: String {
@@ -240,10 +253,17 @@ private struct CelebrationView: View {
                 .animation(.easeOut(duration: 0.6), value: shown)
 
             if !reduceMotion {
-                ConfettiBurst(colors: [
+                let colors = [
                     NonnaTheme.terracotta, NonnaTheme.darkTerracotta, NonnaTheme.sage,
                     NonnaTheme.gold, NonnaTheme.ink, Color(hex: "788897")
-                ].map { NSColor($0) })
+                ].map { NSColor($0) }
+                Group {
+                    switch summary.style {
+                    case .fireworks: FireworksShow(colors: colors)
+                    case .balloons: BalloonRise(colors: colors)
+                    default: ConfettiBurst(colors: colors)
+                    }
+                }
                 .allowsHitTesting(false)
             }
 
@@ -274,8 +294,7 @@ private struct CelebrationView: View {
                         .frame(width: 6, height: 6)
                         .shadow(color: accent.opacity(0.8), radius: 5)
                     Text(eyebrow)
-                        .font(.system(size: 11, weight: .semibold, design: .monospaced))
-                        .tracking(3)
+                        .font(.system(size: 11, weight: .semibold).monospacedDigit())
                         .foregroundStyle(accent)
                 }
                 Text(title)
@@ -296,9 +315,8 @@ private struct CelebrationView: View {
                         .lineLimit(1)
                         .frame(maxWidth: 760)
                 }
-                Text("\(spanText)  ·  \(max(0, Int(summary.endedAt.timeIntervalSince(summary.startedAt))).focusDurationString.uppercased()) AT THE DESK")
-                    .font(.system(size: 10, weight: .medium, design: .monospaced))
-                    .tracking(1.6)
+                Text("\(spanText), \(max(0, Int(summary.endedAt.timeIntervalSince(summary.startedAt))).focusDurationString) at the desk")
+                    .font(.system(size: 10, weight: .medium).monospacedDigit())
                     .foregroundStyle(NonnaTheme.secondaryInk)
             }
 
@@ -312,9 +330,8 @@ private struct CelebrationView: View {
                             if done { countdown = false }
                         }
                 }
-                Text("FOCUSED IN TOTAL")
-                    .font(.system(size: 10, weight: .semibold, design: .monospaced))
-                    .tracking(3)
+                Text("Focused in total")
+                    .font(.system(size: 10, weight: .semibold).monospacedDigit())
                     .foregroundStyle(NonnaTheme.secondaryInk)
             }
 
@@ -325,21 +342,21 @@ private struct CelebrationView: View {
                 .frame(height: 1)
 
             HStack(alignment: .top, spacing: 0) {
-                statTile("POMODOROS", "\(summary.blocks.count)",
+                statTile("Pomodoros", "\(summary.blocks.count)",
                          detail: blockDetail, delay: 0.55)
                 divider
-                statTile("BREAKS", "\(summary.breakCount)",
+                statTile("Breaks", "\(summary.breakCount)",
                          detail: summary.breakSeconds >= 60 ? "\(summary.breakSeconds.focusDurationString) of rest" : "no rest taken", delay: 0.65)
                 divider
-                statTile("PAUSED", summary.pausedSeconds >= 60 ? summary.pausedSeconds.focusDurationString : "None",
+                statTile("Paused", summary.pausedSeconds >= 60 ? summary.pausedSeconds.focusDurationString : "None",
                          detail: summary.pausedSeconds >= 60 ? "stepped away" : "unbroken", delay: 0.75)
                 divider
-                statTile("OVERTIME", summary.overtimeSeconds >= 60 ? "+" + summary.overtimeSeconds.focusDurationString : "—",
+                statTile("Overtime", summary.overtimeSeconds >= 60 ? "+" + summary.overtimeSeconds.focusDurationString : "—",
                          detail: summary.overtimeSeconds >= 60 ? "past the bell" : "on time", delay: 0.85)
                 divider
                 todayTile.reveal(shown, delay: 0.95, reduceMotion: reduceMotion)
                 divider
-                statTile("STREAK", "\(summary.streakDays) \(summary.streakDays == 1 ? "day" : "days")",
+                statTile("Streak", "\(summary.streakDays) \(summary.streakDays == 1 ? "day" : "days")",
                          detail: "keep it going", delay: 1.05)
             }
 
@@ -354,9 +371,8 @@ private struct CelebrationView: View {
                     }
                 }
                 .frame(width: 160, height: 2)
-                Text("CLICK ANYWHERE TO CONTINUE")
-                    .font(.system(size: 9, weight: .medium, design: .monospaced))
-                    .tracking(2)
+                Text("Click anywhere to continue")
+                    .font(.system(size: 11, weight: .medium).monospacedDigit())
                     .foregroundStyle(NonnaTheme.secondaryInk.opacity(0.75))
             }
         }
@@ -397,8 +413,7 @@ private struct CelebrationView: View {
     private func statTile(_ label: String, _ value: String, detail: String, delay: Double) -> some View {
         VStack(spacing: 7) {
             Text(label)
-                .font(.system(size: 9, weight: .semibold, design: .monospaced))
-                .tracking(2)
+                .font(.system(size: 11, weight: .semibold).monospacedDigit())
                 .foregroundStyle(NonnaTheme.secondaryInk)
             Text(value)
                 .font(.system(size: 24, weight: .medium))
@@ -415,10 +430,9 @@ private struct CelebrationView: View {
         let fraction = min(1, Double(summary.todaySeconds) / Double(summary.goalSeconds))
         return VStack(spacing: 7) {
             Text(summary.todayLabel)
-                .font(.system(size: 9, weight: .semibold, design: .monospaced))
+                .font(.system(size: 11, weight: .semibold).monospacedDigit())
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
-                .tracking(2)
                 .foregroundStyle(NonnaTheme.secondaryInk)
             Text(summary.todaySeconds.focusDurationString)
                 .font(.system(size: 24, weight: .medium))
@@ -445,7 +459,7 @@ private struct CelebrationView: View {
         let early = summary.blocks.count - summary.completedCount
         if early == 0 { return summary.completedCount == 1 ? "full block" : "all full blocks" }
         if summary.completedCount == 0 { return early == 1 ? "ended early" : "\(early) ended early" }
-        return "\(summary.completedCount) full · \(early) early"
+        return "\(summary.completedCount) full, \(early) early"
     }
 
     /// One bar per pomodoro, in order, sized by how much of its plan it filled.
@@ -469,7 +483,7 @@ private struct CelebrationView: View {
                             .animation(reduceMotion ? nil : .spring(duration: 0.8, bounce: 0.2).delay(0.5 + Double(index) * 0.12), value: shown)
                     }
                     Text(block.focusedSeconds.focusDurationString)
-                        .font(.system(size: 9, weight: .medium, design: .monospaced))
+                        .font(.system(size: 11, weight: .medium).monospacedDigit())
                         .foregroundStyle(block.completed ? NonnaTheme.ink.opacity(0.8) : NonnaTheme.secondaryInk)
                 }
                 .help(block.completed ? "Full block" : "Ended early")

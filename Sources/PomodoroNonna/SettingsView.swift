@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 struct SettingsView: View {
@@ -9,10 +10,11 @@ struct SettingsView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {
                 SectionHeading(
-                    eyebrow: "Make it yours",
                     title: "Settings",
-                    subtitle: "No account, telemetry, cloud service, or hidden data collection."
+                    subtitle: "You're on Pomofocus \(Updater.shared.currentVersion). No account, telemetry, cloud service, or hidden data collection."
                 )
+
+                NameSettingsRow()
 
                 AppearanceSettingsCard()
 
@@ -26,6 +28,8 @@ struct SettingsView: View {
                         widgetSettings
                         calendarSettings
                         privacySettings
+                        UpdateSettingsCard()
+                        ShareSettingsCard()
                     }
                 }
             }
@@ -139,7 +143,7 @@ struct SettingsView: View {
             }
             ToggleRow(
                 title: "Opening breath ritual",
-                subtitle: "3 rounds · 4 sec in · 6 sec out",
+                subtitle: "3 rounds, 4 sec in, 6 sec out",
                 binding: settingsBinding(\.breathingEnabled)
             )
             StepperRow(
@@ -175,11 +179,43 @@ struct SettingsView: View {
                 subtitle: "Flash the time red once a timer runs over",
                 binding: settingsBinding(\.overtimeAlert)
             )
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Rate your focus")
+                        .font(.system(size: 12, weight: .medium, design: .default))
+                    Text("Asks how focused you felt. Once per session means one quick rating for the whole sitting.")
+                        .font(.system(size: 10, design: .default))
+                        .foregroundStyle(NonnaTheme.secondaryInk)
+                }
+                Spacer()
+                Picker("Rate your focus", selection: settingsBinding(\.rateFocus)) {
+                    ForEach(RatingTiming.allCases) { Text($0.title).tag($0) }
+                }
+                .labelsHidden()
+                .frame(width: 170)
+            }
             ToggleRow(
                 title: "Celebrate sessions",
-                subtitle: "Confetti and a breakdown of the sitting when you end a session",
+                subtitle: "A little show and a breakdown of the sitting when you end a session",
                 binding: settingsBinding(\.celebrateSessions)
             )
+            if model.settings.celebrateSessions {
+                HStack(spacing: 12) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Celebration style")
+                            .font(.system(size: 12, weight: .medium))
+                        Text("What plays when a session ends")
+                            .font(.system(size: 10))
+                            .foregroundStyle(NonnaTheme.secondaryInk)
+                    }
+                    Spacer()
+                    Picker("Celebration style", selection: settingsBinding(\.celebrationStyle)) {
+                        ForEach(CelebrationStyle.allCases) { Text($0.title).tag($0) }
+                    }
+                    .labelsHidden()
+                    .frame(width: 150)
+                }
+            }
             ToggleRow(
                 title: "Timer cues",
                 subtitle: "Gentle cues for starts, pauses, and endings",
@@ -251,7 +287,7 @@ struct SettingsView: View {
                 Text(calendarStatusTitle)
                     .font(.system(size: 12, weight: .semibold))
                 Text(calendarStatusSubtitle)
-                    .font(.system(size: 9))
+                    .font(.system(size: 11))
                     .foregroundStyle(NonnaTheme.secondaryInk)
                     .lineLimit(1)
             }
@@ -284,8 +320,8 @@ struct SettingsView: View {
         case .denied: "Reconnect in macOS Privacy & Security"
         case .granted:
             calendarStore.calendars.isEmpty
-                ? "Connected · no calendars found"
-                : "Connected · \(calendarStore.calendars.count) calendar\(calendarStore.calendars.count == 1 ? "" : "s")"
+                ? "Connected, no calendars found"
+                : "Connected, \(calendarStore.calendars.count) calendar\(calendarStore.calendars.count == 1 ? "" : "s")"
         }
     }
 
@@ -370,7 +406,7 @@ struct SettingsView: View {
             HStack(alignment: .top, spacing: 11) {
                 Image(systemName: "checkmark.shield.fill")
                     .foregroundStyle(NonnaTheme.sage)
-                Text("Sessions are written to one readable JSON file in your Application Support folder. Pomofocus contains no networking code, and calendar events are only read, never changed.")
+                Text("Sessions are written to one readable JSON file in your Application Support folder and never leave this Mac. The only network request is the update check, which asks GitHub for the newest version number and sends nothing about you. Calendar events are only read, never changed.")
                     .font(.system(size: 12, design: .default))
                     .foregroundStyle(NonnaTheme.secondaryInk)
                     .fixedSize(horizontal: false, vertical: true)
@@ -393,7 +429,7 @@ struct SettingsView: View {
     }
 }
 
-private struct SettingsCard<Content: View>: View {
+struct SettingsCard<Content: View>: View {
     let title: String
     let icon: String
     @ViewBuilder let content: Content
@@ -426,7 +462,7 @@ private struct CalendarToggleRow: View {
                         .lineLimit(1)
                     if !info.sourceTitle.isEmpty {
                         Text(info.sourceTitle)
-                            .font(.system(size: 9, design: .default))
+                            .font(.system(size: 11, design: .default))
                             .foregroundStyle(NonnaTheme.secondaryInk)
                             .lineLimit(1)
                     }
@@ -479,6 +515,66 @@ private struct ToggleRow: View {
             Toggle(title, isOn: $binding)
                 .toggleStyle(.switch)
                 .labelsHidden()
+        }
+    }
+}
+
+/// "What should we call you?", used for the greeting on the timer.
+private struct NameSettingsRow: View {
+    @AppStorage("displayName") private var displayName = ""
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "person.crop.circle")
+                .font(.system(size: 16))
+                .foregroundStyle(NonnaTheme.terracotta)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("What should we call you?")
+                    .font(.system(size: 12, weight: .medium))
+                Text("Shown as a greeting on the timer. Stays on this Mac.")
+                    .font(.system(size: 10))
+                    .foregroundStyle(NonnaTheme.secondaryInk)
+            }
+            Spacer()
+            TextField("Your first name", text: $displayName)
+                .textFieldStyle(.roundedBorder)
+                .frame(width: 200)
+        }
+        .padding(16)
+        .background(NonnaTheme.raisedPaper.opacity(0.7), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay { RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(NonnaTheme.line, lineWidth: 0.8) }
+    }
+}
+
+/// Send Pomofocus to a friend: the website has the download and a three-step install guide.
+private struct ShareSettingsCard: View {
+    private static let site = URL(string: "https://cryptochefa.github.io/pomofocus-mac/#download")!
+    @State private var copied = false
+
+    var body: some View {
+        SettingsCard(title: "Share Pomofocus", icon: "square.and.arrow.up") {
+            Text("Send friends the website. It has the download and a simple install guide, and Pomofocus keeps itself up to date after that.")
+                .font(.system(size: 11))
+                .foregroundStyle(NonnaTheme.secondaryInk)
+                .fixedSize(horizontal: false, vertical: true)
+            HStack {
+                ShareLink(item: Self.site, subject: Text("Pomofocus"), message: Text("A calm focus timer for Mac. Free:")) {
+                    Label("Share…", systemImage: "square.and.arrow.up")
+                }
+                .buttonStyle(NonnaButtonStyle())
+                Button {
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.setString(Self.site.absoluteString, forType: .string)
+                    copied = true
+                    Task {
+                        try? await Task.sleep(for: .seconds(1.5))
+                        copied = false
+                    }
+                } label: {
+                    Label(copied ? "Copied" : "Copy link", systemImage: copied ? "checkmark" : "link")
+                }
+                .buttonStyle(NonnaButtonStyle(prominent: false))
+            }
         }
     }
 }

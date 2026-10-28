@@ -18,9 +18,8 @@ struct InsightsSection: View {
         VStack(alignment: .leading, spacing: 18) {
             HStack(alignment: .bottom) {
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("INSIGHTS")
-                        .font(.system(size: 9, weight: .semibold, design: .monospaced))
-                        .tracking(1.7)
+                    Text("Insights")
+                        .font(.system(size: 11, weight: .semibold).monospacedDigit())
                         .foregroundStyle(NonnaTheme.terracotta)
                     Text("Patterns in your focus")
                         .font(.system(size: 22, weight: .semibold))
@@ -68,14 +67,14 @@ private struct TrendsCard: View {
     var body: some View {
         NonnaCard {
             VStack(alignment: .leading, spacing: 18) {
-                InsightCardTitle(eyebrow: "TRENDS", title: "How the work is moving")
+                InsightCardTitle(title: "How the work is moving")
 
                 HStack(alignment: .top, spacing: 14) {
                     InsightTile(
                         label: "This week",
                         value: insights.thisWeekSeconds.focusDurationString,
                         detail: weekDetail,
-                        tint: weekTint
+                        detailTint: weekTint
                     )
                     InsightTile(
                         label: "Average session",
@@ -95,7 +94,7 @@ private struct TrendsCard: View {
                 }
 
                 VStack(alignment: .leading, spacing: 10) {
-                    InsightChartLabel(text: "LAST 6 MONTHS")
+                    InsightChartLabel(text: "Last 6 months")
                     Chart {
                         if let hovered = insights.months.first(where: { $0.month == hoveredMonth }) {
                             RuleMark(x: .value("Month", hovered.month, unit: .month))
@@ -147,8 +146,8 @@ private struct TrendsCard: View {
     }
 
     private var weekTint: Color {
-        guard let change = insights.weekChange else { return NonnaTheme.ink }
-        return change >= 0 ? NonnaTheme.sage : NonnaTheme.gold
+        guard let change = insights.weekChange else { return NonnaTheme.secondaryInk }
+        return change >= 0 ? TrendColors.good : TrendColors.bad
     }
 }
 
@@ -164,7 +163,7 @@ private struct RhythmCard: View {
         NonnaCard {
             VStack(alignment: .leading, spacing: 18) {
                 HStack(alignment: .bottom) {
-                    InsightCardTitle(eyebrow: "TIME OF DAY", title: "When you focus best")
+                    InsightCardTitle(title: "When you focus best")
                     Spacer()
                     Text(peakSummary)
                         .font(.system(size: 11))
@@ -173,13 +172,13 @@ private struct RhythmCard: View {
 
                 AdaptiveColumns(compact, spacing: 22) {
                     VStack(alignment: .leading, spacing: 10) {
-                        InsightChartLabel(text: "BY HOUR")
+                        InsightChartLabel(text: "By hour")
                         hourChart
                     }
                     .frame(maxWidth: .infinity)
 
                     VStack(alignment: .leading, spacing: 10) {
-                        InsightChartLabel(text: "BY WEEKDAY")
+                        InsightChartLabel(text: "By weekday")
                         weekdayChart
                     }
                     .frame(maxWidth: compact ? .infinity : 300)
@@ -204,6 +203,8 @@ private struct RhythmCard: View {
                 .opacity(hoveredHour == nil || hoveredHour == item.hour.hourLabel ? 1 : 0.45)
             }
         }
+        // Fix the category order; otherwise the hover line (drawn first) reorders the bars and they flicker.
+        .chartXScale(domain: insights.hours.map(\.hour.hourLabel))
         .chartHover(String.self) { label in
             if hoveredHour != label { hoveredHour = label }
         }
@@ -238,6 +239,8 @@ private struct RhythmCard: View {
                 .opacity(hoveredWeekday == nil || hoveredWeekday == item.label ? 1 : 0.45)
             }
         }
+        // Fix the category order; otherwise the hover line (drawn first) reorders the bars and they flicker.
+        .chartXScale(domain: insights.weekdays.map(\.label))
         .chartHover(String.self) { label in
             if hoveredWeekday != label { hoveredWeekday = label }
         }
@@ -277,7 +280,7 @@ private struct RhythmCard: View {
         var parts: [String] = []
         if let hour = insights.peakHour { parts.append("Peak hour \(hour.hourLabel)") }
         if let weekday = insights.peakWeekdayLabel { parts.append("best day \(weekday)") }
-        return parts.joined(separator: " · ")
+        return parts.joined(separator: ", ")
     }
 }
 
@@ -292,7 +295,7 @@ private struct QualityCard: View {
     var body: some View {
         NonnaCard {
             VStack(alignment: .leading, spacing: 18) {
-                InsightCardTitle(eyebrow: "FOCUS QUALITY", title: "How the sessions felt")
+                InsightCardTitle(title: "How the sessions felt")
 
                 HStack(alignment: .top, spacing: 14) {
                     InsightTile(
@@ -319,14 +322,14 @@ private struct QualityCard: View {
                         .fixedSize(horizontal: false, vertical: true)
                 } else {
                     VStack(alignment: .leading, spacing: 9) {
-                        InsightChartLabel(text: "RATING BY TASK")
+                        InsightChartLabel(text: "Rating by task")
                         ForEach(insights.taskRatings.prefix(5)) { item in
                             RatingRow(item: item)
                         }
                     }
 
                     VStack(alignment: .leading, spacing: 10) {
-                        InsightChartLabel(text: "RATING BY START HOUR")
+                        InsightChartLabel(text: "Rating by start hour")
                         Chart {
                             if let hovered = ratedHours.first(where: { $0.hour.hourLabel == hoveredRatingHour }) {
                                 RuleMark(x: .value("Hour", hovered.hour.hourLabel))
@@ -342,6 +345,8 @@ private struct QualityCard: View {
                                 .opacity(hoveredRatingHour == nil || hoveredRatingHour == item.hour.hourLabel ? 1 : 0.45)
                             }
                         }
+                        // Fixed category order, so the hover line can't reorder the bars.
+                        .chartXScale(domain: ratedHours.map(\.hour.hourLabel))
                         .chartHover(String.self) { label in
                             if hoveredRatingHour != label { hoveredRatingHour = label }
                         }
@@ -395,11 +400,11 @@ private struct RatingRow: View {
                 }
             }
             Text(String(format: "%.1f", item.averageRating))
-                .font(.system(size: 10, weight: .medium, design: .monospaced))
+                .font(.system(size: 10, weight: .medium).monospacedDigit())
                 .foregroundStyle(NonnaTheme.secondaryInk)
                 .frame(width: 26, alignment: .trailing)
             Text("\(item.ratedCount)×")
-                .font(.system(size: 9, design: .monospaced))
+                .font(.system(size: 11).monospacedDigit())
                 .foregroundStyle(NonnaTheme.secondaryInk.opacity(0.7))
                 .frame(width: 26, alignment: .trailing)
         }
@@ -431,7 +436,7 @@ private struct BreaksCard: View {
     var body: some View {
         NonnaCard {
             VStack(alignment: .leading, spacing: 18) {
-                InsightCardTitle(eyebrow: "BREAKS & OVERTIME", title: "Rest and run-over")
+                InsightCardTitle(title: "Rest and run-over")
 
                 HStack(alignment: .top, spacing: 14) {
                     InsightTile(
@@ -461,7 +466,7 @@ private struct BreaksCard: View {
                 }
 
                 VStack(alignment: .leading, spacing: 10) {
-                    InsightChartLabel(text: insights.overtimeTrendIsWeekly ? "OVERTIME BY WEEK" : "OVERTIME BY DAY")
+                    InsightChartLabel(text: insights.overtimeTrendIsWeekly ? "Overtime by week" : "Overtime by day")
                     if bars.isEmpty {
                         Text("No overtime in this range.")
                             .font(.system(size: 11))
@@ -535,15 +540,10 @@ private struct BreaksCard: View {
 // MARK: - Shared pieces
 
 private struct InsightCardTitle: View {
-    let eyebrow: String
     let title: String
 
     var body: some View {
         VStack(alignment: .leading, spacing: 3) {
-            Text(eyebrow)
-                .font(.system(size: 9, weight: .semibold, design: .monospaced))
-                .tracking(1.7)
-                .foregroundStyle(NonnaTheme.secondaryInk)
             Text(title)
                 .font(.system(size: 18, weight: .semibold))
         }
@@ -555,8 +555,7 @@ private struct InsightChartLabel: View {
 
     var body: some View {
         Text(text)
-            .font(.system(size: 8, weight: .semibold, design: .monospaced))
-            .tracking(1.4)
+            .font(.system(size: 10, weight: .semibold).monospacedDigit())
             .foregroundStyle(NonnaTheme.secondaryInk)
     }
 }
@@ -566,13 +565,34 @@ private struct InsightTile: View {
     let value: String
     let detail: String
     var tint: Color = NonnaTheme.ink
+    /// Colours the detail line, e.g. green or red for a change.
+    var detailTint: Color? = nil
+
+    /// What each number means, in plain words, for the small "?".
+    private static let explanations: [String: String] = [
+        "This week": "Focus time since Monday, compared with the same days last week.",
+        "Average session": "How long a focus block usually lasts, counting only time actually focused.",
+        "Per active day": "Average focus on the days you used Pomofocus. Days off don't pull it down.",
+        "Daily goal hit": "How often you reached your daily focus goal, on days you focused.",
+        "Average rating": "The average of your focus ratings, from 1 (scattered) to 5 (flow).",
+        "Completion": "The share of focus blocks you ran to their planned length instead of ending early.",
+        "Paused": "How long a block is usually paused in total.",
+        "Focus to break": "Focus time for every minute of break. Around 3 to 5 is a healthy rhythm.",
+        "Skipped breaks": "Breaks you ended early or skipped. Skipping often makes later blocks harder.",
+        "Break overtime": "How far breaks usually run past their planned length.",
+        "Focus overtime": "How far finished blocks usually run past their planned length.",
+    ]
 
     var body: some View {
         VStack(alignment: .leading, spacing: 5) {
-            Text(label.uppercased())
-                .font(.system(size: 8, weight: .semibold, design: .monospaced))
-                .tracking(1.2)
-                .foregroundStyle(NonnaTheme.secondaryInk)
+            HStack(spacing: 6) {
+                Text(label)
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(NonnaTheme.secondaryInk)
+                if let text = Self.explanations[label] {
+                    InfoButton(title: label, text: text)
+                }
+            }
             Text(value)
                 .font(.system(size: 22, weight: .medium))
                 .monospacedDigit()
@@ -580,8 +600,8 @@ private struct InsightTile: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
             Text(detail)
-                .font(.system(size: 10))
-                .foregroundStyle(NonnaTheme.secondaryInk)
+                .font(.system(size: 10, weight: detailTint == nil ? .regular : .medium))
+                .foregroundStyle(detailTint ?? NonnaTheme.secondaryInk)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .padding(13)
@@ -602,7 +622,7 @@ private enum InsightAxis {
             AxisGridLine().foregroundStyle(NonnaTheme.line.opacity(0.55))
             AxisValueLabel {
                 if let minutes = value.as(Double.self) {
-                    Text(minutes >= 60 ? String(format: "%.0fh", minutes / 60) : "\(Int(minutes))m")
+                    Text(Int(minutes.rounded()).minutesString)
                 }
             }
             .foregroundStyle(NonnaTheme.secondaryInk)
@@ -614,7 +634,7 @@ private enum InsightAxis {
             AxisGridLine().foregroundStyle(NonnaTheme.line.opacity(0.55))
             AxisValueLabel {
                 if let hours = value.as(Double.self) {
-                    Text(hours < 1 && hours > 0 ? String(format: "%.1fh", hours) : "\(Int(hours))h")
+                    Text(Int((hours * 60).rounded()).minutesString)
                 }
             }
             .foregroundStyle(NonnaTheme.secondaryInk)

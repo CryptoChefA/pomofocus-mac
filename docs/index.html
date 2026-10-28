@@ -343,8 +343,9 @@ kbd {
 .finale .ctas { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; margin-top: 40px; position: relative; }
 .finale .req { margin-top: 22px; color: var(--ink-3); font-size: 14px; position: relative; }
 
-.install { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; max-width: 1060px; margin: 100px auto 0; text-align: left; }
-@media (max-width: 860px) { .install { grid-template-columns: 1fr; } }
+.install { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; max-width: 1200px; margin: 100px auto 0; text-align: left; }
+@media (max-width: 1000px) { .install { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 620px) { .install { grid-template-columns: 1fr; } }
 .install .step { padding: 30px; border-radius: 24px; background: var(--tile); box-shadow: 0 0 0 1px rgba(255,255,255,.07) inset; }
 .install .n { font: 600 13px/1 var(--display); color: var(--gold-2); margin-bottom: 14px; }
 .install h4 { margin: 0 0 8px; font-family: var(--display); font-size: 21px; letter-spacing: -.02em; }
@@ -598,12 +599,13 @@ footer a:hover { color: var(--ink); text-decoration: underline; }
     </a>
     <a class="btn btn-glass" href="https://github.com/CryptoChefA/pomofocus-mac">Source on GitHub</a>
   </div>
-  <div class="req rv d3">Version 0.22.0 · macOS 14 or later · Apple silicon · Free and open source (MIT)</div>
+  <div class="req rv d3">Version 0.22.1 · macOS 14 or later · Apple silicon · Free and open source (MIT)</div>
 
   <div class="install">
     <div class="step rv"><div class="n">Step 1</div><h4>Download</h4><p>Get <b>Pomofocus.zip</b> and unzip it.</p></div>
     <div class="step rv d1"><div class="n">Step 2</div><h4>Move to Applications</h4><p>Drag Pomofocus into your Applications folder.</p></div>
     <div class="step rv d2"><div class="n">Step 3</div><h4>Open it once</h4><p>This build isn't notarized by Apple, so allow it under <b>System Settings → Privacy &amp; Security → Open Anyway</b>, or run:</p><code title="Click to copy" data-copy>xattr -dr com.apple.quarantine /Applications/Pomofocus.app</code></div>
+    <div class="step rv d3"><div class="n">Step 4</div><h4>That's it</h4><p>From version 0.22.1 on, Pomofocus updates itself: it lets you know when a new version is out, or choose <b>Pomofocus → Check for Updates</b>. To pass it on, use <b>Settings → Share Pomofocus</b>.</p></div>
   </div>
 </section>
 

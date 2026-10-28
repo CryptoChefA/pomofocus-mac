@@ -49,7 +49,12 @@ extension AppModel {
             overtimeStartDate: overtimeStartDate,
             cycleCurrent: cycleCurrent,
             cycleTotal: cycleTotal,
-            todayFocusSeconds: todayRecorded + activeToday
+            todayFocusSeconds: todayRecorded + activeToday,
+            theme: {
+                let p = ThemeManager.shared.resolved.palette
+                return PomofocusWidgetTheme(isDark: p.isDark, background: p.background, ink: p.ink,
+                                            secondaryInk: p.secondaryInk, line: p.line, accent: p.accent)
+            }()
         )
 
         try? PomofocusWidgetSnapshotStore.save(snapshot)

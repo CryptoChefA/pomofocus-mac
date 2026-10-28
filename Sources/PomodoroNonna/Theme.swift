@@ -26,11 +26,12 @@ final class ThemeManager: @unchecked Sendable {
     private(set) var resolved: ResolvedTheme
     private(set) var themeID: String
     private(set) var custom: CustomThemeSpec
+    private(set) var saved: [SharedTheme]
     @ObservationIgnored private var appearanceObserver: NSObjectProtocol?
 
     private static let cacheKey = "pomofocus.theme.v1"
 
-    private struct Cached: Codable { var themeID: String; var custom: CustomThemeSpec }
+    private struct Cached: Codable { var themeID: String; var custom: CustomThemeSpec; var saved: [SharedTheme]? }
 
     private init() {
         // The last theme is cached in defaults, so the first frame is already right
@@ -38,8 +39,9 @@ final class ThemeManager: @unchecked Sendable {
         let cached = UserDefaults.standard.data(forKey: Self.cacheKey).flatMap { try? JSONDecoder().decode(Cached.self, from: $0) }
         themeID = cached?.themeID ?? ThemeChoice.obsidian.rawValue
         custom = cached?.custom ?? CustomThemeSpec()
+        saved = cached?.saved ?? []
         resolved = ResolvedTheme(ThemeChoice.resolve(cached?.themeID ?? "obsidian", custom: cached?.custom ?? CustomThemeSpec(),
-                                                     systemIsDark: Self.systemIsDark))
+                                                     systemIsDark: Self.systemIsDark, saved: cached?.saved ?? []))
         appearanceObserver = DistributedNotificationCenter.default().addObserver(
             forName: NSNotification.Name("AppleInterfaceThemeChangedNotification"), object: nil, queue: .main
         ) { [weak self] _ in
@@ -52,12 +54,14 @@ final class ThemeManager: @unchecked Sendable {
     }
 
     @MainActor
-    func apply(themeID: String, custom: CustomThemeSpec) {
-        let palette = ThemeChoice.resolve(themeID, custom: custom, systemIsDark: Self.systemIsDark)
+    func apply(themeID: String, custom: CustomThemeSpec, saved: [SharedTheme]? = nil) {
+        let saved = saved ?? self.saved
+        let palette = ThemeChoice.resolve(themeID, custom: custom, systemIsDark: Self.systemIsDark, saved: saved)
         if themeID != self.themeID { self.themeID = themeID }
         if custom != self.custom { self.custom = custom }
+        if saved != self.saved { self.saved = saved }
         if palette != resolved.palette { resolved = ResolvedTheme(palette) }
-        if let data = try? JSONEncoder().encode(Cached(themeID: themeID, custom: custom)) {
+        if let data = try? JSONEncoder().encode(Cached(themeID: themeID, custom: custom, saved: saved)) {
             UserDefaults.standard.set(data, forKey: Self.cacheKey)
         }
     }
@@ -152,26 +156,178 @@ struct NonnaBackground: View {
     var body: some View {
         ZStack {
             NonnaTheme.cream
-            RadialGradient(
-                colors: [NonnaTheme.terracotta.opacity(0.055), .clear],
-                center: .topTrailing,
-                startRadius: 20,
-                endRadius: 820
-            )
-            RadialGradient(
-                colors: [Color(hex: "384752").opacity(0.055), .clear],
-                center: .bottomLeading,
-                startRadius: 20,
-                endRadius: 760
-            )
-            LinearGradient(
-                colors: [.white.opacity(0.012), .clear, .black.opacity(0.16)],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
+            ZStack {
+                RadialGradient(
+                    colors: [NonnaTheme.terracotta.opacity(0.055), .clear],
+                    center: .topTrailing,
+                    startRadius: 20,
+                    endRadius: 820
+                )
+                RadialGradient(
+                    colors: [Color(hex: "384752").opacity(0.055), .clear],
+                    center: .bottomLeading,
+                    startRadius: 20,
+                    endRadius: 760
+                )
+                LinearGradient(
+                    colors: [.white.opacity(0.012), .clear, .black.opacity(0.16)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            }
+            // Window-sized gradients are shaded on the graphics chip. Drawn on the CPU they
+            // were the single biggest cost of a theme change.
+            .drawingGroup()
+            switch ThemeManager.shared.themeID {
+            case ThemeChoice.sakura.rawValue: SakuraBlossoms()
+            case ThemeChoice.autumn.rawValue: AutumnScene()
+            case ThemeChoice.blackIce.rawValue: BlackIceScene()
+            case ThemeChoice.bespoke.rawValue: Pinstripe()
+            default: EmptyView()
+            }
         }
         .ignoresSafeArea()
     }
+}
+
+/// The Sakura theme's scene: white cherry-blossom branches reaching in from two corners,
+/// drawn once, and a handful of petals drifting slowly down. Only the petals move, at a
+/// gentle frame rate, and they stop when the window isn't in front or Reduce Motion is on.
+private struct SakuraBlossoms: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.controlActiveState) private var activeState
+
+    var body: some View {
+        ZStack {
+            Canvas { context, size in SakuraArt.drawBranches(in: &context, size: size) }
+            if !reduceMotion {
+                FallingParticles(images: SakuraArt.petalImages, birthRate: 0.5, speed: 20,
+                                 running: activeState != .inactive)
+            }
+        }
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+}
+
+enum SakuraArt {
+    static let petalWhite = Color(hex: "FFF7F8")
+    static let petalBlush = Color(hex: "FBE1E5")
+    static let heart = Color(hex: "E07F92")
+    static let stamen = Color(hex: "E9B35F")
+    static let bud = Color(hex: "D9677F")
+    static let bark = Color(hex: "6E4540")
+
+    /// A small, repeatable random sequence, so the scene looks the same every launch.
+    struct Seeded {
+        var state: UInt64
+        mutating func next() -> Double {
+            state = state &* 6364136223846793005 &+ 1442695040888963407
+            return Double(state >> 11) / Double(1 << 53)
+        }
+    }
+
+    // MARK: Branches
+
+    static func drawBranches(in context: inout GraphicsContext, size: CGSize) {
+        let w = size.width, h = size.height
+        let scale = max(0.7, min(1.3, min(w, h) / 820))
+        // Top right: a bough from the corner, with a twig hanging down the right edge.
+        branch(&context, from: CGPoint(x: w + 20, y: -20), via: CGPoint(x: w * 0.86, y: h * 0.10),
+               to: CGPoint(x: w * 0.64, y: h * 0.07), width: 6 * scale, seed: 3, scale: scale)
+        branch(&context, from: CGPoint(x: w * 0.93, y: h * 0.05), via: CGPoint(x: w * 0.99, y: h * 0.24),
+               to: CGPoint(x: w * 0.95, y: h * 0.40), width: 3.5 * scale, seed: 7, scale: scale)
+        // Bottom left: the same, mirrored.
+        branch(&context, from: CGPoint(x: -20, y: h + 20), via: CGPoint(x: w * 0.16, y: h * 0.86),
+               to: CGPoint(x: w * 0.40, y: h * 0.95), width: 6 * scale, seed: 11, scale: scale)
+        branch(&context, from: CGPoint(x: w * 0.06, y: h * 0.97), via: CGPoint(x: w * 0.0, y: h * 0.76),
+               to: CGPoint(x: w * 0.06, y: h * 0.58), width: 3.5 * scale, seed: 19, scale: scale)
+    }
+
+    private static func branch(_ context: inout GraphicsContext, from start: CGPoint, via control: CGPoint, to end: CGPoint,
+                               width: Double, seed: UInt64, scale: Double) {
+        var path = Path()
+        path.move(to: start)
+        path.addQuadCurve(to: end, control: control)
+        context.stroke(path, with: .color(bark.opacity(0.55)), style: StrokeStyle(lineWidth: width, lineCap: .round))
+        context.stroke(path, with: .color(bark.opacity(0.35)), style: StrokeStyle(lineWidth: width * 0.45, lineCap: .round))
+
+        var random = Seeded(state: seed)
+        func point(_ t: Double) -> CGPoint {
+            let a = (1 - t) * (1 - t), b = 2 * (1 - t) * t, c = t * t
+            return CGPoint(x: a * start.x + b * control.x + c * end.x, y: a * start.y + b * control.y + c * end.y)
+        }
+        // Blossoms crowd along the bough, a little off the line, with buds between.
+        let count = 11
+        for index in 0..<count {
+            let t = 0.12 + 0.88 * Double(index) / Double(count - 1)
+            let base = point(t)
+            let spread = (18 + random.next() * 22) * scale
+            let angle = random.next() * .pi * 2
+            let center = CGPoint(x: base.x + cos(angle) * spread * 0.6, y: base.y + sin(angle) * spread * 0.6)
+            if random.next() < 0.22 {
+                drawBud(&context, at: center, radius: (5 + random.next() * 3) * scale, turn: random.next() * 360)
+            } else {
+                drawBlossom(&context, at: center, radius: (13 + random.next() * 10) * scale,
+                            turn: random.next() * 72, blush: random.next() < 0.35)
+            }
+        }
+    }
+
+    /// Five petals, each rounded with the small notch at its tip that makes it a sakura.
+    static func petalPath(radius r: Double) -> Path {
+        var path = Path()
+        path.move(to: .zero)
+        path.addCurve(to: CGPoint(x: -r * 0.1, y: -r),
+                      control1: CGPoint(x: -r * 0.62, y: -r * 0.28), control2: CGPoint(x: -r * 0.58, y: -r * 1.0))
+        path.addLine(to: CGPoint(x: 0, y: -r * 0.84))
+        path.addLine(to: CGPoint(x: r * 0.1, y: -r))
+        path.addCurve(to: .zero,
+                      control1: CGPoint(x: r * 0.58, y: -r * 1.0), control2: CGPoint(x: r * 0.62, y: -r * 0.28))
+        return path
+    }
+
+    private static func drawBlossom(_ context: inout GraphicsContext, at center: CGPoint, radius: Double, turn: Double, blush: Bool) {
+        var flower = context
+        flower.translateBy(x: center.x, y: center.y)
+        flower.rotate(by: .degrees(turn))
+        let petal = petalPath(radius: radius)
+        for index in 0..<5 {
+            var leaf = flower
+            leaf.rotate(by: .degrees(Double(index) * 72))
+            leaf.fill(petal, with: .color(blush ? petalBlush : petalWhite))
+            leaf.stroke(petal, with: .color(heart.opacity(0.18)), lineWidth: 0.6)
+        }
+        // A pink heart with a ring of stamens.
+        flower.fill(Path(ellipseIn: CGRect(x: -radius * 0.22, y: -radius * 0.22, width: radius * 0.44, height: radius * 0.44)),
+                    with: .color(heart.opacity(0.85)))
+        for index in 0..<7 {
+            let a = Double(index) / 7 * .pi * 2
+            let tip = CGPoint(x: cos(a) * radius * 0.36, y: sin(a) * radius * 0.36)
+            var line = Path()
+            line.move(to: .zero)
+            line.addLine(to: tip)
+            flower.stroke(line, with: .color(heart.opacity(0.6)), lineWidth: 0.6)
+            flower.fill(Path(ellipseIn: CGRect(x: tip.x - 1.2, y: tip.y - 1.2, width: 2.4, height: 2.4)), with: .color(stamen))
+        }
+    }
+
+    private static func drawBud(_ context: inout GraphicsContext, at center: CGPoint, radius: Double, turn: Double) {
+        var shape = context
+        shape.translateBy(x: center.x, y: center.y)
+        shape.rotate(by: .degrees(turn))
+        shape.fill(Path(ellipseIn: CGRect(x: -radius * 0.6, y: -radius, width: radius * 1.2, height: radius * 1.6)), with: .color(bud.opacity(0.9)))
+        shape.fill(Path(ellipseIn: CGRect(x: -radius * 0.45, y: radius * 0.3, width: radius * 0.9, height: radius * 0.6)), with: .color(bark.opacity(0.6)))
+    }
+
+    // MARK: Falling petals
+
+    /// White and blush petals for the emitter, rendered once.
+    @MainActor static let petalImages: [CGImage] = [
+        ParticleImage.make(SakuraPetal(), color: petalWhite.opacity(0.9), size: 26),
+        ParticleImage.make(SakuraPetal(), color: petalBlush.opacity(0.9), size: 22),
+    ].compactMap { $0 }
+
 }
 
 struct NonnaCard<Content: View>: View {
@@ -181,8 +337,16 @@ struct NonnaCard<Content: View>: View {
     var body: some View {
         content
             .padding(padding)
-            .background(NonnaTheme.paper.opacity(0.94))
             .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            // The paper and its shadow are one plain shape behind the content, not a shadow
+            // of the content. A shadow of the content would be blurred again on the CPU every
+            // frame anything inside the card moved, which is what made the timer card stutter
+            // when the phase changed. The picture is the same: the card is this shape.
+            .background {
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(NonnaTheme.paper.opacity(0.94))
+                    .shadow(color: NonnaTheme.shadow, radius: 18, y: 10)
+            }
             .overlay {
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
                     .stroke(
@@ -194,7 +358,6 @@ struct NonnaCard<Content: View>: View {
                         lineWidth: 0.8
                     )
             }
-            .shadow(color: NonnaTheme.shadow, radius: 18, y: 10)
     }
 }
 
@@ -255,16 +418,11 @@ private struct NonnaButtonBody: View {
 }
 
 struct SectionHeading: View {
-    let eyebrow: String
     let title: String
     var subtitle: String?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 7) {
-            Text(eyebrow.uppercased())
-                .font(.system(size: 9, weight: .semibold, design: .monospaced))
-                .tracking(1.8)
-                .foregroundStyle(NonnaTheme.terracotta)
             Text(title)
                 .font(.system(size: 29, weight: .semibold))
                 .foregroundStyle(NonnaTheme.ink)
@@ -277,37 +435,93 @@ struct SectionHeading: View {
     }
 }
 
+/// One cell of a stat grid: icon chip, label, number, and a fading trend line. It draws
+/// no background or border of its own; the grid around it supplies those, so several
+/// cells read as one surface split by hairlines.
 struct MetricCard: View {
     let icon: String
     let label: String
     let value: String
     let detail: String
     var tint: Color = NonnaTheme.terracotta
+    var trends: [MetricTrend] = []
+    /// Room kept clear at the top right for controls laid over the cell.
+    var trailingInset: CGFloat = 0
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        NonnaCard(padding: 18) {
-            VStack(alignment: .leading, spacing: 14) {
-                HStack {
-                    Image(systemName: icon)
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundStyle(tint)
-                        .frame(width: 24, height: 24)
-                    Spacer()
-                }
-                Text(value)
-                    .font(.system(size: 30, weight: .medium))
-                    .foregroundStyle(NonnaTheme.ink)
-                    .monospacedDigit()
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(label)
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(NonnaTheme.ink)
-                    Text(detail)
-                        .font(.system(size: 10))
-                        .foregroundStyle(NonnaTheme.secondaryInk)
-                }
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(alignment: .top) {
+                IconChip(systemName: icon, tint: tint)
+                Spacer(minLength: trailingInset)
             }
+            .padding(.bottom, 16)
+
+            Text(label)
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(NonnaTheme.secondaryInk)
+                .lineLimit(1)
+                .padding(.bottom, 4)
+
+            Text(value)
+                .font(.system(size: 27, weight: .semibold))
+                .foregroundStyle(NonnaTheme.ink)
+                .monospacedDigit()
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+                .contentTransition(.numericText())
+                .animation(reduceMotion ? nil : .spring(response: 0.3, dampingFraction: 0.75), value: value)
+                .padding(.bottom, 10)
+
+            // Always the same height, so cells in a row line up with or without a trend.
+            TrendTicker(trends: trends)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+/// A round, tinted chip holding one symbol: soft fill, slightly stronger ring, full-tint glyph.
+struct IconChip: View {
+    let systemName: String
+    var tint: Color = NonnaTheme.terracotta
+    var size: CGFloat = 34
+
+    var body: some View {
+        Image(systemName: systemName)
+            .font(.system(size: size * 0.41, weight: .medium))
+            .foregroundStyle(tint)
+            .frame(width: size, height: size)
+            .background(tint.opacity(0.2), in: Circle())
+            .overlay { Circle().stroke(tint.opacity(0.4), lineWidth: 0.8) }
+            .accessibilityHidden(true)
+    }
+}
+
+/// A one-point rule that fades to nothing at both ends, for splitting a surface into
+/// cells without boxing each one in.
+struct FadingHairline: View {
+    enum Axis { case horizontal, vertical }
+    var axis: Axis = .horizontal
+    var color: Color = NonnaTheme.line
+
+    var body: some View {
+        Rectangle()
+            .fill(color)
+            .frame(width: axis == .vertical ? 1 : nil, height: axis == .horizontal ? 1 : nil)
+            .mask {
+                LinearGradient(
+                    stops: [
+                        .init(color: .clear, location: 0),
+                        .init(color: .black, location: 0.22),
+                        .init(color: .black, location: 0.78),
+                        .init(color: .clear, location: 1),
+                    ],
+                    startPoint: axis == .horizontal ? .leading : .top,
+                    endPoint: axis == .horizontal ? .trailing : .bottom
+                )
+            }
+            .accessibilityHidden(true)
     }
 }
 
@@ -424,5 +638,15 @@ struct AdaptiveColumns<Content: View>: View {
             ? AnyLayout(VStackLayout(alignment: .leading, spacing: spacing))
             : AnyLayout(HStackLayout(alignment: .top, spacing: spacing))
         layout { content }
+    }
+}
+
+
+/// One falling sakura petal: rounded, with the notch at its tip.
+struct SakuraPetal: Shape {
+    func path(in rect: CGRect) -> Path {
+        let r = min(rect.width, rect.height) * 0.48
+        let transform = CGAffineTransform(translationX: rect.midX, y: rect.midY + r * 0.5)
+        return SakuraArt.petalPath(radius: r).applying(transform)
     }
 }

@@ -115,7 +115,7 @@ swiftc Sources/PomodoroNonna/Models.swift Sources/PomodoroNonna/TodoModels.swift
 .build/checks/analytics-check
 swiftc Sources/PomodoroNonna/Models.swift Sources/PomodoroNonna/TodoModels.swift Sources/PomodoroNonna/FocusPlan.swift Sources/PomodoroNonna/FocusScience.swift Sources/PomodoroNonna/ThemePalette.swift Tests/FocusPlanCheck/main.swift -o .build/checks/focus-plan-check
 .build/checks/focus-plan-check
-swiftc Sources/PomodoroNonna/ThemePalette.swift Tests/ThemeCheck/main.swift -o .build/checks/theme-check
+swiftc Sources/PomodoroNonna/ThemePalette.swift Sources/PomodoroNonna/ThemeCodes.swift Tests/ThemeCheck/main.swift -o .build/checks/theme-check
 .build/checks/theme-check
 swiftc Sources/PomodoroNonna/TodoModels.swift Tests/TodoCheck/main.swift -o .build/checks/todo-check
 .build/checks/todo-check
@@ -169,6 +169,25 @@ The project deliberately starts with a reliable focus and analytics core. Suitab
 - Universal binary, Developer ID signing, notarization, and packaged releases
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) before proposing a change.
+
+## Theme codes
+
+Anyone can share a custom theme: **Settings → Appearance → Build your theme → Share this theme** copies a code, and pasting it into **Paste a theme code** adds it.
+
+Rare themes come from codes signed with the developer's private key, which never leaves the developer's Mac (`~/.pomofocus-dev/rare-theme-key`). The app only contains the public key, so it can check a rare code but can't make one. To make one:
+
+```bash
+swift Scripts/mint-rare-theme.swift --name "Garden" --note "For a friend" --light --background FBE9EE --accent C96B86 --rest 9E4A64
+```
+
+## Sound credits
+
+The focus sounds in `Resources/Sounds` come from Wikimedia Commons, trimmed into seamless loops:
+
+- `clock.m4a`: "Wall clock with weight ticking" by Work With Sounds / Technical Museum of Slovenia, [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) ([source](https://commons.wikimedia.org/wiki/File:WWS_Wallclockwithweightticking.ogg)).
+- `rain.m4a`: "Rain against the window", public domain ([source](https://commons.wikimedia.org/wiki/File:Rain_against_the_window.ogg)).
+- `ocean.m4a`: "Ocean Waves on a Tropical Beach", CC0 ([source](https://commons.wikimedia.org/wiki/File:Ocean_Waves_on_a_Tropical_Beach.ogg)).
+- `brown.m4a` and `white.m4a` are generated noise, made for Pomofocus.
 
 ## License
 

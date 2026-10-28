@@ -7,9 +7,9 @@ public enum PomofocusWidgetPhase: String, Codable, Sendable {
 
     public var compactTitle: String {
         switch self {
-        case .focus: "FOCUS"
-        case .shortBreak: "REST"
-        case .longBreak: "LONG REST"
+        case .focus: "Focus"
+        case .shortBreak: "Rest"
+        case .longBreak: "Long rest"
         }
     }
 }
@@ -24,13 +24,32 @@ public enum PomofocusWidgetStatus: String, Codable, Sendable {
 
     public var compactTitle: String {
         switch self {
-        case .idle: "READY"
-        case .breathing: "BREATHE"
-        case .running: "IN PROGRESS"
-        case .paused: "PAUSED"
-        case .overtime: "OVERTIME"
-        case .completed: "COMPLETE"
+        case .idle: "Ready"
+        case .breathing: "Breathe"
+        case .running: "In progress"
+        case .paused: "Paused"
+        case .overtime: "Overtime"
+        case .completed: "Complete"
         }
+    }
+}
+
+/// The app's theme colours, as hex, so the widget matches whatever look is chosen.
+public struct PomofocusWidgetTheme: Codable, Equatable, Sendable {
+    public var isDark: Bool
+    public var background: String
+    public var ink: String
+    public var secondaryInk: String
+    public var line: String
+    public var accent: String
+
+    public init(isDark: Bool, background: String, ink: String, secondaryInk: String, line: String, accent: String) {
+        self.isDark = isDark
+        self.background = background
+        self.ink = ink
+        self.secondaryInk = secondaryInk
+        self.line = line
+        self.accent = accent
     }
 }
 
@@ -51,6 +70,8 @@ public struct PomofocusWidgetSnapshot: Codable, Equatable, Sendable {
     public var cycleCurrent: Int
     public var cycleTotal: Int
     public var todayFocusSeconds: Int
+    /// Missing in files written before themes reached the widget.
+    public var theme: PomofocusWidgetTheme?
 
     public init(
         phase: PomofocusWidgetPhase,
@@ -66,7 +87,8 @@ public struct PomofocusWidgetSnapshot: Codable, Equatable, Sendable {
         overtimeStartDate: Date?,
         cycleCurrent: Int,
         cycleTotal: Int,
-        todayFocusSeconds: Int
+        todayFocusSeconds: Int,
+        theme: PomofocusWidgetTheme? = nil
     ) {
         self.phase = phase
         self.status = status
@@ -82,6 +104,7 @@ public struct PomofocusWidgetSnapshot: Codable, Equatable, Sendable {
         self.cycleCurrent = cycleCurrent
         self.cycleTotal = cycleTotal
         self.todayFocusSeconds = todayFocusSeconds
+        self.theme = theme
     }
 
     public static let placeholder = PomofocusWidgetSnapshot(

@@ -16,6 +16,71 @@ struct TodoItem: Codable, Identifiable, Equatable, Sendable {
     var isDone = false
     var completedAt: Date?
     var createdAt = Date()
+    /// When it's planned on the day timeline, if it has been dragged there.
+    var scheduledAt: Date?
+    /// Smaller steps, checked off one by one.
+    var subtasks: [Subtask]?
+
+    /// How long it takes on the timeline: its estimate, or half an hour.
+    var plannedMinutes: Int { minutes ?? 30 }
+    var steps: [Subtask] { subtasks ?? [] }
+}
+
+struct Subtask: Codable, Identifiable, Equatable, Sendable {
+    var id = UUID()
+    var title: String
+    var isDone = false
+}
+
+/// Fits tasks into the free time of a day, around calendar events and what's already planned.
+enum DayPlanner {
+    struct Slot: Equatable, Sendable {
+        let start: Date
+        let end: Date
+    }
+
+    /// Start times for `tasks` (in order), from `from` until `until`, skipping `busy` times,
+    /// with `gapMinutes` of breathing room after each one. Tasks that don't fit are left out.
+    static func place(
+        _ tasks: [(id: UUID, minutes: Int)],
+        busy: [Slot],
+        from: Date,
+        until: Date,
+        gapMinutes: Int = 10,
+        calendar: Calendar = .current
+    ) -> [UUID: Date] {
+        var cursor = roundUp(from, toMinutes: 15, calendar: calendar)
+        let blocked = busy.sorted { $0.start < $1.start }
+        var result: [UUID: Date] = [:]
+        for task in tasks {
+            let length = TimeInterval(task.minutes * 60)
+            let before = cursor
+            var placed = false
+            while cursor.addingTimeInterval(length) <= until {
+                let end = cursor.addingTimeInterval(length)
+                if let clash = blocked.first(where: { $0.start < end && $0.end > cursor }) {
+                    cursor = roundUp(clash.end, toMinutes: 5, calendar: calendar)
+                    continue
+                }
+                result[task.id] = cursor
+                cursor = end.addingTimeInterval(TimeInterval(gapMinutes * 60))
+                placed = true
+                break
+            }
+            // Too long for what's left: skip it and try the next task from the same point.
+            if !placed { cursor = before }
+        }
+        return result
+    }
+
+    static func roundUp(_ date: Date, toMinutes step: Int, calendar: Calendar = .current) -> Date {
+        let minute = calendar.component(.minute, from: date)
+        let second = calendar.component(.second, from: date)
+        let remainder = minute % step
+        guard remainder != 0 || second != 0 else { return date }
+        let add = (step - remainder) * 60 - second
+        return date.addingTimeInterval(TimeInterval(add))
+    }
 }
 
 /// The parts of a typed line like "Problem set 5 3p tomorrow #Math".

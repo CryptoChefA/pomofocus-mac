@@ -31,6 +31,9 @@ struct PomodoroNonnaApp: App {
         .windowToolbarStyle(.unifiedCompact)
         .defaultSize(width: 1440, height: 860)
         .commands {
+            CommandGroup(after: .appInfo) {
+                Button("Check for Updates…") { Task { await Updater.shared.check(userInitiated: true) } }
+            }
             CommandMenu("Timer") {
                 Button(model.canAdvanceCycle ? model.nextActionTitle : model.status == .idle ? "Start Focus" : "Pause or Resume") {
                     if model.canAdvanceCycle {
@@ -50,6 +53,8 @@ struct PomodoroNonnaApp: App {
                     .keyboardShortcut("b", modifiers: [.command, .shift])
                 Button("Skip Break and Start Focus") { model.skipBreakAndStartFocus() }
                     .disabled(model.phase == .focus && !model.isOvertime)
+                Divider()
+                Button("Wrap Up Today…") { model.showsWrapUp = true }
                 Divider()
                 Button("Cinema Mode") { CinematicController.shared.toggle(model: model) }
                     .keyboardShortcut("f", modifiers: [.command, .shift])

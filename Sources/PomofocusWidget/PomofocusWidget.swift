@@ -33,17 +33,45 @@ private struct PomofocusProvider: TimelineProvider {
     }
 }
 
-private enum WidgetPalette {
-    static let black = Color(red: 0.025, green: 0.028, blue: 0.032)
-    static let white = Color(red: 0.945, green: 0.937, blue: 0.914)
-    static let secondary = Color(red: 0.56, green: 0.58, blue: 0.61)
-    static let track = Color.white.opacity(0.11)
-    static let gold = Color(red: 0.741, green: 0.647, blue: 0.435)
+/// The widget's colours: the app's chosen theme when it has shared one, otherwise the
+/// original graphite and gold.
+private struct WidgetPalette {
+    let isDark: Bool
+    let black: Color
+    let white: Color
+    let secondary: Color
+    let track: Color
+    let gold: Color
+
+    init(_ theme: PomofocusWidgetTheme?) {
+        guard let theme else {
+            isDark = true
+            black = Color(red: 0.025, green: 0.028, blue: 0.032)
+            white = Color(red: 0.945, green: 0.937, blue: 0.914)
+            secondary = Color(red: 0.56, green: 0.58, blue: 0.61)
+            track = Color.white.opacity(0.11)
+            gold = Color(red: 0.741, green: 0.647, blue: 0.435)
+            return
+        }
+        isDark = theme.isDark
+        black = Self.color(theme.background)
+        white = Self.color(theme.ink)
+        secondary = Self.color(theme.secondaryInk)
+        track = Self.color(theme.line)
+        gold = Self.color(theme.accent)
+    }
+
+    private static func color(_ hex: String) -> Color {
+        var value: UInt64 = 0
+        Scanner(string: hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)).scanHexInt64(&value)
+        return Color(red: Double((value >> 16) & 0xFF) / 255, green: Double((value >> 8) & 0xFF) / 255, blue: Double(value & 0xFF) / 255)
+    }
 }
 
 private struct PomofocusWidgetView: View {
     let entry: PomofocusEntry
     @Environment(\.widgetFamily) private var family
+    private var palette: WidgetPalette { WidgetPalette(entry.snapshot.theme) }
 
     var body: some View {
         Group {
@@ -56,26 +84,25 @@ private struct PomofocusWidgetView: View {
                 largeView
             }
         }
-        .containerBackground(for: .widget) { WidgetPalette.black }
-        .environment(\.colorScheme, .dark)
+        .containerBackground(for: .widget) { palette.black }
+        .environment(\.colorScheme, palette.isDark ? .dark : .light)
         .widgetURL(URL(string: "pomofocus://focus"))
     }
 
     private var smallView: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 7) {
-                WidgetMark(size: 18)
+                WidgetMark(palette: palette, size: 18)
                 Text(entry.snapshot.phase.compactTitle)
-                    .font(.system(size: 9, weight: .semibold))
-                    .tracking(1.4)
-                    .foregroundStyle(WidgetPalette.white)
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(palette.white)
                 Spacer(minLength: 0)
             }
 
             Spacer(minLength: 8)
             timerText(size: 34)
             Spacer(minLength: 8)
-            ProgressBand(snapshot: entry.snapshot)
+            ProgressBand(palette: palette, snapshot: entry.snapshot)
         }
     }
 
@@ -84,10 +111,9 @@ private struct PomofocusWidgetView: View {
             HStack(alignment: .center, spacing: 24) {
                 VStack(alignment: .leading, spacing: 9) {
                     HStack(spacing: 7) {
-                        WidgetMark(size: 17)
+                        WidgetMark(palette: palette, size: 17)
                         Text(entry.snapshot.phase.compactTitle)
-                            .font(.system(size: 9, weight: .semibold))
-                            .tracking(1.35)
+                            .font(.system(size: 11, weight: .semibold))
                     }
                     timerText(size: 38)
                 }
@@ -96,40 +122,37 @@ private struct PomofocusWidgetView: View {
                 VStack(alignment: .leading, spacing: 5) {
                     Text(entry.snapshot.taskName)
                         .font(.system(size: 17, weight: .semibold))
-                        .foregroundStyle(WidgetPalette.white)
+                        .foregroundStyle(palette.white)
                         .lineLimit(1)
                     if !entry.snapshot.intention.isEmpty {
                         Text(entry.snapshot.intention)
                             .font(.system(size: 12, weight: .regular))
-                            .foregroundStyle(WidgetPalette.secondary)
+                            .foregroundStyle(palette.secondary)
                             .lineLimit(1)
                     }
-                    Text("\(entry.snapshot.cycleCurrent) OF \(entry.snapshot.cycleTotal)")
-                        .font(.system(size: 9, weight: .semibold))
-                        .tracking(1.1)
-                        .foregroundStyle(WidgetPalette.secondary)
+                    Text("Block \(entry.snapshot.cycleCurrent) of \(entry.snapshot.cycleTotal)")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(palette.secondary)
                         .padding(.top, 4)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
 
-            ProgressBand(snapshot: entry.snapshot)
+            ProgressBand(palette: palette, snapshot: entry.snapshot)
         }
     }
 
     private var largeView: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 8) {
-                WidgetMark(size: 19)
-                Text("POMOFOCUS")
-                    .font(.system(size: 9, weight: .semibold))
-                    .tracking(1.6)
-                    .foregroundStyle(WidgetPalette.white)
+                WidgetMark(palette: palette, size: 19)
+                Text("Pomofocus")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(palette.white)
                 Spacer()
                 Text(entry.snapshot.status.compactTitle)
-                    .font(.system(size: 9, weight: .semibold))
-                    .tracking(1.25)
-                    .foregroundStyle(WidgetPalette.secondary)
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(palette.secondary)
             }
 
             Spacer(minLength: 20)
@@ -138,27 +161,25 @@ private struct PomofocusWidgetView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     timerText(size: 50)
                     Text(entry.snapshot.phase.compactTitle)
-                        .font(.system(size: 9, weight: .semibold))
-                        .tracking(1.5)
-                        .foregroundStyle(WidgetPalette.secondary)
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(palette.secondary)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
 
                 VStack(alignment: .leading, spacing: 7) {
                     Text(entry.snapshot.taskName)
                         .font(.system(size: 20, weight: .semibold))
-                        .foregroundStyle(WidgetPalette.white)
+                        .foregroundStyle(palette.white)
                         .lineLimit(1)
                     if !entry.snapshot.intention.isEmpty {
                         Text(entry.snapshot.intention)
                             .font(.system(size: 13))
-                            .foregroundStyle(WidgetPalette.secondary)
+                            .foregroundStyle(palette.secondary)
                             .lineLimit(2)
                     }
-                    Text("SESSION \(entry.snapshot.cycleCurrent) OF \(entry.snapshot.cycleTotal)")
-                        .font(.system(size: 9, weight: .semibold))
-                        .tracking(1.05)
-                        .foregroundStyle(WidgetPalette.secondary)
+                    Text("Block \(entry.snapshot.cycleCurrent) of \(entry.snapshot.cycleTotal)")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(palette.secondary)
                         .padding(.top, 5)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -167,18 +188,17 @@ private struct PomofocusWidgetView: View {
             Spacer(minLength: 20)
 
             HStack {
-                Text("TODAY")
-                    .font(.system(size: 9, weight: .semibold))
-                    .tracking(1.25)
-                    .foregroundStyle(WidgetPalette.secondary)
+                Text("Today")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(palette.secondary)
                 Spacer()
                 Text(durationString(entry.snapshot.todayFocusSeconds))
-                    .font(.system(size: 11, weight: .medium, design: .monospaced))
-                    .foregroundStyle(WidgetPalette.white)
+                    .font(.system(size: 11, weight: .medium).monospacedDigit())
+                    .foregroundStyle(palette.white)
             }
             .padding(.bottom, 9)
 
-            ProgressBand(snapshot: entry.snapshot)
+            ProgressBand(palette: palette, snapshot: entry.snapshot)
         }
     }
 
@@ -206,7 +226,7 @@ private struct PomofocusWidgetView: View {
         }
         .font(.system(size: size, weight: .medium, design: .rounded))
         .monospacedDigit()
-        .foregroundStyle(WidgetPalette.white)
+        .foregroundStyle(palette.white)
         .lineLimit(1)
         .minimumScaleFactor(0.72)
     }
@@ -224,12 +244,13 @@ private struct PomofocusWidgetView: View {
         let safe = max(0, seconds)
         let hours = safe / 3_600
         let minutes = (safe % 3_600) / 60
-        if hours > 0 { return minutes > 0 ? "\(hours)H \(minutes)M" : "\(hours)H" }
-        return "\(minutes)M"
+        if hours > 0 { return minutes > 0 ? "\(hours)h \(minutes)m" : "\(hours)h" }
+        return "\(minutes)m"
     }
 }
 
 private struct ProgressBand: View {
+    let palette: WidgetPalette
     let snapshot: PomofocusWidgetSnapshot
 
     var body: some View {
@@ -243,24 +264,25 @@ private struct ProgressBand: View {
             }
         }
         .progressViewStyle(.linear)
-        .tint(WidgetPalette.gold)
-        .background(WidgetPalette.track)
+        .tint(palette.gold)
+        .background(palette.track)
         .clipShape(Capsule())
         .frame(height: 3)
     }
 }
 
 private struct WidgetMark: View {
+    let palette: WidgetPalette
     let size: CGFloat
 
     var body: some View {
         ZStack {
             Circle()
                 .trim(from: 0.07, to: 0.93)
-                .stroke(WidgetPalette.white, style: StrokeStyle(lineWidth: 2.1, lineCap: .butt))
+                .stroke(palette.white, style: StrokeStyle(lineWidth: 2.1, lineCap: .butt))
                 .rotationEffect(.degrees(-90))
             Capsule()
-                .fill(WidgetPalette.white)
+                .fill(palette.white)
                 .frame(width: size * 0.42, height: 2.1)
                 .rotationEffect(.degrees(34), anchor: .leading)
                 .offset(x: size * 0.11, y: size * 0.08)

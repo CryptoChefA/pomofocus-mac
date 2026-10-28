@@ -49,9 +49,8 @@ struct FocusScore: Equatable, Sendable {
         goalMinutes: Int,
         calendar: Calendar = .current
     ) -> FocusScore? {
-        let blocks = sessions
-            .filter { calendar.isDate($0.startedAt, inSameDayAs: day) }
-            .sorted { $0.startedAt < $1.startedAt }
+        let blocks = FocusSession.mergedBlocks(sessions
+            .filter { calendar.isDate($0.startedAt, inSameDayAs: day) })
         guard !blocks.isEmpty else { return nil }
         let rests = breaks.filter { calendar.isDate($0.startedAt, inSameDayAs: day) }
 
@@ -108,7 +107,7 @@ struct FocusScore: Equatable, Sendable {
             kind: .breaks, title: "Breaks that recharge",
             points: 10 * breakFraction, maxPoints: 10,
             detail: expected == 0 ? "Not needed yet with one block"
-                : "\(onTime) of \(expected) \(expected == 1 ? "break" : "breaks") taken and back on time\(late > 0 ? " · \(late) ran long" : "")",
+                : "\(onTime) of \(expected) \(expected == 1 ? "break" : "breaks") taken and back on time\(late > 0 ? ", \(late) ran long" : "")",
             tip: breakFraction >= 0.9 ? "Good breaks make the next block easier."
                 : "Take the break, step away from the screen, and come back when it ends."
         )

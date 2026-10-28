@@ -23,15 +23,34 @@ struct FocusView: View {
     /// Only flash while the clock is actually running over. Paused overtime holds steady red.
     private var isFlashing: Bool { isAlerting && model.status == .overtime }
 
+    @AppStorage("displayName") private var displayName = ""
+    private var isBlackIce: Bool { ThemeManager.shared.themeID == ThemeChoice.blackIce.rawValue }
+    private var isBespoke: Bool { ThemeManager.shared.themeID == ThemeChoice.bespoke.rawValue }
+
+    /// "Good morning, Layla" once a name is set in Settings.
+    private var greeting: String {
+        let name = displayName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty else { return "Pomofocus" }
+        let hour = Calendar.current.component(.hour, from: Date())
+        let part = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening"
+        return "\(part), \(name)"
+    }
+
     var body: some View {
         HStack(spacing: 0) {
             ScrollView {
                 VStack(spacing: 24) {
                     HStack {
-                        Text("POMOFOCUS")
-                            .font(.system(size: 9, weight: .semibold, design: .monospaced))
-                            .tracking(1.8)
-                            .foregroundStyle(NonnaTheme.terracotta)
+                        if isBespoke {
+                            BespokeWordmark(greeting: displayName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : greeting)
+                        } else if isBlackIce {
+                            // Black Ice signs its name in an icy script, glowing like frost.
+                            IcyGreeting(text: greeting)
+                        } else {
+                            Text(greeting)
+                                .font(.system(size: 11, weight: .semibold).monospacedDigit())
+                                .foregroundStyle(NonnaTheme.terracotta)
+                        }
                         Spacer()
                         Button {
                             CinematicController.shared.enter(model: model)
@@ -54,6 +73,11 @@ struct FocusView: View {
                             .frame(maxWidth: 690)
                     }
 
+                    if model.status == .idle {
+                        WrapUpBanner()
+                            .frame(maxWidth: 690)
+                    }
+
                     VStack(spacing: 13) {
                         Text("What's your focus?")
                             .font(.system(size: 28, weight: .semibold))
@@ -70,14 +94,22 @@ struct FocusView: View {
 
             Divider().overlay(NonnaTheme.line)
 
-            Group {
-                if timelineCollapsed || compact {
-                    TimelineRail(onExpand: compact ? toggleDrawer : toggleTimeline)
-                        .transition(.move(edge: .trailing).combined(with: .opacity))
-                } else {
+            if compact {
+                TimelineRail(onExpand: toggleDrawer)
+            } else {
+                // The timeline stays built and slides by width, so opening it is one smooth
+                // motion instead of building the whole day mid-animation.
+                HStack(spacing: 0) {
+                    if timelineCollapsed {
+                        TimelineRail(onExpand: toggleTimeline)
+                            .transition(.opacity)
+                    }
                     DayTimelineView(onCollapse: toggleTimeline)
-                        .frame(minWidth: 470, idealWidth: 540, maxWidth: 620)
-                        .transition(.move(edge: .trailing).combined(with: .opacity))
+                        .frame(width: 540)
+                        .frame(width: timelineCollapsed ? 0 : 540, alignment: .leading)
+                        .clipped()
+                        .allowsHitTesting(!timelineCollapsed)
+                        .accessibilityHidden(timelineCollapsed)
                 }
             }
         }
@@ -85,13 +117,16 @@ struct FocusView: View {
         .overlay(alignment: .trailing) {
             if compact && timelineDrawerOpen {
                 ZStack(alignment: .trailing) {
+                    // The shade and the drawer run up under the title bar too, so no light
+                    // band is left across the top.
                     Color.black.opacity(NonnaTheme.isDark ? 0.4 : 0.15)
+                        .ignoresSafeArea()
                         .contentShape(Rectangle())
                         .onTapGesture(perform: toggleDrawer)
                         .transition(.opacity)
                     DayTimelineView(onCollapse: toggleDrawer)
                         .frame(width: 460)
-                        .background(NonnaTheme.cream)
+                        .background(NonnaTheme.cream.ignoresSafeArea())
                         .overlay(alignment: .leading) { Rectangle().fill(NonnaTheme.line).frame(width: 1) }
                         .shadow(color: .black.opacity(0.35), radius: 30, x: -8)
                         .transition(.move(edge: .trailing))
@@ -122,68 +157,18 @@ struct FocusView: View {
     }
 
     private var focusSetup: some View {
-        VStack(spacing: 12) {
-            HStack(spacing: 8) {
-                Menu {
-                    ForEach(model.tasks) { task in
-                        Button {
-                            model.selectedTaskID = task.id
-                            model.persistDraft()
-                        } label: {
-                            Label(task.name, systemImage: model.selectedTaskID == task.id ? "checkmark.circle.fill" : "circle.fill")
-                        }
-                    }
-                    Divider()
-                    Button("New list…") { showingNewTask = true }
-                } label: {
-                    HStack(spacing: 8) {
-                        Circle()
-                            .fill(NonnaTheme.taskColor(for: model.selectedTask?.colorHex ?? "BDA56F"))
-                            .frame(width: 7, height: 7)
-                        Text(model.selectedTask?.name ?? "Choose a list")
-                        Image(systemName: "chevron.down")
-                            .font(.system(size: 8, weight: .bold))
-                    }
-                    .font(.system(size: 12, weight: .medium))
-                    .padding(.horizontal, 14)
-                    .frame(height: 34)
-                    .background(NonnaTheme.raisedPaper)
-                    .clipShape(Capsule())
-                    .overlay { Capsule().stroke(NonnaTheme.line, lineWidth: 0.8) }
-                }
-                .menuStyle(.borderlessButton)
-                .menuIndicator(.hidden)
-                .fixedSize()
-
-                Button { showingNewTask = true } label: {
-                    Image(systemName: "plus")
-                        .frame(width: 32, height: 32)
-                        .background(NonnaTheme.raisedPaper)
-                        .clipShape(Circle())
-                        .overlay { Circle().stroke(NonnaTheme.line, lineWidth: 0.8) }
-                }
-                .buttonStyle(.plain)
-            }
-
-            LinkedTodoControl(compact: true)
-
-            // A linked task already says what this block is for.
-            if model.selectedTodo == nil {
-                IntentionField(style: .pill)
-            }
-        }
+        FocusPicker(showingNewList: $showingNewTask)
     }
 
     private var todayProgress: some View {
         let todaySeconds = model.todayRecordedFocusSeconds
         let goal = max(1, model.settings.dailyGoalMinutes * 60)
         return VStack(alignment: .trailing, spacing: 5) {
-            Text("TODAY")
-                .font(.system(size: 8, weight: .semibold, design: .monospaced))
-                .tracking(1.5)
+            Text("Today")
+                .font(.system(size: 10, weight: .semibold).monospacedDigit())
                 .foregroundStyle(NonnaTheme.secondaryInk)
             Text("\(todaySeconds.focusDurationString) / \((goal).focusDurationString)")
-                .font(.system(size: 12, weight: .medium, design: .monospaced))
+                .font(.system(size: 12, weight: .medium).monospacedDigit())
             ProgressView(value: min(1, Double(todaySeconds) / Double(goal)))
                 .tint(NonnaTheme.terracotta)
                 .frame(width: 130)
@@ -209,12 +194,12 @@ struct FocusView: View {
                                         .padding(4)
                                 }
                                 Text(phase == .focus ? "Focus" : phase == .shortBreak ? "Short rest" : "Long rest")
-                                    .font(.system(size: 10, weight: .medium, design: .monospaced))
-                                    .tracking(0.5)
+                                    .font(.system(size: 10, weight: .medium).monospacedDigit())
                                     .foregroundStyle(model.phase == phase ? NonnaTheme.ink : NonnaTheme.secondaryInk)
                             }
                             .frame(maxWidth: .infinity)
                             .frame(height: 46)
+                            .contentShape(Rectangle())
                             .overlay(alignment: .bottom) {
                                 if model.phase == phase {
                                     Capsule()
@@ -249,6 +234,15 @@ struct FocusView: View {
                                     reduceMotion: reduceMotion
                                 )
                             }
+                            .overlay {
+                                // In Black Ice a paused block frosts over.
+                                if isBlackIce, model.status == .paused {
+                                    FrostOverlay()
+                                        .padding(40)
+                                        .transition(.opacity)
+                                }
+                            }
+                            .animation(reduceMotion ? nil : .easeInOut(duration: 0.8), value: model.status == .paused)
                             .transition(.opacity.combined(with: .scale(scale: 0.97)))
                         }
                     }
@@ -260,8 +254,7 @@ struct FocusView: View {
                     if !model.isBreathing {
                         VStack(spacing: 7) {
                             Text(timerStateLabel)
-                                .font(.system(size: 8, weight: .semibold, design: .monospaced))
-                                .tracking(2)
+                                .font(.system(size: 10, weight: .semibold).monospacedDigit())
                                 .foregroundStyle(accent)
                                 .padding(.horizontal, isAlerting ? 9 : 0)
                                 .frame(height: isAlerting ? 20 : nil)
@@ -292,24 +285,13 @@ struct FocusView: View {
                                 .shadow(color: isAlerting ? NonnaTheme.alert.opacity(0.45) : .clear, radius: isAlerting ? 14 : 0)
                                 .alertFlash(isFlashing)
                             Text(timerRangeText)
-                                .font(.system(size: 9, weight: .medium, design: .monospaced))
+                                .font(.system(size: 11, weight: .medium).monospacedDigit())
                                 .foregroundStyle(NonnaTheme.secondaryInk)
                                 .padding(.horizontal, 10)
                                 .frame(height: 24)
                                 .background(NonnaTheme.raisedPaper)
                                 .clipShape(Capsule())
                                 .overlay { Capsule().stroke(NonnaTheme.line, lineWidth: 0.8) }
-                            if let idea = model.currentBreakIdea {
-                                Label(idea, systemImage: "leaf")
-                                    .font(.system(size: 11, weight: .medium))
-                                    .foregroundStyle(NonnaTheme.sage)
-                                    .padding(.horizontal, 12)
-                                    .frame(height: 28)
-                                    .background(NonnaTheme.sage.opacity(0.1), in: Capsule())
-                                    .overlay { Capsule().stroke(NonnaTheme.sage.opacity(0.35), lineWidth: 0.8) }
-                                    .padding(.top, 4)
-                                    .help("A low-stimulation break from your focus plan")
-                            }
                         }
                     }
 
@@ -323,8 +305,8 @@ struct FocusView: View {
     }
 
     private var timerStateLabel: String {
-        if model.awaitingNextPhase != nil { return "BREAK COMPLETE" }
-        if model.status == .overtime { return model.phase == .focus ? "FOCUS OVERTIME" : "BREAK OVERTIME" }
+        if model.awaitingNextPhase != nil { return "Break complete" }
+        if model.status == .overtime { return model.phase == .focus ? "Focus overtime" : "Break overtime" }
         return model.phase.compactTitle
     }
 
@@ -379,7 +361,7 @@ struct FocusView: View {
         return "\(model.status.rawValue)-\(model.phase.rawValue)"
     }
 
-    /// Stops for now and keeps everything tracked. Shown in every active state.
+    /// Stops for now and keeps everything tracked. Shown only while something is running or paused.
     private var endSessionButton: some View {
         Button {
             model.endSession()
@@ -437,8 +419,6 @@ struct FocusView: View {
                     Label(model.phase == .focus ? "Begin focus" : "Begin rest", systemImage: "play.fill")
                 }
                 .buttonStyle(NonnaButtonStyle(color: accent))
-
-                if model.hasOpenRun { endSessionButton }
             } else {
                 Button {
                     model.togglePause()
@@ -529,6 +509,10 @@ private struct PremiumTimerDial: View {
                 .padding(27)
                 .shadow(color: accent.opacity(isActive ? 0.28 : 0.08), radius: 7)
 
+            if ThemeManager.shared.themeID == ThemeChoice.piano.rawValue {
+                RomanDialMarkings()
+            }
+
             PremiumDialBezel()
 
             Capsule()
@@ -572,6 +556,13 @@ private struct PremiumTimerDial: View {
                 .shadow(color: accent.opacity(0.28), radius: reduceMotion ? 3 : 7)
         }
         .drawingGroup(opaque: false, colorMode: .linear)
+        // Shadow outside the flattened layer, so it isn't clipped into a square.
+        .background {
+            Circle()
+                .fill(NonnaTheme.cream)
+                .padding(27)
+                .shadow(color: .black.opacity(NonnaTheme.colorScheme == .dark ? 0.42 : 0.14), radius: 20, y: 10)
+        }
     }
 }
 
@@ -591,7 +582,6 @@ private struct PremiumDialFace: View {
                 )
             )
             .padding(27)
-            .shadow(color: .black.opacity(0.42), radius: 20, y: 10)
     }
 }
 
@@ -642,60 +632,66 @@ private struct PieSlice: Shape {
     }
 }
 
+/// The breathing ritual: six petals that bloom outward and turn as you breathe in, then
+/// fold back as you breathe out, in the theme's colours. Six shapes and two animated
+/// values, so it costs next to nothing to draw.
 private struct BreathingRitualView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.colorScheme) private var colorScheme
     let stage: BreathingStage
     let cycle: Int
     let accent: Color
     @State private var expanded = false
 
+    private static let petals = 6
+
+    private var colors: [Color] {
+        // Only the theme's accent and its lighter shade, so the flower always matches the look.
+        let palette = [accent, NonnaTheme.darkTerracotta]
+        return (0..<Self.petals).map { palette[$0 % palette.count] }
+    }
+
     var body: some View {
-        ZStack {
-            Circle()
-                .stroke(NonnaTheme.line, lineWidth: 1)
-            Circle()
-                .fill(accent.opacity(expanded ? 0.1 : 0.035))
-                .blur(radius: 18)
-                .scaleEffect(expanded ? 0.98 : 0.58)
-            Circle()
-                .fill(
-                    RadialGradient(
-                        colors: [accent.opacity(0.2), accent.opacity(0.055), accent.opacity(0.01)],
-                        center: .center,
-                        startRadius: 12,
-                        endRadius: 120
-                    )
-                )
-                .scaleEffect(expanded ? 0.86 : 0.56)
-            Circle()
-                .stroke(
-                    LinearGradient(
-                        colors: [accent.opacity(0.64), accent.opacity(0.13)],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    ),
-                    lineWidth: 1.5
-                )
-                .scaleEffect(expanded ? 0.92 : 0.62)
-                .shadow(color: accent.opacity(expanded ? 0.28 : 0.1), radius: 12)
+        VStack(spacing: 22) {
+            GeometryReader { proxy in
+                let size = min(proxy.size.width, proxy.size.height)
+                let petal = size * 0.5
+                ZStack {
+                    ForEach(0..<Self.petals, id: \.self) { index in
+                        Circle()
+                            .fill(
+                                LinearGradient(
+                                    colors: [colors[index].opacity(0.95), colors[index].opacity(0.55)],
+                                    startPoint: .top,
+                                    endPoint: .bottom
+                                )
+                            )
+                            .frame(width: petal, height: petal)
+                            .offset(y: expanded ? -petal * 0.5 : 0)
+                            .rotationEffect(.degrees(Double(index) / Double(Self.petals) * 360))
+                            .opacity(colorScheme == .dark ? 0.6 : 0.5)
+                            .blendMode(colorScheme == .dark ? .screen : .multiply)
+                    }
+                }
+                .compositingGroup()
+                .scaleEffect(expanded ? 1 : 0.38)
+                .rotationEffect(.degrees(expanded ? 0 : -90))
+                .shadow(color: accent.opacity(expanded ? 0.3 : 0.12), radius: expanded ? 24 : 10)
+                .frame(width: proxy.size.width, height: proxy.size.height)
+            }
+            .frame(height: 230)
 
-            Circle()
-                .stroke(accent.opacity(0.18), lineWidth: 0.8)
-                .scaleEffect(expanded ? 0.76 : 0.5)
-
-            VStack(spacing: 10) {
-                Text("BREATH \(cycle) OF 3")
-                    .font(.system(size: 9, weight: .semibold, design: .monospaced))
-                    .tracking(2)
-                    .foregroundStyle(accent)
+            VStack(spacing: 8) {
                 Text(stage.prompt)
-                    .font(.system(size: 25, weight: .medium))
+                    .font(.system(size: 22, weight: .medium))
                     .multilineTextAlignment(.center)
                     .foregroundStyle(NonnaTheme.ink)
                     .contentTransition(.interpolate)
                     .animation(reduceMotion ? nil : NonnaMotion.quick, value: stage)
+                Text("Breath \(cycle) of 3")
+                    .font(.system(size: 11, weight: .semibold).monospacedDigit())
+                    .foregroundStyle(NonnaTheme.secondaryInk)
             }
-            .padding(.horizontal, 44)
         }
         .onAppear {
             expanded = stage == .exhale
@@ -704,6 +700,7 @@ private struct BreathingRitualView: View {
         .onChange(of: stage) { _, nextStage in
             animate(to: nextStage)
         }
+        .accessibilityElement(children: .combine)
     }
 
     private func animate(to nextStage: BreathingStage) {
@@ -722,31 +719,13 @@ struct NewTaskView: View {
     @State private var name = ""
     @State private var color = "BDA56F"
 
-    private let colors = ["BDA56F", "738B80", "A9A4B5", "788897", "8F7581", "6F858F", "837765"]
-
     var body: some View {
         VStack(alignment: .leading, spacing: 22) {
-            SectionHeading(eyebrow: "Lists", title: "New list")
+            SectionHeading(title: "New list")
             TextField("List name, like a course or project", text: $name)
                 .font(.system(size: 18, weight: .semibold, design: .default))
                 .textFieldStyle(.roundedBorder)
-            HStack(spacing: 12) {
-                ForEach(colors, id: \.self) { hex in
-                    Button {
-                        color = hex
-                    } label: {
-                        Circle()
-                            .fill(Color(hex: hex))
-                            .frame(width: 28, height: 28)
-                            .overlay {
-                                if color == hex {
-                                    Circle().stroke(.white, lineWidth: 3).padding(3)
-                                }
-                            }
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
+            ListColorPicker(hex: $color, size: 28)
             HStack {
                 Spacer()
                 Button("Cancel") { dismiss() }
@@ -779,7 +758,6 @@ struct ReflectionView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 22) {
             SectionHeading(
-                eyebrow: "Session complete",
                 title: "Reflection"
             )
 
@@ -792,7 +770,7 @@ struct ReflectionView: View {
                             Image(systemName: rating >= value ? "circle.inset.filled" : "circle")
                                 .font(.system(size: 23))
                             Text(["Scattered", "Restless", "Steady", "Focused", "Flow"][value - 1])
-                                .font(.system(size: 9, design: .default))
+                                .font(.system(size: 11, design: .default))
                         }
                         .foregroundStyle(rating >= value ? NonnaTheme.terracotta : NonnaTheme.secondaryInk)
                     }
@@ -810,7 +788,7 @@ struct ReflectionView: View {
                 .frame(height: 130)
 
             HStack {
-                Label(session.focusedSeconds.focusDurationString, systemImage: "timer")
+                Label(summary, systemImage: "timer")
                     .font(.system(size: 12, weight: .semibold, design: .default))
                     .foregroundStyle(NonnaTheme.secondaryInk)
                 Spacer()
@@ -824,6 +802,17 @@ struct ReflectionView: View {
         .frame(width: 560)
         .background(NonnaTheme.cream)
     }
+
+    /// One block's time, or the whole sitting's when rating a session.
+    private var summary: String {
+        let ids = model.reflectionRunIDs
+        guard ids.count > 1 else { return session.focusedSeconds.focusDurationString }
+        let rated = model.sessions.filter { ids.contains($0.id) }
+        let total = rated.reduce(0) { $0 + $1.focusedSeconds }
+        let blocks = FocusSession.mergedBlocks(rated).count
+        guard blocks > 1 else { return total.focusDurationString }
+        return "\(blocks) blocks, \(total.focusDurationString)"
+    }
 }
 
 /// The day timeline, tucked away: a slim strip on the right edge with today's total and
@@ -835,7 +824,7 @@ private struct TimelineRail: View {
 
     private var todayText: String {
         let live = model.phase == .focus && model.status != .idle ? model.elapsedSeconds : 0
-        return (model.todayRecordedFocusSeconds + live).focusDurationString.uppercased()
+        return (model.todayRecordedFocusSeconds + live).focusDurationString
     }
 
     var body: some View {
@@ -856,17 +845,15 @@ private struct TimelineRail: View {
                         .help("A timer is running")
                 }
 
-                Text("TIMELINE")
-                    .font(.system(size: 9, weight: .semibold, design: .monospaced))
-                    .tracking(2.4)
+                Text("Timeline")
+                    .font(.system(size: 11, weight: .semibold).monospacedDigit())
                     .foregroundStyle(NonnaTheme.secondaryInk)
                     .fixedSize()
                     .rotationEffect(.degrees(90))
                     .frame(width: 14, height: 80)
 
                 Text(todayText)
-                    .font(.system(size: 9, weight: .semibold, design: .monospaced))
-                    .tracking(1.4)
+                    .font(.system(size: 11, weight: .semibold).monospacedDigit())
                     .foregroundStyle(NonnaTheme.terracotta)
                     .fixedSize()
                     .rotationEffect(.degrees(90))
@@ -877,7 +864,7 @@ private struct TimelineRail: View {
             .padding(.top, 18)
             .frame(width: 52)
             .frame(maxHeight: .infinity)
-            .background(NonnaTheme.sunken.opacity(hovering ? 0.95 : 0.72))
+            .background(NonnaTheme.sunken.opacity(hovering ? 0.95 : 0.72).ignoresSafeArea())
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -924,5 +911,70 @@ private struct AwayBanner: View {
                 .overlay { RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(NonnaTheme.sage.opacity(0.45), lineWidth: 0.8) }
         }
         .transition(.move(edge: .top).combined(with: .opacity))
+    }
+}
+
+/// Piano's dial furniture: a railway minute track and twelve black Roman numerals set
+/// radially, the way a classic dress watch does it. Drawn once; it never moves.
+private struct RomanDialMarkings: View {
+    private static let numerals = ["XII", "I", "II", "III", "IIII", "V", "VI", "VII", "VIII", "IX", "X", "XI"]
+
+    var body: some View {
+        ZStack {
+            // Railway track: two fine rings with a short bar for every minute.
+            Circle().stroke(NonnaTheme.ink.opacity(0.85), lineWidth: 0.7).frame(width: 236, height: 236)
+            Circle().stroke(NonnaTheme.ink.opacity(0.85), lineWidth: 0.7).frame(width: 226, height: 226)
+            ForEach(0..<60, id: \.self) { minute in
+                Rectangle()
+                    .fill(NonnaTheme.ink.opacity(0.8))
+                    .frame(width: minute % 5 == 0 ? 1.2 : 0.6, height: 5)
+                    .offset(y: -115.5)
+                    .rotationEffect(.degrees(Double(minute) * 6))
+            }
+            // The name, engraved under the twelve.
+            Text("POMOFOCUS")
+                .font(.system(size: 10, weight: .semibold, design: .serif))
+                .tracking(1.8)
+                .foregroundStyle(NonnaTheme.ink)
+                .offset(y: -52)
+            ForEach(0..<12, id: \.self) { hour in
+                Text(Self.numerals[hour])
+                    .font(.system(size: 19, weight: .semibold, design: .serif))
+                    .tracking(-0.5)
+                    .foregroundStyle(NonnaTheme.ink)
+                    .scaleEffect(x: 0.82, y: 1.25)
+                    .offset(y: -94)
+                    .rotationEffect(.degrees(Double(hour) * 30))
+            }
+        }
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+}
+
+
+/// Bespoke's letterhead: the name in tall, narrow capitals between fine rules, and the
+/// greeting below it in a quick handwritten note.
+private struct BespokeWordmark: View {
+    let greeting: String?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            VStack(spacing: 3) {
+                Rectangle().fill(NonnaTheme.ink.opacity(0.6)).frame(width: 96, height: 0.6)
+                Text("POMOFOCUS")
+                    .font(.custom("Didot", size: 17).weight(.semibold))
+                    .tracking(1.5)
+                    .scaleEffect(x: 0.78, y: 1.25)
+                    .foregroundStyle(NonnaTheme.ink)
+                    .frame(width: 96)
+                Rectangle().fill(NonnaTheme.ink.opacity(0.6)).frame(width: 96, height: 0.6)
+            }
+            if let greeting {
+                Text(greeting)
+                    .font(.custom("Bradley Hand", size: 17).weight(.bold))
+                    .foregroundStyle(NonnaTheme.ink.opacity(0.85))
+            }
+        }
     }
 }

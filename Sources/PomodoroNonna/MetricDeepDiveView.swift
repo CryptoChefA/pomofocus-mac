@@ -24,12 +24,12 @@ enum DashboardMetric: String, Identifiable, CaseIterable {
 
     var eyebrow: String {
         switch self {
-        case .focus: "DEEP WORK"
-        case .breakTime: "RECOVERY"
-        case .breakOvertime: "OVERRUN"
-        case .daysUsed: "ACTIVITY"
-        case .rhythm: "RHYTHM"
-        case .completed: "EXECUTION"
+        case .focus: "Deep work"
+        case .breakTime: "Recovery"
+        case .breakOvertime: "Overrun"
+        case .daysUsed: "Activity"
+        case .rhythm: "Rhythm"
+        case .completed: "Execution"
         }
     }
 
@@ -106,9 +106,15 @@ struct MetricDeepDiveView: View {
     var body: some View {
         ZStack {
             NonnaBackground()
+            VStack(spacing: 0) {
+            // The header (with Close) stays put while the details scroll.
+            header
+                .padding(.horizontal, 28)
+                .padding(.vertical, 18)
+                .background(NonnaTheme.cream.opacity(0.92))
+                .overlay(alignment: .bottom) { Rectangle().fill(NonnaTheme.line).frame(height: 0.8) }
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
-                    header
                     statGrid
                     primaryChartCard
                     intelligenceStrip
@@ -122,10 +128,11 @@ struct MetricDeepDiveView: View {
                 }
                 .padding(28)
             }
+            }
         }
         .foregroundStyle(NonnaTheme.ink)
         .tint(metric.tint)
-        .frame(minWidth: 900, idealWidth: 1160, minHeight: 640, idealHeight: 820)
+        .frame(minWidth: 760, idealWidth: 980, maxWidth: 1160, minHeight: 520, idealHeight: 720, maxHeight: 900)
         .onChange(of: range) { _, newRange in
             hoveredDay = nil
             snapshot = DeepDiveSnapshot.calculate(
@@ -154,10 +161,6 @@ struct MetricDeepDiveView: View {
             }
 
             VStack(alignment: .leading, spacing: 4) {
-                Text(metric.eyebrow)
-                    .font(.system(size: 9, weight: .semibold, design: .monospaced))
-                    .tracking(1.8)
-                    .foregroundStyle(metric.tint)
                 Text(metric.title)
                     .font(.system(size: 28, weight: .semibold))
                 Text(metric.subtitle)
@@ -203,9 +206,8 @@ struct MetricDeepDiveView: View {
             VStack(alignment: .leading, spacing: 14) {
                 HStack(alignment: .bottom) {
                     VStack(alignment: .leading, spacing: 3) {
-                        Text(rangeDescription.uppercased())
-                            .font(.system(size: 8, weight: .semibold, design: .monospaced))
-                            .tracking(1.5)
+                        Text(rangeDescription)
+                            .font(.system(size: 10, weight: .semibold).monospacedDigit())
                             .foregroundStyle(NonnaTheme.secondaryInk)
                         Text(primaryChartTitle)
                             .font(.system(size: 18, weight: .semibold))
@@ -406,7 +408,7 @@ struct MetricDeepDiveView: View {
     private var timePatternCard: some View {
         NonnaCard {
             VStack(alignment: .leading, spacing: 14) {
-                DetailSectionTitle(eyebrow: "TIME SIGNATURE", title: "Where your focus lands")
+                DetailSectionTitle(title: "Where your focus lands")
                 Chart(snapshot.hours) { item in
                     BarMark(
                         x: .value("Hour", hourLabel(item.hour)),
@@ -435,7 +437,7 @@ struct MetricDeepDiveView: View {
                 HStack {
                     Label(snapshot.peakHour.map { "Peak \(hourSpanLabel($0.hour))" } ?? "No peak yet", systemImage: "clock")
                     Spacer()
-                    Text(snapshot.peakWeekday.map { "Best weekday · \($0.label)" } ?? "")
+                    Text(snapshot.peakWeekday.map { "Best day: \($0.label)" } ?? "")
                 }
                 .font(.system(size: 10, weight: .medium))
                 .foregroundStyle(NonnaTheme.secondaryInk)
@@ -458,7 +460,7 @@ struct MetricDeepDiveView: View {
     private var taskAllocationCard: some View {
         NonnaCard {
             VStack(alignment: .leading, spacing: 14) {
-                DetailSectionTitle(eyebrow: "ALLOCATION", title: "What received your attention")
+                DetailSectionTitle(title: "What received your attention")
                 if snapshot.tasks.isEmpty {
                     DetailEmpty(message: "Task distribution will appear after your first focused block in this range.")
                 } else {
@@ -470,7 +472,7 @@ struct MetricDeepDiveView: View {
                                 Text(task.name).font(.system(size: 11, weight: .medium)).lineLimit(1)
                                 Spacer()
                                 Text(task.seconds.focusDurationString)
-                                    .font(.system(size: 9, weight: .medium, design: .monospaced))
+                                    .font(.system(size: 11, weight: .medium).monospacedDigit())
                                     .foregroundStyle(NonnaTheme.secondaryInk)
                             }
                             GeometryReader { proxy in
@@ -503,7 +505,7 @@ struct MetricDeepDiveView: View {
         ]
         return NonnaCard {
             VStack(alignment: .leading, spacing: 14) {
-                DetailSectionTitle(eyebrow: "BREAK OUTCOMES", title: "How rest periods ended")
+                DetailSectionTitle(title: "How rest periods ended")
                 if snapshot.breakCount == 0 {
                     DetailEmpty(message: "Break behavior will appear after you record rest periods.")
                 } else {
@@ -524,7 +526,7 @@ struct MetricDeepDiveView: View {
                                     Circle().fill(item.color).frame(width: 7, height: 7)
                                     Text(item.name).font(.system(size: 10, weight: .medium))
                                     Spacer()
-                                    Text("\(item.value)").font(.system(size: 10, weight: .semibold, design: .monospaced))
+                                    Text("\(item.value)").font(.system(size: 10, weight: .semibold).monospacedDigit())
                                 }
                             }
                         }
@@ -543,7 +545,7 @@ struct MetricDeepDiveView: View {
         ]
         return NonnaCard {
             VStack(alignment: .leading, spacing: 14) {
-                DetailSectionTitle(eyebrow: "OUTCOMES", title: "How focus blocks ended")
+                DetailSectionTitle(title: "How focus blocks ended")
                 if snapshot.recordedSessionCount == 0 {
                     DetailEmpty(message: "Session outcomes will appear after your first focus block.")
                 } else {
@@ -564,7 +566,7 @@ struct MetricDeepDiveView: View {
                                     Circle().fill(item.color).frame(width: 7, height: 7)
                                     Text(item.name).font(.system(size: 10, weight: .medium))
                                     Spacer()
-                                    Text("\(item.value)").font(.system(size: 10, weight: .semibold, design: .monospaced))
+                                    Text("\(item.value)").font(.system(size: 10, weight: .semibold).monospacedDigit())
                                 }
                             }
                         }
@@ -578,7 +580,7 @@ struct MetricDeepDiveView: View {
     private var methodologyCard: some View {
         NonnaCard(padding: 17) {
             HStack(alignment: .top, spacing: 22) {
-                DetailSectionTitle(eyebrow: "METHODOLOGY", title: "Metrics you can trust")
+                DetailSectionTitle(title: "Metrics you can trust")
                     .frame(width: 180, alignment: .leading)
                 MethodNote(title: "Rhythm score", text: "62% active-day frequency + 38% consistency of volume on active days.")
                 MethodNote(title: "Deep-work share", text: "The share of finished focus blocks lasting at least 50 minutes.")
@@ -694,7 +696,7 @@ struct MetricDeepDiveView: View {
         case .rhythm:
             return ["\(day.focusSeconds.focusDurationString) focus", "\(day.rollingFocusSeconds.focusDurationString) rolling rhythm"]
         case .completed:
-            return ["\(day.completedCount) completed", "\(day.earlyCount) early · \(day.abandonedCount) abandoned"]
+            return ["\(day.completedCount) completed", "\(day.earlyCount) early, \(day.abandonedCount) abandoned"]
         }
     }
 
@@ -774,9 +776,8 @@ private struct DetailStatTile: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text(stat.label.uppercased())
-                .font(.system(size: 8, weight: .semibold, design: .monospaced))
-                .tracking(1.25)
+            Text(stat.label)
+                .font(.system(size: 10, weight: .semibold).monospacedDigit())
                 .foregroundStyle(NonnaTheme.secondaryInk)
             Text(stat.value)
                 .font(.system(size: 25, weight: .medium))
@@ -785,7 +786,7 @@ private struct DetailStatTile: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.65)
             Text(stat.detail)
-                .font(.system(size: 9))
+                .font(.system(size: 11))
                 .foregroundStyle(NonnaTheme.secondaryInk)
                 .lineLimit(2)
         }
@@ -837,15 +838,10 @@ private struct IntelligenceCallout: View {
 }
 
 private struct DetailSectionTitle: View {
-    let eyebrow: String
     let title: String
 
     var body: some View {
         VStack(alignment: .leading, spacing: 3) {
-            Text(eyebrow)
-                .font(.system(size: 8, weight: .semibold, design: .monospaced))
-                .tracking(1.4)
-                .foregroundStyle(NonnaTheme.secondaryInk)
             Text(title)
                 .font(.system(size: 17, weight: .semibold))
         }
@@ -864,7 +860,7 @@ private struct DetailLegend: View {
                 }
             }
         }
-        .font(.system(size: 9, weight: .medium))
+        .font(.system(size: 11, weight: .medium))
         .foregroundStyle(NonnaTheme.secondaryInk)
     }
 }
@@ -897,7 +893,7 @@ private struct MethodNote: View {
             Text(title)
                 .font(.system(size: 10, weight: .semibold))
             Text(text)
-                .font(.system(size: 9))
+                .font(.system(size: 11))
                 .foregroundStyle(NonnaTheme.secondaryInk)
                 .fixedSize(horizontal: false, vertical: true)
         }

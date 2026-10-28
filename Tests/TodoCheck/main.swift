@@ -96,4 +96,26 @@ check(75.minutesString == "1h 15m" && 45.minutesString == "45m" && 120.minutesSt
 // Old data without to-dos still decodes.
 check((try? JSONDecoder().decode(TodoItem.self, from: Data(#"{"id":"\#(UUID().uuidString)","title":"x","notes":"","isDone":false,"createdAt":0}"#.utf8))) != nil, "decodes minimal JSON")
 
+// Planning the day around what's already busy.
+func at(_ hour: Int, _ minute: Int = 0) -> Date { calendar.date(bySettingHour: hour, minute: minute, second: 0, of: today)! }
+let taskA = UUID(), taskB = UUID(), taskC = UUID()
+let busy = [DayPlanner.Slot(start: at(16), end: at(17))]
+let placed = DayPlanner.place([(taskA, 45), (taskB, 30), (taskC, 120)], busy: busy, from: at(15, 7), until: at(19), gapMinutes: 10, calendar: calendar)
+check(placed[taskA] == at(15, 15), "starts at the next quarter hour and fits right before the 4pm event")
+check(placed[taskB] == at(17), "the next task skips the busy hour and waits for 5pm")
+check(placed[taskC] == nil, "a task that doesn't fit before the end of the day is left out")
+check(DayPlanner.roundUp(at(9, 0), toMinutes: 15, calendar: calendar) == at(9, 0), "on-the-dot times stay put")
+
+// Older tasks without a plan or steps still load, and their defaults are sensible.
+let plain = try! JSONDecoder().decode(TodoItem.self, from: Data(#"{"id":"\#(UUID().uuidString)","title":"x","notes":"","isDone":false,"createdAt":0}"#.utf8))
+check(plain.scheduledAt == nil && plain.steps.isEmpty && plain.plannedMinutes == 30, "old tasks decode without a plan or steps")
+var stepped = plain
+stepped.subtasks = [Subtask(title: "Outline"), Subtask(title: "Draft", isDone: true)]
+let round = try! JSONDecoder().decode(TodoItem.self, from: JSONEncoder().encode(stepped))
+check(round.steps.map(\.title) == ["Outline", "Draft"] && round.steps[1].isDone, "steps survive saving")
+
+let huge = UUID(), small1 = UUID(), small2 = UUID()
+let skipped = DayPlanner.place([(huge, 300), (small1, 30), (small2, 30)], busy: [], from: at(15), until: at(19), gapMinutes: 10, calendar: calendar)
+check(skipped[huge] == nil && skipped[small1] == at(15) && skipped[small2] == at(15, 40), "a task too long for the day is skipped, the rest still fit")
+
 print("Todo checks passed")

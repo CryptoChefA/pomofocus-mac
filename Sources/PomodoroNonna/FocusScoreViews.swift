@@ -66,15 +66,19 @@ struct FocusScoreCard: View {
         let previous = week.dropLast().compactMap(\.score)
         let average = previous.isEmpty ? nil : previous.reduce(0) { $0 + $1.total } / previous.count
 
-        Button { showsDetail = true } label: {
+        Button {
+            // Open without the card's hover animation leaking into the sheet's first layout.
+            var transaction = Transaction()
+            transaction.disablesAnimations = true
+            withTransaction(transaction) { showsDetail = true }
+        } label: {
             NonnaCard(padding: 22) {
                 HStack(alignment: .center, spacing: 26) {
                     FocusScoreRing(score: today?.total, size: compact ? 112 : 132)
 
                     VStack(alignment: .leading, spacing: 10) {
-                        Text("FOCUS SCORE · TODAY")
-                            .font(.system(size: 9, weight: .semibold, design: .monospaced))
-                            .tracking(1.7)
+                        Text("Focus score, today")
+                            .font(.system(size: 11, weight: .semibold).monospacedDigit())
                             .foregroundStyle(NonnaTheme.terracotta)
                         Text(today?.label ?? "No score yet")
                             .font(.system(size: 24, weight: .semibold))
@@ -97,7 +101,7 @@ struct FocusScoreCard: View {
                         .foregroundStyle(NonnaTheme.secondaryInk)
                         HStack(spacing: 4) {
                             Text("See why")
-                            Image(systemName: "chevron.right").font(.system(size: 9, weight: .bold))
+                            Image(systemName: "chevron.right").font(.system(size: 11, weight: .bold))
                         }
                         .font(.system(size: 12, weight: .medium))
                         .foregroundStyle(hovering ? NonnaTheme.terracotta : NonnaTheme.secondaryInk)
@@ -120,9 +124,18 @@ struct FocusScoreCard: View {
         .onHover { hovering = $0 }
         .animation(NonnaMotion.quick, value: hovering)
         .sheet(isPresented: $showsDetail) {
-            FocusScoreDetail { showsDetail = false }
+            FocusScoreDetail(initialDay: Self.latestScoredDay(model)) { showsDetail = false }
                 .environment(model)
         }
+    }
+}
+
+extension FocusScoreCard {
+    /// Today if it has a score, otherwise the latest day that does, so the sheet never opens empty.
+    @MainActor static func latestScoredDay(_ model: AppModel) -> Date {
+        let today = Calendar.current.startOfDay(for: Date())
+        if model.focusScore(on: today) != nil { return today }
+        return model.focusScoreHistory(days: 14).last(where: { $0.score != nil })?.day ?? today
     }
 }
 
@@ -140,7 +153,7 @@ private struct WeekScoreBars: View {
                 let isSelected = selected.map { Calendar.current.isDate($0, inSameDayAs: entry.day) } ?? isToday
                 VStack(spacing: 6) {
                     Text(entry.score.map { "\($0.total)" } ?? "")
-                        .font(.system(size: 9, weight: .medium, design: .monospaced))
+                        .font(.system(size: 11, weight: .medium).monospacedDigit())
                         .foregroundStyle(NonnaTheme.secondaryInk)
                     RoundedRectangle(cornerRadius: 4, style: .continuous)
                         .fill(entry.score == nil ? NonnaTheme.line : NonnaTheme.terracotta.opacity(isSelected ? 1 : 0.45))
@@ -164,7 +177,13 @@ private struct WeekScoreBars: View {
 struct FocusScoreDetail: View {
     @Environment(AppModel.self) private var model
     let onDone: () -> Void
-    @State private var day = Calendar.current.startOfDay(for: Date())
+    @State private var day: Date
+
+    /// Opens on `initialDay`, decided before the sheet appears so it lays out once.
+    init(initialDay: Date, onDone: @escaping () -> Void) {
+        _day = State(initialValue: initialDay)
+        self.onDone = onDone
+    }
 
     var body: some View {
         let history = model.focusScoreHistory(days: 14)
@@ -224,9 +243,8 @@ struct FocusScoreDetail: View {
                 }
 
                 VStack(alignment: .leading, spacing: 10) {
-                    Text("LAST 14 DAYS")
-                        .font(.system(size: 9, weight: .semibold, design: .monospaced))
-                        .tracking(1.6)
+                    Text("Last 14 days")
+                        .font(.system(size: 11, weight: .semibold).monospacedDigit())
                         .foregroundStyle(NonnaTheme.secondaryInk)
                     WeekScoreBars(week: history, selected: day, height: 60) { picked in
                         day = Calendar.current.startOfDay(for: picked)
@@ -244,19 +262,11 @@ struct FocusScoreDetail: View {
             }
             .padding(28)
         }
-        .frame(width: 600, height: 720)
-        .onAppear(perform: openOnLatestScore)
-        .onChange(of: model.sessions.count) { _, _ in openOnLatestScore() }
+        .frame(width: 600)
+        .frame(minHeight: 420, idealHeight: 640, maxHeight: 720)
         .background(NonnaTheme.cream)
         .foregroundStyle(NonnaTheme.ink)
         .preferredColorScheme(NonnaTheme.colorScheme)
-    }
-
-    /// Opens on the latest day that has a score, so the sheet never starts empty.
-    private func openOnLatestScore() {
-        guard Calendar.current.isDateInToday(day), model.focusScore(on: day) == nil,
-              let last = model.focusScoreHistory(days: 14).last(where: { $0.score != nil }) else { return }
-        day = last.day
     }
 
     private func shift(_ days: Int) {
@@ -280,7 +290,7 @@ private struct PartRow: View {
                     .font(.system(size: 13, weight: .semibold))
                 Spacer()
                 Text("\(Int(part.points.rounded())) / \(Int(part.maxPoints))")
-                    .font(.system(size: 12, weight: .medium, design: .monospaced))
+                    .font(.system(size: 12, weight: .medium).monospacedDigit())
                     .foregroundStyle(NonnaTheme.secondaryInk)
             }
             GeometryReader { geometry in

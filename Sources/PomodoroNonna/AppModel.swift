@@ -29,6 +29,12 @@ final class AppModel {
     var reflectionSession: FocusSession?
     /// Set when the away guard paused an overtime timer; the moment counting stopped.
     var awayPausedAt: Date?
+    /// The end-of-day wrap-up sheet.
+    var showsWrapUp = false
+    /// The last day wrapped up, kept here so the evening banner hides as soon as it's done.
+    var lastWrapUpDay: Date?
+    /// The blocks a session-end rating applies to (empty when rating a single block).
+    var reflectionRunIDs: [UUID] = []
     @ObservationIgnored private var awayStartedAt: Date?
     @ObservationIgnored private var awayObserversStarted = false
     var awaitingNextPhase: TimerPhase?
@@ -158,7 +164,7 @@ final class AppModel {
         case .shortBreak: settings.shortBreakMinutes
         case .longBreak: settings.longBreakMinutes
         }
-        return next == .focus ? "Next · \(minutes) min focus" : "Next · \(minutes) min break"
+        return next == .focus ? "Next: \(minutes) min focus" : "Next: \(minutes) min break"
     }
 
     init() {
@@ -234,9 +240,9 @@ final class AppModel {
             note = data.draft?.note ?? ""
             noteImages = data.draft?.attachments ?? []
             awaitingNextPhase = data.pendingPhase
-            completedFocusCycleCount = data.sessions.filter {
-                Calendar.current.isDateInToday($0.startedAt) && $0.outcome == .completed
-            }.count
+            completedFocusCycleCount = FocusSession.mergedBlocks(data.sessions.filter {
+                Calendar.current.isDateInToday($0.startedAt)
+            }).filter { $0.outcome == .completed }.count
             applyIdleDuration()
             if awaitingNextPhase != nil {
                 remainingSeconds = 0
@@ -527,11 +533,24 @@ final class AppModel {
                 activeIntervals: activityIntervals,
                 todoID: selectedTodoID
             )
-            if elapsedSeconds > 0 {
+            if elapsedSeconds > 0, !blockSegments.isEmpty {
+                // The block switched lists part-way: record each part under its own list.
+                let parts = splitParts(of: session)
+                data.sessions.append(contentsOf: parts)
+                if resolved == .completed { completedFocusCycleCount += 1 }
+                evaluatePlanProgress()
+                if showsReflection, settings.rateFocus == .everyBlock, let last = parts.last {
+                    reflectionRunIDs = parts.map(\.id)
+                    reflectionSession = last
+                }
+            } else if elapsedSeconds > 0 {
                 data.sessions.append(session)
                 if resolved == .completed { completedFocusCycleCount += 1 }
                 evaluatePlanProgress()
-                if showsReflection { reflectionSession = session }
+                if showsReflection, settings.rateFocus == .everyBlock {
+                    reflectionRunIDs = []
+                    reflectionSession = session
+                }
             }
         } else {
             recordBreakSession(startedAt: started)
@@ -586,9 +605,15 @@ final class AppModel {
 
     @discardableResult
     func addTodo(_ parsed: ParsedTodo, defaultList: UUID?, defaultDue: Date?) -> UUID {
+        // A typed #tag files the task into a list you already have. An unknown tag stays in
+        // the title rather than quietly creating a new list.
+        let existing = parsed.listName.flatMap { name in
+            tasks.first { $0.name.caseInsensitiveCompare(name.trimmingCharacters(in: .whitespaces)) == .orderedSame }?.id
+        }
+        let title = existing == nil ? parsed.listName.map { "\(parsed.title) #\($0)" } ?? parsed.title : parsed.title
         let item = TodoItem(
-            title: parsed.title,
-            listID: parsed.listName.map(list(named:)) ?? defaultList,
+            title: title,
+            listID: existing ?? defaultList,
             minutes: parsed.minutes,
             due: parsed.due ?? defaultDue,
             isDone: parsed.isDone,
@@ -610,9 +635,10 @@ final class AppModel {
 
     func updateTodo(_ id: UUID, _ mutate: (inout TodoItem) -> Void) {
         guard var list = data.todos, let index = list.firstIndex(where: { $0.id == id }) else { return }
+        let oldTitle = list[index].title
         mutate(&list[index])
         data.todos = list
-        if selectedTodoID == id, status == .idle, phase == .focus { intention = list[index].title }
+        if selectedTodoID == id, status == .idle, phase == .focus, list[index].title != oldTitle { intention = list[index].title }
         save()
     }
 
@@ -623,6 +649,39 @@ final class AppModel {
         }
         // While a block is running it still counts toward the task; the link clears when it ends.
         if selectedTodoID == id, status == .idle, todos.first(where: { $0.id == id })?.isDone == true { unlinkTodo() }
+    }
+
+    /// Removes a list and its tasks. Focus history keeps the list's name.
+    func deleteList(_ id: UUID) {
+        data.tasks.removeAll { $0.id == id }
+        let removed = todos.filter { $0.listID == id }.map(\.id)
+        data.todos = todos.filter { $0.listID != id }
+        if let linked = selectedTodoID, removed.contains(linked) { unlinkTodo() }
+        if selectedTaskID == id { selectedTaskID = tasks.first?.id }
+        save()
+    }
+
+    /// Asks before deleting a list, unless "Do not ask again" was ticked.
+    @discardableResult
+    func confirmDeleteList(_ id: UUID) -> Bool {
+        guard let list = data.tasks.first(where: { $0.id == id }) else { return false }
+        let count = todos.filter { $0.listID == id }.count
+        let detail = count == 0
+            ? "Your focus history keeps it."
+            : "Its \(count) \(count == 1 ? "task is" : "tasks are") deleted too. Your focus history keeps it."
+        if DeleteConfirmation.ask(key: "confirmDeleteList", title: "Delete \u{201C}\(list.name)\u{201D}?", detail: detail) {
+            deleteList(id)
+            return true
+        }
+        return false
+    }
+
+    /// Asks before deleting a task, unless "Do not ask again" was ticked.
+    func confirmDeleteTodo(_ id: UUID) {
+        guard let todo = todos.first(where: { $0.id == id }) else { return }
+        if DeleteConfirmation.ask(key: "confirmDeleteTodo", title: "Delete \u{201C}\(todo.title)\u{201D}?", detail: "This can't be undone.") {
+            deleteTodo(id)
+        }
     }
 
     func deleteTodo(_ id: UUID) {
@@ -641,10 +700,105 @@ final class AppModel {
             return
         }
         queuedTodoID = nil
+        splitBlockIfSwitching(toList: todo.listID ?? selectedTaskID, todo: id)
         selectedTodoID = id
         if let listID = todo.listID { selectedTaskID = listID }
         intention = todo.title
         if status == .idle { persistDraft() }
+    }
+
+    /// Cuts a finished block into one record per list it was spent on. Planned time is
+    /// shared out in proportion, so each part keeps the block's outcome.
+    private func splitParts(of session: FocusSession) -> [FocusSession] {
+        let intervals = session.activeIntervals ?? []
+        var parts: [FocusSession] = []
+        var partStart = session.startedAt
+        let pieces = blockSegments.map { ($0.taskID, $0.taskName, $0.intention, $0.todoID, $0.endsAt) }
+            + [(session.taskID, session.taskName, session.intention, session.todoID, session.endedAt)]
+        // Share planned time by each part's measured time, so the parts add up to the block.
+        var starts = session.startedAt
+        let measured = pieces.map { piece -> Int in
+            defer { starts = piece.4 }
+            return Int(Self.activeSeconds(in: intervals, from: starts, to: piece.4).rounded())
+        }
+        let total = max(1, measured.reduce(0, +))
+        var plannedLeft = session.plannedSeconds
+        let block = UUID()
+        for (taskID, taskName, intention, todoID, endsAt) in pieces {
+            let clipped = Self.clip(intervals, from: partStart, to: endsAt)
+            let focused = Int(clipped.reduce(0) { $0 + $1.duration(through: endsAt) }.rounded())
+            if focused > 0 {
+                var part = session
+                part.id = UUID()
+                part.taskID = taskID
+                part.taskName = taskName
+                part.intention = intention
+                part.todoID = todoID
+                part.startedAt = partStart
+                part.endedAt = endsAt
+                part.focusedSeconds = focused
+                part.pausedSeconds = max(0, Int(endsAt.timeIntervalSince(partStart)) - focused)
+                let share = Int((Double(session.plannedSeconds) * Double(focused) / Double(total)).rounded())
+                part.plannedSeconds = max(1, endsAt == session.endedAt ? plannedLeft : min(plannedLeft, share))
+                plannedLeft -= part.plannedSeconds
+                part.activeIntervals = clipped
+                part.blockID = block
+                // The note and pictures belong to the block once, not to every part.
+                part.note = ""
+                part.attachments = nil
+                parts.append(part)
+            }
+            partStart = endsAt
+        }
+        guard !parts.isEmpty else { return [session] }
+        parts[parts.count - 1].note = session.note
+        parts[parts.count - 1].attachments = session.attachments
+        parts[parts.count - 1].plannedSeconds += max(0, plannedLeft)
+        return parts
+    }
+
+    /// Picks the list the timer is counting toward. Mid-block, the time so far stays with
+    /// the old list and the rest goes to the new one.
+    func selectList(_ id: UUID) {
+        guard id != selectedTaskID else { return }
+        splitBlockIfSwitching(toList: id, todo: selectedTodoID)
+        selectedTaskID = id
+        persistDraft()
+    }
+
+    /// Earlier parts of the running block, oldest first; the current part is the live state.
+    @ObservationIgnored var blockSegments: [BlockSegment] = []
+
+    /// Under a minute in, a switch just relabels the block instead of splitting it.
+    private static let minimumSplitSeconds: TimeInterval = 60
+
+    private func splitBlockIfSwitching(toList listID: UUID?, todo: UUID?) {
+        guard phase == .focus, status != .idle, let started = sessionStartedAt,
+              listID != selectedTaskID || todo != selectedTodoID else { return }
+        let now = Date()
+        let partStart = blockSegments.last?.endsAt ?? started
+        let partSeconds = Self.activeSeconds(in: activityIntervals, from: partStart, to: now)
+        guard partSeconds >= Self.minimumSplitSeconds else { return }
+        blockSegments.append(BlockSegment(
+            taskID: selectedTaskID,
+            taskName: selectedTask?.name ?? "Uncategorized",
+            intention: intention.trimmingCharacters(in: .whitespacesAndNewlines),
+            todoID: selectedTodoID,
+            endsAt: now
+        ))
+    }
+
+    /// Active (unpaused) time inside a window.
+    static func activeSeconds(in intervals: [ActivityInterval], from start: Date, to end: Date) -> TimeInterval {
+        clip(intervals, from: start, to: end).reduce(0) { $0 + $1.duration(through: end) }
+    }
+
+    static func clip(_ intervals: [ActivityInterval], from start: Date, to end: Date) -> [ActivityInterval] {
+        intervals.compactMap { interval in
+            let a = max(interval.startedAt, start)
+            let b = min(interval.endedAt ?? end, end)
+            return b > a ? ActivityInterval(startedAt: a, endedAt: b) : nil
+        }
     }
 
     /// A task picked while another one's block was running; it's linked when that block ends.
@@ -687,10 +841,16 @@ final class AppModel {
         save()
     }
 
+    func setListColor(_ id: UUID, to hex: String) {
+        guard let index = data.tasks.firstIndex(where: { $0.id == id }), data.tasks[index].colorHex != hex else { return }
+        data.tasks[index].colorHex = hex
+        save()
+    }
+
     // MARK: - Theme and welcome
 
     private func applyTheme() {
-        ThemeManager.shared.apply(themeID: data.settings.themeID, custom: data.settings.customTheme)
+        ThemeManager.shared.apply(themeID: data.settings.themeID, custom: data.settings.customTheme, saved: data.settings.savedThemes)
     }
 
     /// Set once the saved data has been read. Until then `data` is the blank starter,
@@ -717,17 +877,18 @@ final class AppModel {
 
     var focusPlan: FocusPlan? { data.focusPlan }
 
-    /// A low-stimulation idea for the current break, from the plan's break menu.
-    var currentBreakIdea: String? {
-        guard phase != .focus, let plan = data.focusPlan else { return nil }
-        return plan.breakIdea(seed: data.breaks?.count ?? 0)
-    }
-
     func startPlan(with answers: FocusPlanAnswers) {
         let plan = FocusPlan.build(from: answers)
         data.focusPlan = plan
         planChange = nil
         applyPlanSettings(plan)
+    }
+
+    func setPlanReward(_ reward: String) {
+        guard var plan = data.focusPlan, plan.answers.reward != reward else { return }
+        plan.answers.reward = reward
+        data.focusPlan = plan
+        save()
     }
 
     func removePlan() {
@@ -816,9 +977,28 @@ final class AppModel {
         data.pendingPhase = nil
         if phase != .focus { phase = .focus }
         applyIdleDuration()
+        let runStart = data.runStartedAt
         closeRun()
         persistDraft()
         stopTickingIfIdle()
+        askForSessionRating(since: runStart)
+    }
+
+    /// One rating for the whole sitting, when the user prefers that to rating every block.
+    private func askForSessionRating(since runStart: Date?) {
+        guard settings.rateFocus == .endOfSession, let runStart else { return }
+        let blocks = data.sessions.filter { $0.startedAt >= runStart && $0.outcome != .abandoned && $0.focusedSeconds > 0 }
+        guard let last = blocks.last else { return }
+        let present = { [weak self] in
+            self?.reflectionRunIDs = blocks.map(\.id)
+            self?.reflectionSession = last
+        }
+        // Don't stack the rating on the celebration; ask once it has gone.
+        if CelebrationController.shared.isShowing {
+            CelebrationController.shared.onDismiss = present
+        } else {
+            present()
+        }
     }
 
     /// For data saved before sittings were tracked: walk back from the current block
@@ -929,7 +1109,26 @@ final class AppModel {
         reflected.focusRating = rating
         reflected.note = note.trimmingCharacters(in: .whitespacesAndNewlines)
         data.sessions[index] = reflected
+        // A session rating covers every block in the sitting.
+        for id in reflectionRunIDs where id != reflected.id {
+            if let other = data.sessions.firstIndex(where: { $0.id == id }) { data.sessions[other].focusRating = rating }
+        }
+        reflectionRunIDs = []
         reflectionSession = nil
+        save()
+    }
+
+    /// Fixes a finished block's name or list, e.g. when it was started under the wrong one.
+    func updateSession(id: UUID, intention: String, taskID: UUID?) {
+        guard let index = data.sessions.firstIndex(where: { $0.id == id }) else { return }
+        var session = data.sessions[index]
+        session.intention = intention.trimmingCharacters(in: .whitespacesAndNewlines)
+        if session.taskID != taskID {
+            session.taskID = taskID
+            session.taskName = data.tasks.first { $0.id == taskID }?.name ?? "Uncategorized"
+        }
+        guard session != data.sessions[index] else { return }
+        data.sessions[index] = session
         save()
     }
 
@@ -938,7 +1137,8 @@ final class AppModel {
         let removed = offsets.map { visible[$0] }
         let ids = removed.map(\.id)
         data.sessions.removeAll { ids.contains($0.id) }
-        let fileNames = removed.flatMap { $0.attachments ?? [] }.map(\.fileName)
+        let stillUsed = Set(data.sessions.flatMap { $0.attachments ?? [] }.map(\.fileName))
+        let fileNames = removed.flatMap { $0.attachments ?? [] }.map(\.fileName).filter { !stillUsed.contains($0) }
         Task {
             for fileName in fileNames {
                 try? await LocalStore.shared.deleteImage(named: fileName)
@@ -1029,7 +1229,8 @@ final class AppModel {
             isOvertime: isOvertime,
             attachments: noteImages.isEmpty ? nil : noteImages,
             activeIntervals: activityIntervals,
-            todoID: selectedTodoID
+            todoID: selectedTodoID,
+            segments: blockSegments.isEmpty ? nil : blockSegments
         )
         save(synchronizesWidget: synchronizesWidget)
     }
@@ -1135,6 +1336,7 @@ final class AppModel {
     }
 
     private func clearTimer() {
+        blockSegments = []
         ambientPlayer.stop()
         ambientPreviewToken = nil
         status = .idle
@@ -1151,7 +1353,6 @@ final class AppModel {
         lastWidgetSyncSecond = 0
         lastOvertimeReminderMark = 0
         if phase == .focus {
-            intention = ""
             note = ""
             noteImages = []
             data.draft = nil
@@ -1161,9 +1362,13 @@ final class AppModel {
                 linkTodo(queued)
             } else if let todo = selectedTodo, !todo.isDone {
                 intention = todo.title
-            } else {
+            } else if selectedTodoID != nil {
+                // The linked task is done, so its title no longer describes the next block.
                 selectedTodoID = nil
+                intention = ""
             }
+            // A typed intention carries into the next block until it's changed.
+            syncDraft()
         }
         applyIdleDuration()
     }
@@ -1176,6 +1381,7 @@ final class AppModel {
         selectedTaskID = snapshot.taskID
         intention = snapshot.intention
         selectedTodoID = snapshot.todoID
+        blockSegments = snapshot.segments ?? []
         note = snapshot.note
         noteImages = snapshot.attachments ?? []
         sessionStartedAt = snapshot.startedAt
@@ -1210,7 +1416,7 @@ final class AppModel {
 
     private func duration(for phase: TimerPhase) -> Int {
         switch phase {
-        case .focus: settings.focusMinutes * 60
+        case .focus: min(focusPlan?.reentry(sessions: data.sessions)?.warmupMinutes ?? settings.focusMinutes, settings.focusMinutes) * 60
         case .shortBreak: settings.shortBreakMinutes * 60
         case .longBreak: settings.longBreakMinutes * 60
         }
@@ -1305,6 +1511,9 @@ final class AppModel {
     /// pending snapshot, and only the newest is written next. Fast typing produces two
     /// writes instead of one per keystroke, and nothing is ever lost or reordered.
     private func save(synchronizesWidget: Bool = true) {
+        // Before the data has loaded (or if loading failed), saving would write the empty
+        // starter data over the user's file.
+        guard hasLoaded else { return }
         if synchronizesWidget {
             widgetSyncTask?.cancel()
             synchronizeWidget()
@@ -1313,6 +1522,19 @@ final class AppModel {
         guard !isWriting else { return }
         isWriting = true
         Task { await drainPendingSaves() }
+    }
+
+    /// Writes everything to disk and waits for it, so the app can quit safely (e.g. to update).
+    /// Returns false if the data couldn't be saved (or never loaded), so callers don't quit.
+    @discardableResult
+    func flushForQuit() async -> Bool {
+        guard hasLoaded else { return false }
+        storageError = nil
+        persistActiveTimer()
+        while isWriting || pendingSave != nil {
+            try? await Task.sleep(for: .milliseconds(50))
+        }
+        return storageError == nil
     }
 
     private func drainPendingSaves() async {
@@ -1566,5 +1788,61 @@ extension AppModel {
 
     func focusScoreHistory(days: Int) -> [(day: Date, score: FocusScore?)] {
         FocusScore.history(days: days, sessions: data.sessions, breaks: data.breaks ?? [], goalMinutes: settings.dailyGoalMinutes)
+    }
+}
+
+/// The standard Mac "are you sure?" alert, with a "Do not ask again" box that is remembered.
+@MainActor
+enum DeleteConfirmation {
+    static func ask(key: String, title: String, detail: String) -> Bool {
+        let skipKey = key + ".skip"
+        if UserDefaults.standard.bool(forKey: skipKey) { return true }
+        let alert = NSAlert()
+        alert.messageText = title
+        alert.informativeText = detail
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "Delete").hasDestructiveAction = true
+        alert.addButton(withTitle: "Cancel")
+        alert.showsSuppressionButton = true
+        alert.suppressionButton?.title = "Do not ask again"
+        let confirmed = alert.runModal() == .alertFirstButtonReturn
+        if confirmed, alert.suppressionButton?.state == .on {
+            UserDefaults.standard.set(true, forKey: skipKey)
+        }
+        return confirmed
+    }
+}
+
+// MARK: - Theme codes
+
+extension AppModel {
+    /// Adds the theme in a pasted code and switches to it. Returns a sentence for the UI.
+    func addTheme(fromCode code: String) -> (ok: Bool, message: String) {
+        switch ThemeCodes.theme(from: code) {
+        case .failure(let problem):
+            return (false, problem.message)
+        case .success(let theme):
+            updateSettings { settings in
+                settings.savedThemes.removeAll { $0.id == theme.id }
+                settings.savedThemes.append(theme)
+                settings.themeID = theme.themeID
+            }
+            return (true, theme.isRare ? "A rare theme: \(theme.name). Enjoy it." : "Added \(theme.name).")
+        }
+    }
+
+    func removeSavedTheme(_ id: UUID) {
+        updateSettings { settings in
+            settings.savedThemes.removeAll { $0.id == id }
+            if settings.themeID == SharedTheme.prefix + id.uuidString { settings.themeID = ThemeChoice.obsidian.rawValue }
+        }
+    }
+
+    /// A code for the custom theme being built, named after whoever made it.
+    func shareCodeForCustomTheme() -> String {
+        let name = (UserDefaults.standard.string(forKey: "displayName") ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        let theme = SharedTheme(id: UUID(), name: name.isEmpty ? "Shared theme" : "\(name)\u{2019}s theme",
+                                note: nil, spec: settings.customTheme, isRare: false)
+        return ThemeCodes.code(for: theme)
     }
 }

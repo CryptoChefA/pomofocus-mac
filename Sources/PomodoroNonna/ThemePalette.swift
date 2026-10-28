@@ -59,9 +59,24 @@ struct CustomThemeSpec: Codable, Equatable, Sendable {
     }
 }
 
+/// A theme that came from a code: someone's custom theme, or a rare one from the developer.
+struct SharedTheme: Codable, Identifiable, Equatable, Sendable {
+    var id: UUID
+    var name: String
+    /// A line from whoever made it, like "For Sam, from Alex". Rare themes only.
+    var note: String?
+    var spec: CustomThemeSpec
+    /// Signed by the developer's key; can't be made by anyone else.
+    var isRare: Bool
+
+    /// The value stored in `themeID` while this theme is in use.
+    var themeID: String { SharedTheme.prefix + id.uuidString }
+    static let prefix = "saved:"
+}
+
 /// The ready-made looks, plus "match system" and "custom".
 enum ThemeChoice: String, CaseIterable, Identifiable, Sendable {
-    case system, obsidian, ivory, midnight, forest, ember, sakura, layla, ecrin, custom
+    case system, obsidian, ivory, midnight, forest, ember, sakura, layla, ecrin, piano, bespoke, autumn, blackIce, custom
 
     var id: String { rawValue }
 
@@ -76,6 +91,10 @@ enum ThemeChoice: String, CaseIterable, Identifiable, Sendable {
         case .sakura: "Sakura"
         case .layla: "Layla"
         case .ecrin: "Écrin"
+        case .piano: "Piano"
+        case .bespoke: "Bespoke"
+        case .autumn: "Autumn"
+        case .blackIce: "Black Ice"
         case .custom: "Custom"
         }
     }
@@ -88,11 +107,24 @@ enum ThemeChoice: String, CaseIterable, Identifiable, Sendable {
         case .midnight: "Deep navy, silver blue"
         case .forest: "Pine dark, soft sage"
         case .ember: "Warm dark, glowing coral"
-        case .sakura: "Soft blush, rose accents"
+        case .sakura: "Blossom pink, white sakura, falling petals"
         case .layla: "Tiffany baby pink"
         case .ecrin: "Jewel-box red and gold"
+        case .piano: "Ivory dial, Roman numerals, blued hands"
+        case .bespoke: "Black, graphite and white, tailored"
+        case .autumn: "Limited edition: falling leaves"
+        case .blackIce: "Black and ice blue, frost and snow"
         case .custom: "Build your own"
         }
+    }
+
+    /// Limited editions only appear in the picker in their season (or while in use).
+    var isLimitedEdition: Bool { self == .autumn }
+
+    func isAvailable(on date: Date = Date(), calendar: Calendar = .current) -> Bool {
+        guard self == .autumn else { return true }
+        // September through November.
+        return (9...11).contains(calendar.component(.month, from: date))
     }
 
     /// The palette for a fixed choice. `system` and `custom` are resolved elsewhere.
@@ -106,12 +138,19 @@ enum ThemeChoice: String, CaseIterable, Identifiable, Sendable {
         case .sakura: .sakura
         case .layla: .layla
         case .ecrin: .ecrin
+        case .piano: .piano
+        case .bespoke: .bespoke
+        case .autumn: .autumn
+        case .blackIce: .blackIce
         case .system, .custom: nil
         }
     }
 
-    static func resolve(_ id: String, custom: CustomThemeSpec, systemIsDark: Bool) -> ThemePalette {
-        switch ThemeChoice(rawValue: id) ?? .obsidian {
+    static func resolve(_ id: String, custom: CustomThemeSpec, systemIsDark: Bool, saved: [SharedTheme] = []) -> ThemePalette {
+        if id.hasPrefix(SharedTheme.prefix), let theme = saved.first(where: { $0.themeID == id }) {
+            return theme.spec.palette
+        }
+        return switch ThemeChoice(rawValue: id) ?? .obsidian {
         case .system: systemIsDark ? .obsidian : .ivory
         case .custom: custom.palette
         case let choice: choice.palette ?? .obsidian
@@ -160,10 +199,42 @@ extension ThemePalette {
         ink: "F6ECDD", secondaryInk: "B8968C", line: "3A1418", strongLine: "4D1E22",
         accent: "D4B06A", accentHighlight: "EBD3A0", onAccent: "160406", rest: "E0A08C", longRest: "E0566A")
 
+    /// Sakura, a Japanese spring: a dusty cherry-blossom pink behind white sakura branches
+    /// and slowly falling petals, near-black sumi ink, a deep beni red for focus, matcha
+    /// green for breaks and ai indigo for long breaks. Deeper and dustier than Layla's
+    /// baby pink, and the blossoms do the rest.
+    /// Autumn, a limited edition for the fall: warm parchment, oak-brown ink, burnt-orange
+    /// focus, olive breaks and a deep cranberry for long breaks, with leaves falling.
+    static let autumn = ThemePalette(
+        isDark: false, background: "F3E7D6", paper: "FBF4EA", raised: "FFFFFF", sunken: "EADBC6",
+        ink: "24170F", secondaryInk: "6E5644", line: "E0CFB8", strongLine: "CFB99C",
+        accent: "B4501E", accentHighlight: "8C3A12", onAccent: "FFFFFF", rest: "66692A", longRest: "8C2E2A")
+
+    /// Black Ice: near-black with glacier blues, frost creeping in from the corners and a
+    /// slow fall of snow.
+    static let blackIce = ThemePalette(
+        isDark: true, background: "000000", paper: "050A11", raised: "0B141F", sunken: "000000",
+        ink: "E9F6FF", secondaryInk: "7F97AD", line: "152435", strongLine: "1F3449",
+        accent: "8FDDFF", accentHighlight: "C9F0FF", onAccent: "03060A", rest: "4FB6D6", longRest: "5D86E0")
+
+    /// Piano, after a dress watch: an ivory dial, black Roman numerals and a railway minute
+    /// track, with hands in blued steel; black-key graphite for breaks.
+    static let piano = ThemePalette(
+        isDark: false, background: "F6F4EE", paper: "FBFAF6", raised: "FFFFFF", sunken: "ECE9E0",
+        ink: "101114", secondaryInk: "5C5D62", line: "DEDAD0", strongLine: "C8C3B6",
+        accent: "22409A", accentHighlight: "152C70", onAccent: "FFFFFF", rest: "2B2D33", longRest: "5A6B85")
+
+    /// Bespoke: a dark, tailored look. Near-black like a midnight suit, graphite greys,
+    /// crisp white and a silver accent; a faint pinstripe in the background.
+    static let bespoke = ThemePalette(
+        isDark: true, background: "0B0B0C", paper: "141416", raised: "1C1C1F", sunken: "070708",
+        ink: "EDEDED", secondaryInk: "8E8E93", line: "26262A", strongLine: "38383D",
+        accent: "D8D8DC", accentHighlight: "FFFFFF", onAccent: "0B0B0C", rest: "7A7A80", longRest: "A8A8AE")
+
     static let sakura = ThemePalette(
-        isDark: false, background: "FAF4F3", paper: "FFFAF9", raised: "FFFFFF", sunken: "F1E6E4",
-        ink: "2A1E21", secondaryInk: "7D6C70", line: "E8D8D6", strongLine: "D6C0BE",
-        accent: "C46E7E", accentHighlight: "9E4E5D", onAccent: "FFFFFF", rest: "6E9488", longRest: "8A82B0")
+        isDark: false, background: "F0C2C7", paper: "FCF1F2", raised: "FFFFFF", sunken: "E8B4BA",
+        ink: "180A0D", secondaryInk: "6A3A43", line: "E2A9B0", strongLine: "D4969E",
+        accent: "A32E4C", accentHighlight: "7E1E37", onAccent: "FFFFFF", rest: "4A6A2C", longRest: "33507A")
 }
 
 /// Minimal sRGB maths for deriving custom palettes.

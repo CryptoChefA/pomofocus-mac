@@ -91,7 +91,7 @@ struct ChartTooltip: View {
                 .foregroundStyle(NonnaTheme.ink)
             ForEach(lines, id: \.self) { line in
                 Text(line)
-                    .font(.system(size: 9, weight: .medium, design: .monospaced))
+                    .font(.system(size: 11, weight: .medium).monospacedDigit())
                     .foregroundStyle(NonnaTheme.secondaryInk)
             }
         }

@@ -16,9 +16,9 @@ enum TimerPhase: String, Codable, CaseIterable, Sendable {
 
     var compactTitle: String {
         switch self {
-        case .focus: "FOCUS"
-        case .shortBreak: "REST"
-        case .longBreak: "LONG REST"
+        case .focus: "Focus"
+        case .shortBreak: "Rest"
+        case .longBreak: "Long rest"
         }
     }
 }
@@ -62,38 +62,57 @@ enum AmbientSound: String, Codable, CaseIterable, Identifiable, Sendable {
     case rain
     case ocean
     case brownNoise
+    case whiteNoise
 
     var id: String { rawValue }
 
     var title: String {
         switch self {
         case .off: "Off"
-        case .ticking: "Soft ticking"
-        case .rain: "Gentle rain"
+        case .ticking: "Clock ticking"
+        case .rain: "Rain"
         case .ocean: "Ocean waves"
         case .brownNoise: "Brown noise"
+        case .whiteNoise: "White noise"
         }
     }
 
     var subtitle: String {
         switch self {
         case .off: "Silence while you focus"
-        case .ticking: "A quiet clock pulse"
-        case .rain: "Soft droplets on a window"
-        case .ocean: "Slow, rolling surf"
-        case .brownNoise: "Low and calming"
+        case .ticking: "An old wall clock, steady and slow"
+        case .rain: "Rain against a window"
+        case .ocean: "Slow waves on a beach"
+        case .brownNoise: "Deep and soft, like distant wind"
+        case .whiteNoise: "A gentle hush, never hissy"
         }
     }
 
     var icon: String {
         switch self {
         case .off: "speaker.slash"
-        case .ticking: "metronome"
+        case .ticking: "clock"
         case .rain: "cloud.rain.fill"
         case .ocean: "water.waves"
         case .brownNoise: "waveform"
+        case .whiteNoise: "wind"
         }
     }
+
+    /// The loop in Resources/Sounds.
+    var fileName: String? {
+        switch self {
+        case .off: nil
+        case .ticking: "clock"
+        case .rain: "rain"
+        case .ocean: "ocean"
+        case .brownNoise: "brown"
+        case .whiteNoise: "white"
+        }
+    }
+
+    /// Where the recordings come from. The clock's licence asks for this credit.
+    static let credits = "Clock: \u{201C}Wall clock with weight ticking\u{201D} by Work With Sounds / Technical Museum of Slovenia, CC BY 4.0. Rain: \u{201C}Rain against the window\u{201D}, public domain. Ocean: \u{201C}Ocean Waves on a Tropical Beach\u{201D}, CC0. All via Wikimedia Commons; trimmed and looped. Brown and white noise made for Pomofocus."
 }
 
 struct FocusTask: Identifiable, Codable, Hashable, Sendable {
@@ -145,8 +164,49 @@ struct FocusSession: Identifiable, Codable, Hashable, Sendable {
     var activeIntervals: [ActivityInterval]? = nil
     /// The to-do this block was for, if any.
     var todoID: UUID? = nil
+    /// Shared by the parts of one block that was split when the list changed part-way.
+    var blockID: UUID? = nil
 
     var duration: TimeInterval { TimeInterval(focusedSeconds) }
+}
+
+extension FocusSession {
+    /// Joins the parts of split blocks back into one block each, for counting blocks,
+    /// finish rates and plan progress. Time per list still uses the separate parts.
+    static func mergedBlocks(_ sessions: [FocusSession]) -> [FocusSession] {
+        var result: [FocusSession] = []
+        var indexByBlock: [UUID: Int] = [:]
+        for session in sessions.sorted(by: { $0.startedAt < $1.startedAt }) {
+            guard let block = session.blockID else {
+                result.append(session)
+                continue
+            }
+            if let index = indexByBlock[block] {
+                var merged = result[index]
+                merged.focusedSeconds += session.focusedSeconds
+                merged.pausedSeconds += session.pausedSeconds
+                merged.plannedSeconds += session.plannedSeconds
+                merged.endedAt = max(merged.endedAt, session.endedAt)
+                merged.activeIntervals = (merged.activeIntervals ?? []) + (session.activeIntervals ?? [])
+                merged.outcome = session.outcome
+                merged.focusRating = session.focusRating ?? merged.focusRating
+                result[index] = merged
+            } else {
+                indexByBlock[block] = result.count
+                result.append(session)
+            }
+        }
+        return result
+    }
+}
+
+/// An earlier part of a running block that changed list part-way.
+struct BlockSegment: Codable, Equatable, Sendable {
+    let taskID: UUID?
+    let taskName: String
+    let intention: String
+    let todoID: UUID?
+    let endsAt: Date
 }
 
 struct BreakSession: Identifiable, Codable, Hashable, Sendable {
@@ -188,6 +248,12 @@ struct NonnaSettings: Codable, Equatable, Sendable {
     /// for `awayMinutes` (or sleeps, or locks), pause it as of the moment you left.
     var pauseWhenAway = true
     var awayMinutes = 10
+    /// When to ask "how focused were you?".
+    var rateFocus: RatingTiming = .endOfSession
+    /// Themes added from codes, shared or rare.
+    var savedThemes: [SharedTheme] = []
+    /// How the end of a session is celebrated.
+    var celebrationStyle: CelebrationStyle = .confetti
     /// A `ThemeChoice` raw value.
     var themeID = ThemeChoice.obsidian.rawValue
     var customTheme = CustomThemeSpec()
@@ -201,7 +267,7 @@ struct NonnaSettings: Codable, Equatable, Sendable {
         case ambientSound, ambientVolume, showInMenuBar
         case showCalendarEvents, hiddenCalendarIDs, overtimeAlert
         case celebrateSessions, themeID, customTheme, hasCompletedOnboarding
-        case pauseWhenAway, awayMinutes
+        case pauseWhenAway, awayMinutes, rateFocus, savedThemes, celebrationStyle
     }
 
     init() {}
@@ -234,6 +300,9 @@ struct NonnaSettings: Codable, Equatable, Sendable {
         celebrateSessions = try values.decodeIfPresent(Bool.self, forKey: .celebrateSessions) ?? true
         pauseWhenAway = try values.decodeIfPresent(Bool.self, forKey: .pauseWhenAway) ?? true
         awayMinutes = try values.decodeIfPresent(Int.self, forKey: .awayMinutes) ?? 10
+        rateFocus = try values.decodeIfPresent(RatingTiming.self, forKey: .rateFocus) ?? .endOfSession
+        savedThemes = try values.decodeIfPresent([SharedTheme].self, forKey: .savedThemes) ?? []
+        celebrationStyle = try values.decodeIfPresent(CelebrationStyle.self, forKey: .celebrationStyle) ?? .confetti
         themeID = try values.decodeIfPresent(String.self, forKey: .themeID) ?? ThemeChoice.obsidian.rawValue
         customTheme = try values.decodeIfPresent(CustomThemeSpec.self, forKey: .customTheme) ?? CustomThemeSpec()
         hasCompletedOnboarding = try values.decodeIfPresent(Bool.self, forKey: .hasCompletedOnboarding) ?? true
@@ -245,6 +314,9 @@ struct NonnaSettings: Codable, Equatable, Sendable {
         try values.encode(celebrateSessions, forKey: .celebrateSessions)
         try values.encode(pauseWhenAway, forKey: .pauseWhenAway)
         try values.encode(awayMinutes, forKey: .awayMinutes)
+        try values.encode(rateFocus, forKey: .rateFocus)
+        try values.encode(savedThemes, forKey: .savedThemes)
+        try values.encode(celebrationStyle, forKey: .celebrationStyle)
         try values.encode(themeID, forKey: .themeID)
         try values.encode(customTheme, forKey: .customTheme)
         try values.encode(hasCompletedOnboarding, forKey: .hasCompletedOnboarding)
@@ -284,6 +356,8 @@ struct ActiveTimerSnapshot: Codable, Equatable, Sendable {
     var attachments: [SessionImageAttachment]? = nil
     var activeIntervals: [ActivityInterval]? = nil
     var todoID: UUID? = nil
+    /// Earlier parts of the block, if the list changed part-way through it.
+    var segments: [BlockSegment]? = nil
 }
 
 struct AppData: Codable, Sendable {
@@ -439,5 +513,41 @@ extension Int {
         if hours > 0 { return "\(hours)h \(minutes)m" }
         if minutes > 0 { return "\(minutes)m" }
         return "<1m"
+    }
+}
+
+/// When Pomofocus asks you to rate your focus.
+enum RatingTiming: String, Codable, CaseIterable, Identifiable, Sendable {
+    case everyBlock, endOfSession, never
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .everyBlock: "After every block"
+        case .endOfSession: "When I end a session"
+        case .never: "Never"
+        }
+    }
+}
+
+/// The show at the end of a session.
+enum CelebrationStyle: String, Codable, CaseIterable, Identifiable, Sendable {
+    case confetti, fireworks, balloons, surprise
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .confetti: "Confetti"
+        case .fireworks: "Fireworks"
+        case .balloons: "Balloons"
+        case .surprise: "Surprise me"
+        }
+    }
+
+    /// The style to actually play: "Surprise me" picks one of the others.
+    var resolved: CelebrationStyle {
+        self == .surprise ? [.confetti, .fireworks, .balloons].randomElement() ?? .confetti : self
     }
 }

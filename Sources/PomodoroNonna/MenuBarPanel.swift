@@ -65,8 +65,7 @@ struct MenuBarTimerView: View {
                     .frame(width: 6, height: 6)
                     .shadow(color: accent.opacity(0.62), radius: 5)
                 Text(eyebrow)
-                    .font(.system(size: 9, weight: .bold, design: .monospaced))
-                    .tracking(2.2)
+                    .font(.system(size: 11, weight: .bold).monospacedDigit())
                     .foregroundStyle(accent)
             }
             .alertFlash(isFlashing)
@@ -76,10 +75,10 @@ struct MenuBarTimerView: View {
     }
 
     private var eyebrow: String {
-        if model.awaitingNextPhase != nil { return "BREAK COMPLETE" }
-        if model.isBreathing { return "BREATH \(model.breathingCycle) OF \(AppModel.breathingCycleCount)" }
-        if model.status == .paused { return "PAUSED" }
-        if model.status == .overtime { return model.phase == .focus ? "FOCUS OVERTIME" : "BREAK OVERTIME" }
+        if model.awaitingNextPhase != nil { return "Break complete" }
+        if model.isBreathing { return "Breath \(model.breathingCycle) of \(AppModel.breathingCycleCount)" }
+        if model.status == .paused { return "Paused" }
+        if model.status == .overtime { return model.phase == .focus ? "Focus overtime" : "Break overtime" }
         return model.phase.compactTitle
     }
 
@@ -159,14 +158,20 @@ struct MenuBarTimerView: View {
                         .alertFlash(isFlashing)
                 }
                 Text(caption)
-                    .font(.system(size: 8, weight: .medium, design: .monospaced))
-                    .tracking(1.2)
+                    .font(.system(size: 10, weight: .medium).monospacedDigit())
                     .foregroundStyle(NonnaTheme.secondaryInk)
             }
             .padding(.horizontal, 22)
         }
         .frame(width: 180, height: 180)
         .drawingGroup(opaque: false, colorMode: .linear)
+        // The drop shadow goes outside the flattened dial; inside it was clipped into a
+        // square that showed as a grey box on light themes.
+        .background {
+            Circle()
+                .fill(NonnaTheme.cream)
+                .shadow(color: .black.opacity(NonnaTheme.colorScheme == .dark ? 0.7 : 0.16), radius: 18, y: 10)
+        }
     }
 
     /// Coarse state of the ring, so a jump between phases animates even when the
@@ -200,18 +205,18 @@ struct MenuBarTimerView: View {
     }
 
     private var caption: String {
-        if model.awaitingNextPhase != nil { return "NEXT PHASE" }
-        if model.isBreathing { return "BREATHING" }
+        if model.awaitingNextPhase != nil { return "Next phase" }
+        if model.isBreathing { return "Breathing" }
         switch model.status {
         case .idle:
-            return "\(model.plannedSeconds / 60) MIN"
+            return "\(model.plannedSeconds / 60) min"
         case .paused:
-            return "\(model.remainingSeconds.clockString) LEFT"
+            return "\(model.remainingSeconds.clockString) left"
         case .overtime:
-            return "OVERTIME"
+            return "Overtime"
         case .running:
             let end = Date().addingTimeInterval(TimeInterval(model.remainingSeconds))
-            return "ENDS \(end.formatted(date: .omitted, time: .shortened))"
+            return "Ends \(end.formatted(date: .omitted, time: .shortened))"
         }
     }
 
@@ -268,9 +273,6 @@ struct MenuBarTimerView: View {
                     icon: "play.fill",
                     prominent: true
                 ) { model.start() }
-                if model.hasOpenRun {
-                    panelButton("End session", icon: "stop.fill", prominent: false) { model.endSession() }
-                }
             } else {
                 panelButton(
                     model.status == .paused ? "Resume" : "Pause",
@@ -312,7 +314,7 @@ struct MenuBarTimerView: View {
         Button(action: action) {
             HStack(spacing: 6) {
                 Image(systemName: icon)
-                    .font(.system(size: 9, weight: .bold))
+                    .font(.system(size: 11, weight: .bold))
                 Text(title)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
@@ -331,13 +333,12 @@ struct MenuBarTimerView: View {
         return HStack(alignment: .center, spacing: 12) {
             VStack(alignment: .leading, spacing: 5) {
                 HStack(spacing: 5) {
-                    Text("TODAY")
-                        .tracking(1.4)
+                    Text("Today")
                         .foregroundStyle(NonnaTheme.secondaryInk)
                     Text("\(today.focusDurationString) / \(goal.focusDurationString)")
                         .foregroundStyle(NonnaTheme.ink)
                 }
-                .font(.system(size: 8, weight: .semibold, design: .monospaced))
+                .font(.system(size: 10, weight: .semibold).monospacedDigit())
 
                 GeometryReader { proxy in
                     ZStack(alignment: .leading) {
@@ -371,7 +372,7 @@ struct MenuBarTimerView: View {
                 HStack(spacing: 4) {
                     Text("Open")
                     Image(systemName: "arrow.up.right")
-                        .font(.system(size: 8, weight: .bold))
+                        .font(.system(size: 10, weight: .bold))
                 }
                 .font(.system(size: 11, weight: .medium))
                 .foregroundStyle(NonnaTheme.secondaryInk)
@@ -435,7 +436,6 @@ private struct MiniDialFace: View {
                         center: .center
                     )
                 )
-                .shadow(color: .black.opacity(0.7), radius: 18, y: 10)
 
             Circle()
                 .fill(

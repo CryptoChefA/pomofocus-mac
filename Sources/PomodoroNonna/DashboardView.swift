@@ -6,8 +6,27 @@ struct DashboardView: View {
     @Environment(\.compactLayout) private var compact
     @State private var hoveredDay: Date?
     @State private var selectedMetric: DashboardMetric?
+    @State private var chartWidth: CGFloat = 600
 
     private var analytics: AnalyticsSnapshot { model.analytics }
+
+    /// Focused time in the last 14 days (today included) and in the 14 days before that.
+    private var fortnightChange: (current: Int, previous: Int) {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        guard let start = calendar.date(byAdding: .day, value: -13, to: today),
+              let previousStart = calendar.date(byAdding: .day, value: -14, to: start) else { return (0, 0) }
+        var current = 0
+        var previous = 0
+        for session in model.sessions where session.outcome != .abandoned && session.focusedSeconds > 0 {
+            if session.startedAt >= start {
+                current += session.focusedSeconds
+            } else if session.startedAt >= previousStart {
+                previous += session.focusedSeconds
+            }
+        }
+        return (current, previous)
+    }
 
     private func dayTooltipLines(for total: DayTotal) -> [String] {
         let calendar = Calendar.current
@@ -21,73 +40,83 @@ struct DashboardView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {
                 SectionHeading(
-                    eyebrow: "Performance",
-                    title: "Dashboard",
-                    subtitle: "Private, local analytics"
+                    title: "Dashboard"
                 )
 
                 FocusScoreCard()
                 RunawayTimersBanner()
 
                 let totalBreakSeconds = model.breakSessions.reduce(0) { $0 + $1.restedSeconds }
+                let trends = MetricTrends.compute(
+                    sessions: model.sessions,
+                    breaks: model.breakSessions,
+                    streak: analytics.currentStreak,
+                    bestStreak: analytics.longestStreak
+                )
                 let breakOvertimeSeconds = model.breakSessions.reduce(0) { $0 + $1.overtimeSeconds }
 
-                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 14), count: compact ? 2 : 3), spacing: 14) {
-                    DashboardMetricButton(
+                DashboardStatGrid(columns: compact ? 2 : 3, stats: [
+                    DashboardStat(
                         metric: .focus,
+                        trends: trends[.focus] ?? [],
                         icon: "hourglass",
                         label: "Focused in total",
                         value: analytics.totalFocusSeconds.focusDurationString,
+                        help: "Every minute you've spent focusing, across all your lists, since you started using Pomofocus. Paused time isn't counted.",
                         detail: "Across every list",
-                        tint: NonnaTheme.terracotta,
-                        action: { selectedMetric = .focus }
-                    )
-                    DashboardMetricButton(
+                        tint: NonnaTheme.terracotta
+                    ),
+                    DashboardStat(
                         metric: .breakTime,
+                        trends: trends[.breakTime] ?? [],
                         icon: "cup.and.saucer.fill",
                         label: "Break time",
                         value: totalBreakSeconds.focusDurationString,
+                        help: "All the time you've spent on breaks between focus blocks.",
                         detail: "Recorded rest periods",
-                        tint: NonnaTheme.sage,
-                        action: { selectedMetric = .breakTime }
-                    )
-                    DashboardMetricButton(
+                        tint: NonnaTheme.sage
+                    ),
+                    DashboardStat(
                         metric: .breakOvertime,
+                        trends: trends[.breakOvertime] ?? [],
                         icon: "clock.badge.exclamationmark",
                         label: "Break overtime",
                         value: breakOvertimeSeconds.focusDurationString,
+                        help: "Time your breaks ran past their planned length. A little is normal; a lot means breaks are turning into long stops.",
                         detail: "Beyond planned breaks",
-                        tint: NonnaTheme.gold,
-                        action: { selectedMetric = .breakOvertime }
-                    )
-                    DashboardMetricButton(
+                        tint: NonnaTheme.gold
+                    ),
+                    DashboardStat(
                         metric: .daysUsed,
+                        trends: trends[.daysUsed] ?? [],
                         icon: "calendar.badge.checkmark",
                         label: "Days used",
                         value: "\(analytics.usedDays)",
+                        help: "How many different days you've focused on, for any amount of time.",
                         detail: "Days with focused time",
-                        tint: NonnaTheme.gold,
-                        action: { selectedMetric = .daysUsed }
-                    )
-                    DashboardMetricButton(
+                        tint: NonnaTheme.gold
+                    ),
+                    DashboardStat(
                         metric: .rhythm,
+                        trends: trends[.rhythm] ?? [],
                         icon: "flame.fill",
                         label: "Current rhythm",
                         value: "\(analytics.currentStreak) \(analytics.currentStreak == 1 ? "day" : "days")",
+                        help: "How many days in a row you've focused, up to today. \"Best\" is your longest run so far.",
                         detail: "Best: \(analytics.longestStreak) \(analytics.longestStreak == 1 ? "day" : "days")",
-                        tint: NonnaTheme.sage,
-                        action: { selectedMetric = .rhythm }
-                    )
-                    DashboardMetricButton(
+                        tint: NonnaTheme.sage
+                    ),
+                    DashboardStat(
                         metric: .completed,
+                        trends: trends[.completed] ?? [],
                         icon: "checkmark.seal.fill",
                         label: "Completed sessions",
                         value: "\(analytics.completedSessions)",
+                        help: "Focus blocks you ran all the way to their planned length, instead of ending early.",
                         detail: "Full planned intervals",
-                        tint: NonnaTheme.secondaryInk,
-                        action: { selectedMetric = .completed }
-                    )
-                }
+                        tint: NonnaTheme.secondaryInk
+                    ),
+                ]) { selectedMetric = $0 }
 
                 AdaptiveColumns(compact) {
                     recentActivityCard
@@ -119,22 +148,27 @@ struct DashboardView: View {
         // computed `analytics` property from every pointer-move callback recalculates the
         // entire history dozens of times per second on larger local databases.
         let snapshot = analytics
+        let total = snapshot.recentDays.reduce(0) { $0 + $1.seconds }
+        let change = fortnightChange
         return NonnaCard {
             VStack(alignment: .leading, spacing: 18) {
-                HStack {
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text("LAST 14 DAYS")
-                            .font(.system(size: 9, weight: .semibold, design: .monospaced))
-                            .tracking(1.7)
-                            .foregroundStyle(NonnaTheme.secondaryInk)
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 7) {
                         Text("Focus rhythm")
                             .font(.system(size: 18, weight: .semibold))
+                        InfoButton(title: "Focus rhythm", text: "How long you focused on each of the last 14 days. The large number is the total; the badge beside it compares that with the 14 days before. Hover a bar to see that day.")
                     }
-                    Spacer()
-                    let total = snapshot.recentDays.reduce(0) { $0 + $1.seconds }
-                    Text(total.focusDurationString)
-                        .font(.system(size: 13, weight: .medium, design: .monospaced))
-                        .foregroundStyle(NonnaTheme.terracotta)
+                    HStack(alignment: .center, spacing: 10) {
+                        Text(total.focusDurationString)
+                            .font(.system(size: 26, weight: .semibold))
+                            .monospacedDigit()
+                            .foregroundStyle(NonnaTheme.ink)
+                            .contentTransition(.numericText())
+                        DeltaPill(current: change.current, previous: change.previous)
+                        Text("Last 14 days")
+                            .font(.system(size: 12))
+                            .foregroundStyle(NonnaTheme.secondaryInk)
+                    }
                 }
 
                 if snapshot.recentDays.allSatisfy({ $0.seconds == 0 }) {
@@ -144,21 +178,35 @@ struct DashboardView: View {
                         message: "Complete a focus session to populate this chart."
                     )
                 } else {
+                    let days = snapshot.recentDays
+                    let firstDay = days.first?.day ?? Date()
+                    let lastDay = days.last?.day ?? Date()
+                    let domainEnd = Calendar.current.date(byAdding: .day, value: 1, to: lastDay) ?? lastDay
+                    // Bars take ~60% of each day's slot, but never more than 20 pt.
+                    let barWidth = min(20, max(4, (chartWidth - 44) / CGFloat(max(1, days.count)) * 0.6))
                     Chart {
-                        if let hovered = snapshot.recentDays.first(where: { $0.day == hoveredDay }) {
-                            RuleMark(x: .value("Day", hovered.day, unit: .day))
-                                .foregroundStyle(NonnaTheme.strongLine)
+                        if let hovered = days.first(where: { $0.day == hoveredDay }) {
+                            RectangleMark(x: .value("Day", hovered.day, unit: .day))
+                                .foregroundStyle(NonnaTheme.terracotta.opacity(0.12))
+                                .cornerRadius(4)
                         }
-                        ForEach(snapshot.recentDays) { item in
+                        ForEach(days) { item in
                             BarMark(
                                 x: .value("Day", item.day, unit: .day),
-                                y: .value("Minutes", Double(item.seconds) / 60)
+                                y: .value("Minutes", Double(item.seconds) / 60),
+                                width: .fixed(barWidth)
                             )
-                            .foregroundStyle(NonnaTheme.terracotta)
-                            .cornerRadius(2)
-                            .opacity(hoveredDay == nil || hoveredDay == item.day ? 1 : 0.45)
+                            .foregroundStyle(
+                                LinearGradient(
+                                    colors: [NonnaTheme.darkTerracotta, NonnaTheme.terracotta],
+                                    startPoint: .top,
+                                    endPoint: .bottom
+                                )
+                            )
+                            .cornerRadius(3)
                         }
                     }
+                    .chartXScale(domain: firstDay...domainEnd)                    .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { chartWidth = $0 }
                     .chartHover(Date.self) { date in
                         let day = date
                             .map { Calendar.current.startOfDay(for: $0) }
@@ -174,15 +222,24 @@ struct DashboardView: View {
                         }
                     }
                     .chartXAxis {
-                        AxisMarks(values: .stride(by: .day, count: 2)) { _ in
-                            AxisValueLabel(format: .dateTime.weekday(.narrow))
-                                .foregroundStyle(NonnaTheme.secondaryInk)
-                            AxisGridLine().foregroundStyle(.clear)
+                        // Only the two ends are labelled, flush with the plot's edges.
+                        AxisMarks(values: [firstDay]) { _ in
+                            AxisValueLabel(anchor: .topLeading, collisionResolution: .disabled) {
+                                Text(firstDay.formatted(.dateTime.month(.abbreviated).day()))
+                            }
+                            .foregroundStyle(NonnaTheme.secondaryInk)
+                        }
+                        AxisMarks(values: [domainEnd]) { _ in
+                            AxisValueLabel(anchor: .topTrailing, collisionResolution: .disabled) {
+                                Text(lastDay.formatted(.dateTime.month(.abbreviated).day()))
+                            }
+                            .foregroundStyle(NonnaTheme.secondaryInk)
                         }
                     }
                     .chartYAxis {
-                        AxisMarks(position: .leading) { value in
-                            AxisGridLine().foregroundStyle(NonnaTheme.line.opacity(0.55))
+                        AxisMarks(position: .leading, values: .automatic(desiredCount: 4)) { value in
+                            AxisGridLine(stroke: StrokeStyle(lineWidth: 1, dash: [2, 2]))
+                                .foregroundStyle(NonnaTheme.line)
                             AxisValueLabel {
                                 if let minutes = value.as(Double.self) {
                                     Text(Int(minutes.rounded()).minutesString)
@@ -201,12 +258,14 @@ struct DashboardView: View {
         NonnaCard {
             VStack(alignment: .leading, spacing: 17) {
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("LIFETIME")
-                        .font(.system(size: 9, weight: .semibold, design: .monospaced))
-                        .tracking(1.7)
+                    Text("Lifetime")
+                        .font(.system(size: 11, weight: .semibold).monospacedDigit())
                         .foregroundStyle(NonnaTheme.secondaryInk)
-                    Text("Time by list")
-                        .font(.system(size: 18, weight: .semibold))
+                    HStack(spacing: 7) {
+                        Text("Time by list")
+                            .font(.system(size: 18, weight: .semibold))
+                        InfoButton(title: "Time by list", text: "Where your focus time has gone, by list, since you started. Each bar is in that list's colour; change a colour from the dot on the list in Tasks.")
+                    }
                 }
 
                 if analytics.taskTotals.isEmpty {
@@ -228,7 +287,7 @@ struct DashboardView: View {
                                     .lineLimit(1)
                                 Spacer()
                                 Text(total.seconds.focusDurationString)
-                                    .font(.system(size: 10, weight: .medium, design: .monospaced))
+                                    .font(.system(size: 10, weight: .medium).monospacedDigit())
                                     .foregroundStyle(NonnaTheme.secondaryInk)
                             }
                             GeometryReader { proxy in
@@ -250,20 +309,14 @@ struct DashboardView: View {
 
     private var consistencyCard: some View {
         NonnaCard {
-            VStack(alignment: .leading, spacing: 17) {
-                HStack {
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text("CONSISTENCY")
-                            .font(.system(size: 9, weight: .semibold, design: .monospaced))
-                            .tracking(1.7)
-                            .foregroundStyle(NonnaTheme.secondaryInk)
-                        Text("12 weeks")
-                            .font(.system(size: 18, weight: .semibold))
-                    }
-                    Spacer()
-                    Text("A day counts when you focus for any amount of time.")
-                        .font(.system(size: 11, design: .default))
+            VStack(alignment: .leading, spacing: 16) {
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text("Consistency")
+                        .font(.system(size: 18, weight: .semibold))
+                    Text("last 12 weeks")
+                        .font(.system(size: 12))
                         .foregroundStyle(NonnaTheme.secondaryInk)
+                    InfoButton(title: "Consistency", text: "Each square is one day; each column is a week, oldest on the left. Darker squares mean more focus: under 25m, 25m–1h, 1–2h, and 2h or more. Hover a day to see it, or click to keep it shown.")
                 }
                 UsageHeatmap(sessions: model.sessions)
             }
@@ -271,78 +324,316 @@ struct DashboardView: View {
     }
 }
 
-private struct DashboardMetricButton: View {
+/// A small capsule comparing one period with the one before: green when focus grew,
+/// red when it shrank. Hidden when there's nothing earlier to compare with.
+private struct DeltaPill: View {
+    let current: Int
+    let previous: Int
+
+    var body: some View {
+        if previous > 0 {
+            let percent = Int((Double(current - previous) / Double(previous) * 100).rounded())
+            let color = percent > 0 ? TrendColors.good : (percent < 0 ? TrendColors.bad : NonnaTheme.secondaryInk)
+            HStack(spacing: 3) {
+                if percent != 0 {
+                    Image(systemName: percent > 0 ? "arrowtriangle.up.fill" : "arrowtriangle.down.fill")
+                        .font(.system(size: 7, weight: .bold))
+                }
+                Text(percent == 0 ? "Level" : "\(abs(percent))%")
+                    .font(.system(size: 11, weight: .semibold))
+                    .monospacedDigit()
+            }
+            .foregroundStyle(color)
+            .padding(.horizontal, 7)
+            .frame(height: 20)
+            .background(color.opacity(0.2), in: Capsule())
+            .help("Compared with the 14 days before")
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(percent == 0
+                ? "Level with the previous 14 days"
+                : "\(percent > 0 ? "Up" : "Down") \(abs(percent)) percent on the previous 14 days")
+        }
+    }
+}
+
+/// What one cell of the stat grid shows.
+private struct DashboardStat: Identifiable {
     let metric: DashboardMetric
+    let trends: [MetricTrend]
     let icon: String
     let label: String
     let value: String
+    let help: String
     let detail: String
     let tint: Color
+
+    var id: DashboardMetric { metric }
+}
+
+/// The six headline numbers as one surface, split into cells by hairlines that fade out
+/// at their ends. A Grid gives every cell in a row the same height, so they line up.
+private struct DashboardStatGrid: View {
+    let columns: Int
+    let stats: [DashboardStat]
+    let open: (DashboardMetric) -> Void
+
+    private var rows: [[DashboardStat]] {
+        stride(from: 0, to: stats.count, by: columns).map { Array(stats[$0..<min($0 + columns, stats.count)]) }
+    }
+
+    var body: some View {
+        let rows = self.rows
+        Grid(horizontalSpacing: 0, verticalSpacing: 0) {
+            ForEach(rows.indices, id: \.self) { row in
+                GridRow {
+                    ForEach(rows[row]) { stat in
+                        let column = rows[row].firstIndex { $0.metric == stat.metric } ?? 0
+                        DashboardMetricButton(stat: stat) { open(stat.metric) }
+                            .overlay(alignment: .trailing) {
+                                if column < columns - 1 { FadingHairline(axis: .vertical) }
+                            }
+                            .overlay(alignment: .bottom) {
+                                if row < rows.count - 1 { FadingHairline(axis: .horizontal) }
+                            }
+                    }
+                }
+            }
+        }
+        .background(NonnaTheme.paper.opacity(0.94))
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .stroke(NonnaTheme.line, lineWidth: 0.8)
+        }
+        .shadow(color: NonnaTheme.shadow.opacity(0.7), radius: 16, y: 8)
+    }
+}
+
+private struct DashboardMetricButton: View {
+    let stat: DashboardStat
     let action: () -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var isHovering = false
 
+    private static let padding: CGFloat = 20
+
     var body: some View {
         Button(action: action) {
-            ZStack(alignment: .topTrailing) {
-                MetricCard(icon: icon, label: label, value: value, detail: detail, tint: tint)
-                    .frame(maxWidth: .infinity)
-
-                Image(systemName: "arrow.up.right")
-                    .font(.system(size: 9, weight: .bold))
-                    .foregroundStyle(isHovering ? tint : NonnaTheme.secondaryInk)
-                    .frame(width: 25, height: 25)
-                    .background(NonnaTheme.raisedPaper.opacity(isHovering ? 1 : 0.7))
-                    .clipShape(Circle())
-                    .overlay { Circle().stroke(isHovering ? tint.opacity(0.4) : NonnaTheme.line, lineWidth: 0.8) }
-                    .padding(16)
-            }
-            .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .stroke(isHovering ? tint.opacity(0.5) : .clear, lineWidth: 1)
-            }
+            MetricCard(
+                icon: stat.icon,
+                label: stat.label,
+                value: stat.value,
+                detail: stat.detail,
+                tint: stat.tint,
+                trends: stat.trends,
+                trailingInset: 48
+            )
+            .padding(Self.padding)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .background(NonnaTheme.ink.opacity(isHovering ? 0.035 : 0))
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .help(stat.detail)
+        .accessibilityLabel("\(stat.label), \(stat.value). Open detailed analytics")
+        .accessibilityHint(stat.detail)
+        .overlay(alignment: .topTrailing) {
+            HStack(spacing: 8) {
+                InfoButton(title: stat.label, text: stat.help)
+                Image(systemName: "arrow.up.right")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(NonnaTheme.secondaryInk)
+                    .opacity(isHovering ? 1 : 0)
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
+            }
+            // Centred on the 34 pt icon chip.
+            .padding(.top, Self.padding + 9)
+            .padding(.trailing, Self.padding)
+        }
         .animation(reduceMotion ? nil : NonnaMotion.quick, value: isHovering)
         .onHover { isHovering = $0 }
-        .accessibilityLabel("\(label), \(value). Open detailed analytics")
     }
 }
 
+/// Twelve weeks of focus, one square per day: rows are weekdays, columns are weeks.
+/// Hover a day to see it, click to keep it selected.
 private struct UsageHeatmap: View {
     let sessions: [FocusSession]
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var hovered: Date?
+    @State private var selected: Date?
     private let calendar = Calendar.current
+    private static let weeks = 12
+    /// Month row, then seven rows of at most 30 pt with 5 pt gaps.
+    private static let gridHeight: CGFloat = 278
 
-    private var days: [(Date, Int)] {
+    private struct Day {
+        let date: Date
+        let seconds: Int
+        let blocks: Int
+        let lists: [String]
+    }
+
+    /// Weeks oldest first, each Monday→Sunday (or the locale's first weekday), future days nil.
+    private var columns: [[Day?]] {
         let today = calendar.startOfDay(for: Date())
-        let start = calendar.date(byAdding: .day, value: -83, to: today) ?? today
-        let grouped = Dictionary(grouping: sessions.filter { $0.outcome != .abandoned }) {
-            calendar.startOfDay(for: $0.startedAt)
-        }
-        return (0..<84).compactMap { offset in
-            guard let day = calendar.date(byAdding: .day, value: offset, to: start) else { return nil }
-            return (day, grouped[day, default: []].reduce(0) { $0 + $1.focusedSeconds })
+        guard let thisWeek = calendar.dateInterval(of: .weekOfYear, for: today)?.start,
+              let first = calendar.date(byAdding: .weekOfYear, value: -(Self.weeks - 1), to: thisWeek) else { return [] }
+        let counted = sessions.filter { $0.outcome != .abandoned }
+        let grouped = Dictionary(grouping: counted) { calendar.startOfDay(for: $0.startedAt) }
+        return (0..<Self.weeks).map { week in
+            (0..<7).map { offset -> Day? in
+                guard let date = calendar.date(byAdding: .day, value: week * 7 + offset, to: first), date <= today else { return nil }
+                let items = grouped[date, default: []]
+                var lists: [String] = []
+                for item in items where !lists.contains(item.taskName) { lists.append(item.taskName) }
+                return Day(date: date, seconds: items.reduce(0) { $0 + $1.focusedSeconds }, blocks: items.count, lists: lists)
+            }
         }
     }
 
     var body: some View {
-        let rows = Array(repeating: GridItem(.fixed(15), spacing: 5), count: 7)
-        ScrollView(.horizontal, showsIndicators: false) {
-            LazyHGrid(rows: rows, spacing: 5) {
-                ForEach(Array(days.enumerated()), id: \.offset) { _, item in
-                    RoundedRectangle(cornerRadius: 4)
-                        .fill(color(for: item.1))
-                        .frame(width: 15, height: 15)
-                        .help("\(item.0.formatted(date: .abbreviated, time: .omitted)): \(item.1.focusDurationString)")
+        let columns = self.columns
+        let focusDay = find(hovered ?? selected, in: columns)
+        VStack(alignment: .leading, spacing: 12) {
+            GeometryReader { proxy in
+                grid(columns, width: proxy.size.width)
+            }
+            .frame(height: Self.gridHeight)
+
+            detail(focusDay)
+                .animation(reduceMotion ? nil : .easeOut(duration: 0.15), value: focusDay?.date)
+        }
+    }
+
+    private func find(_ date: Date?, in columns: [[Day?]]) -> Day? {
+        guard let date else { return nil }
+        for week in columns {
+            for day in week where day?.date == date { return day }
+        }
+        return nil
+    }
+
+    private func grid(_ columns: [[Day?]], width: CGFloat) -> some View {
+        let labelWidth: CGFloat = 30
+        let spacing: CGFloat = 5
+        let fit = (width - labelWidth - spacing * CGFloat(Self.weeks - 1)) / CGFloat(Self.weeks)
+        let cell = max(12, min(30, fit))
+        return VStack(alignment: .leading, spacing: 6) {
+            // Month names over the first week that starts in a new month.
+            HStack(spacing: spacing) {
+                Color.clear.frame(width: labelWidth, height: 12)
+                ForEach(columns.indices, id: \.self) { index in
+                    Text(monthLabel(columns, index) ?? "")
+                        .font(.system(size: 10))
+                        .foregroundStyle(NonnaTheme.secondaryInk)
+                        .fixedSize()
+                        .frame(width: cell, alignment: .leading)
+                }
+            }
+            HStack(alignment: .top, spacing: spacing) {
+                VStack(alignment: .leading, spacing: spacing) {
+                    ForEach(0..<7, id: \.self) { row in
+                        Text(row % 2 == 0 ? weekdayName(columns, row) : "")
+                            .font(.system(size: 10))
+                            .foregroundStyle(NonnaTheme.secondaryInk)
+                            .frame(width: labelWidth, height: cell, alignment: .leading)
+                    }
+                }
+                ForEach(columns.indices, id: \.self) { week in
+                    VStack(spacing: spacing) {
+                        ForEach(0..<7, id: \.self) { row in
+                            square(columns[week][row], size: cell)
+                        }
+                    }
                 }
             }
         }
-        .frame(height: 135)
     }
 
-    private func color(for seconds: Int) -> Color {
+    @ViewBuilder
+    private func square(_ day: Day?, size: CGFloat) -> some View {
+        if let day {
+            let isFocus = day.date == hovered || day.date == selected
+            RoundedRectangle(cornerRadius: size * 0.22, style: .continuous)
+                .fill(Self.color(for: day.seconds))
+                .frame(width: size, height: size)
+                .overlay {
+                    RoundedRectangle(cornerRadius: size * 0.22, style: .continuous)
+                        .stroke(isFocus ? NonnaTheme.ink : (calendar.isDateInToday(day.date) ? NonnaTheme.strongLine : .clear), lineWidth: isFocus ? 1.5 : 1)
+                }
+                .scaleEffect(day.date == hovered && !reduceMotion ? 1.12 : 1)
+                .animation(reduceMotion ? nil : .easeOut(duration: 0.12), value: hovered)
+                .contentShape(Rectangle())
+                .onHover { inside in
+                    if inside { hovered = day.date } else if hovered == day.date { hovered = nil }
+                }
+                .onTapGesture { selected = selected == day.date ? nil : day.date }
+                .accessibilityLabel("\(day.date.formatted(date: .complete, time: .omitted)), \(day.seconds.focusDurationString)")
+                .accessibilityAddTraits(.isButton)
+        } else {
+            Color.clear.frame(width: size, height: size)
+        }
+    }
+
+    /// The day under the pointer (or the one clicked), in words.
+    @ViewBuilder
+    private func detail(_ day: Day?) -> some View {
+        HStack(spacing: 10) {
+            if let day {
+                RoundedRectangle(cornerRadius: 3).fill(Self.color(for: day.seconds)).frame(width: 11, height: 11)
+                Text(day.date.formatted(.dateTime.weekday(.wide).month(.abbreviated).day()))
+                    .font(.system(size: 12, weight: .semibold))
+                Text(summary(day))
+                    .font(.system(size: 12))
+                    .foregroundStyle(NonnaTheme.secondaryInk)
+                    .lineLimit(1)
+            } else {
+                Text("Hover a day to see it. Darker squares mean more focus.")
+                    .font(.system(size: 12))
+                    .foregroundStyle(NonnaTheme.secondaryInk)
+            }
+            Spacer()
+            HStack(spacing: 4) {
+                Text("Less")
+                ForEach([0, 600, 1800, 4000, 8000], id: \.self) { seconds in
+                    RoundedRectangle(cornerRadius: 3)
+                        .fill(Self.color(for: seconds))
+                        .frame(width: 11, height: 11)
+                }
+                Text("More")
+            }
+            .font(.system(size: 10))
+            .foregroundStyle(NonnaTheme.secondaryInk)
+        }
+        .frame(height: 18)
+    }
+
+    private func summary(_ day: Day) -> String {
+        guard day.seconds > 0 else { return "No focus" }
+        let blocks = "\(day.blocks) \(day.blocks == 1 ? "block" : "blocks")"
+        let lists = day.lists.prefix(3).joined(separator: ", ")
+        return "\(day.seconds.focusDurationString) in \(blocks)\(lists.isEmpty ? "" : ", on \(lists)")"
+    }
+
+    private func weekdayName(_ columns: [[Day?]], _ row: Int) -> String {
+        guard let date = columns.first?[row]?.date ?? columns.last.flatMap({ _ in
+            calendar.date(byAdding: .day, value: row, to: calendar.dateInterval(of: .weekOfYear, for: Date())?.start ?? Date())
+        }) else { return "" }
+        return date.formatted(.dateTime.weekday(.abbreviated))
+    }
+
+    private func monthLabel(_ columns: [[Day?]], _ index: Int) -> String? {
+        guard let start = columns[index].compactMap({ $0 }).first?.date else { return nil }
+        if index == 0 { return start.formatted(.dateTime.month(.abbreviated)) }
+        guard let previous = columns[index - 1].compactMap({ $0 }).first?.date,
+              calendar.component(.month, from: previous) != calendar.component(.month, from: start) else { return nil }
+        return start.formatted(.dateTime.month(.abbreviated))
+    }
+
+    static func color(for seconds: Int) -> Color {
         switch seconds {
         case 0: NonnaTheme.line.opacity(0.55)
         case 1..<1500: NonnaTheme.sage.opacity(0.28)

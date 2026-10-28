@@ -101,4 +101,44 @@ check((everything + allRules).allSatisfy { !$0.sources.isEmpty }, "every rule, b
 check(Citation.ID.allCases.allSatisfy { FocusScience.library[$0] != nil }, "every citation id resolves")
 check(FocusScience.all.allSatisfy { $0.scholarURL != nil && $0.year > 1900 && !$0.finding.isEmpty }, "citations are complete")
 
+// Coming back after time away: warm-ups, not a failed full-length block.
+var climbed = FocusPlan.build(from: answers, now: start)
+climbed.levelIndex = 5 // 35-minute blocks
+func at(_ day: Int) -> Date { start.addingTimeInterval(TimeInterval(day * 86_400 + 7_200)) }
+let beforeBreak = [session(day: 0, minutes: 35), session(day: 1, minutes: 35)]
+check(climbed.reentry(sessions: beforeBreak, now: at(3), calendar: calendar) == nil, "one day off is not a break")
+let back = climbed.reentry(sessions: beforeBreak, now: at(6), calendar: calendar)
+check(back?.daysAway == 4 && back?.warmupMinutes == 30 && back?.blocksLeft == 1, "four days away: one 30-minute warm-up")
+let longBack = climbed.reentry(sessions: beforeBreak, now: at(12), calendar: calendar)
+check(longBack?.warmupMinutes == 25 && longBack?.blocksLeft == 2, "ten days away: two 25-minute warm-ups")
+let warmedUp = beforeBreak + [session(day: 6, minutes: 30)]
+check(climbed.reentry(sessions: warmedUp, now: at(6).addingTimeInterval(3_600), calendar: calendar) == nil, "after the warm-up, full blocks return")
+check(climbed.todayTarget(sessions: beforeBreak, now: at(6), calendar: calendar) == 1, "the first day back asks for one block")
+
+// Never miss twice.
+check(climbed.missedYesterday(sessions: beforeBreak, now: at(3), calendar: calendar), "a gap yesterday is noticed")
+check(climbed.todayTarget(sessions: beforeBreak, now: at(3), calendar: calendar) == 1, "after a missed day, one block is the goal")
+
+// Struggling is judged on recent blocks, not an early good run.
+var stuck = climbed
+stuck.levelStartedAt = start
+let early = (0..<6).map { _ in session(day: 0, minutes: 35) }.map { s -> FocusSession in var s = s; s.plannedSeconds = 35 * 60; return s }
+let slump = (0..<6).map { i -> FocusSession in var s = session(day: 2 + i / 3, minutes: 8, outcome: .finishedEarly); s.plannedSeconds = 35 * 60; return s }
+check(stuck.progress(sessions: early + slump, calendar: calendar).isStruggling, "a recent slump steps back even after a strong start")
+
+// A block split across two lists still counts as one full block toward the plan.
+func split(day: Int, first: Int, second: Int) -> [FocusSession] {
+    let block = UUID()
+    var a = session(day: day, minutes: first); a.plannedSeconds = first * 60; a.blockID = block
+    var b = session(day: day, minutes: second); b.plannedSeconds = second * 60; b.blockID = block
+    b.startedAt = a.endedAt; b.endedAt = b.startedAt.addingTimeInterval(TimeInterval(second * 60))
+    return [a, b]
+}
+let splitPlan = FocusPlan.build(from: answers, now: start)
+let splitBlocks = split(day: 0, first: 6, second: 4) + split(day: 0, first: 5, second: 5)
+    + split(day: 1, first: 7, second: 3) + split(day: 1, first: 2, second: 8)
+let splitProgress = splitPlan.progress(sessions: splitBlocks, calendar: calendar)
+check(splitProgress.attempts == 4 && splitProgress.fullBlocks == 4, "split blocks count once, at full length")
+check(FocusSession.mergedBlocks(splitBlocks).count == 4, "parts merge back into blocks")
+
 print("Focus plan checks passed")

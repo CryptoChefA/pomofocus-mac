@@ -32,6 +32,7 @@ cp "$TASK_BUILD_DIR/arm64-apple-macosx/release/PomofocusWidgetExtension" "$WIDGE
 cp "$PROJECT_DIR/Resources/Info.plist" "$TEMP_APP_DIR/Contents/Info.plist"
 cp "$PROJECT_DIR/Resources/WidgetInfo.plist" "$WIDGET_DIR/Contents/Info.plist"
 cp "$PROJECT_DIR/Resources/AppIcon.icns" "$TEMP_APP_DIR/Contents/Resources/AppIcon.icns"
+cp "$PROJECT_DIR"/Resources/Sounds/*.m4a "$TEMP_APP_DIR/Contents/Resources/"
 chmod 755 "$TEMP_APP_DIR/Contents/MacOS/Pomofocus"
 chmod 755 "$WIDGET_DIR/Contents/MacOS/PomofocusWidgetExtension"
 # Drop local and debug symbols from the shipped binaries: smaller on disk and fewer

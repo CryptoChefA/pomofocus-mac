@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 
 private func check(_ condition: @autoclosure () -> Bool, _ message: String) {
@@ -10,7 +11,7 @@ private func check(_ condition: @autoclosure () -> Bool, _ message: String) {
 func ratio(_ a: String, _ b: String) -> Double { RGB(hex: a).contrast(with: RGB(hex: b)) }
 
 let presets = ThemeChoice.allCases.compactMap { choice in choice.palette.map { (choice.title, $0) } }
-check(presets.count == 8, "eight fixed presets")
+check(presets.count == 12, "twelve fixed presets")
 for (name, p) in presets {
     check(ratio(p.ink, p.background) >= 12, "\(name): body text is crisp (\(ratio(p.ink, p.background)))")
     check(ratio(p.ink, p.paper) >= 10, "\(name): text on cards is crisp")
@@ -38,5 +39,27 @@ for spec in [CustomThemeSpec(), CustomThemeSpec.lightStarter,
     check(p.background == RGB(hex: spec.background).hex, "custom keeps the chosen background")
 }
 check(RGB(hex: "BDA56F").hex == "BDA56F" && RGB(hex: "#0d0f11").hex == "0D0F11", "hex round-trips")
+
+// Theme codes: anyone can share a custom theme; only the developer's key can make a rare one.
+let mine = SharedTheme(id: UUID(), name: "Sam's theme", note: nil,
+                       spec: CustomThemeSpec(isDark: true, background: "0A0B0C", accent: "C9A55A", rest: "6E9488"), isRare: false)
+if case .success(let back) = ThemeCodes.theme(from: ThemeCodes.code(for: mine)) {
+    check(back == mine, "a shared code brings back the same theme")
+} else { check(false, "a shared code decodes") }
+check(ThemeCodes.theme(from: "hello") == .failure(.notACode), "random text isn't a code")
+check(ThemeCodes.theme(from: ThemeCodes.plainPrefix + "!!!") == .failure(.damaged), "a cut-off code is reported as damaged")
+
+let devKey = Curve25519.Signing.PrivateKey()
+let devPublic = devKey.publicKey.rawRepresentation.base64EncodedString()
+var gift = mine; gift.name = "Garden"; gift.note = "For Layla"; gift.isRare = true
+let rare = try! ThemeCodes.rareCode(for: gift, signingKey: devKey)
+if case .success(let back) = ThemeCodes.theme(from: rare, publicKey: devPublic) {
+    check(back.isRare && back.note == "For Layla" && back.spec == gift.spec, "a genuine rare code unlocks its theme")
+} else { check(false, "a genuine rare code is accepted") }
+let forged = try! ThemeCodes.rareCode(for: gift, signingKey: Curve25519.Signing.PrivateKey())
+check(ThemeCodes.theme(from: forged, publicKey: devPublic) == .failure(.notGenuine), "a code signed by anyone else is refused")
+var tampered = rare; tampered.insert("x", at: tampered.index(tampered.startIndex, offsetBy: 20))
+check(ThemeCodes.theme(from: tampered, publicKey: devPublic) != .success(gift), "a changed rare code is refused")
+check(ThemeChoice.resolve(gift.themeID, custom: CustomThemeSpec(), systemIsDark: false, saved: [gift]) == gift.spec.palette, "a saved theme resolves to its palette")
 
 print("Theme checks passed")

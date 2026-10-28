@@ -8,9 +8,8 @@ struct FocusCanvasView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("NOTES & REFERENCES")
-                    .font(.system(size: 9, weight: .medium, design: .monospaced))
-                    .tracking(1.5)
+                Text("Notes & references")
+                    .font(.system(size: 11, weight: .medium).monospacedDigit())
                     .foregroundStyle(NonnaTheme.secondaryInk)
                 Spacer()
             }
@@ -148,7 +147,7 @@ private struct SessionImageEditor: View {
 
             HStack(spacing: 9) {
                 Image(systemName: "photo")
-                    .font(.system(size: 9))
+                    .font(.system(size: 11))
                 Slider(value: Binding(
                     get: { model.noteImages.first(where: { $0.id == attachment.id })?.displayWidth ?? attachment.displayWidth },
                     set: { model.updateImageWidth($0, for: attachment.id) }
@@ -157,7 +156,7 @@ private struct SessionImageEditor: View {
                 Image(systemName: "photo.fill")
                     .font(.system(size: 13))
                 Text("Resize")
-                    .font(.system(size: 9, weight: .medium, design: .default))
+                    .font(.system(size: 11, weight: .medium, design: .default))
             }
             .foregroundStyle(NonnaTheme.secondaryInk)
         }
@@ -182,7 +181,7 @@ struct StoredAttachmentImage: View {
                 VStack(spacing: 7) {
                     Image(systemName: "photo.badge.exclamationmark")
                     Text("Image unavailable")
-                        .font(.system(size: 9, design: .default))
+                        .font(.system(size: 11, design: .default))
                 }
                 .foregroundStyle(NonnaTheme.secondaryInk)
             }

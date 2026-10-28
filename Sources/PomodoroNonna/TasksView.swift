@@ -26,6 +26,8 @@ enum TaskLength {
 
 struct TasksView: View {
     @Environment(AppModel.self) private var model
+    @EnvironmentObject private var calendarStore: CalendarStore
+    @State private var planMessage: String?
     @Environment(\.compactLayout) private var compact
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var scope: TaskScope = .board
@@ -47,9 +49,18 @@ struct TasksView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
                     header
+                    if let planMessage {
+                        Label(planMessage, systemImage: "wand.and.stars")
+                            .font(.system(size: 12))
+                            .foregroundStyle(NonnaTheme.secondaryInk)
+                            .task(id: planMessage) {
+                                try? await Task.sleep(for: .seconds(5))
+                                self.planMessage = nil
+                            }
+                    }
                     statsStrip
                     if scope == .board {
-                        BoardView(onNewList: { showingNewList = true })
+                        BoardView(onNewList: { showingNewList = true }, onOpen: { scope = .list($0) })
                     } else {
                         if scope != .completed {
                             QuickAddBar(scope: scope) { id, hasLength in
@@ -121,11 +132,6 @@ struct TasksView: View {
             VStack(alignment: .leading, spacing: 6) {
                 if compact {
                     scopeMenu
-                } else {
-                    Text("TASKS")
-                        .font(.system(size: 9, weight: .semibold, design: .monospaced))
-                        .tracking(1.8)
-                        .foregroundStyle(NonnaTheme.terracotta)
                 }
                 Text(title)
                     .font(.system(size: 29, weight: .semibold))
@@ -134,6 +140,25 @@ struct TasksView: View {
                     .foregroundStyle(NonnaTheme.secondaryInk)
             }
             Spacer()
+            Button {
+                let today = Date()
+                let busy = calendarStore.events(on: today, hiddenIDs: model.settings.hiddenCalendarIDs)
+                    .filter { !$0.isAllDay }
+                    .map { DayPlanner.Slot(start: $0.startedAt, end: $0.endedAt) }
+                let placed = model.planDay(today, busy: busy)
+                planMessage = placed == 0 ? "Nothing due today needs a time, or the day is full." : "Planned \(placed) \(placed == 1 ? "task" : "tasks") into today's free time. See the timeline."
+            } label: {
+                Label("Plan my day", systemImage: "wand.and.stars")
+            }
+            .buttonStyle(NonnaButtonStyle(prominent: false))
+            .help("Fit what's due today into your free time on the timeline")
+            Button {
+                model.showsWrapUp = true
+            } label: {
+                Label("Wrap up day", systemImage: "moon.stars")
+            }
+            .buttonStyle(NonnaButtonStyle(prominent: false))
+            .help("See what got done today and move the rest to tomorrow")
             Button {
                 showsWriteItOut = true
             } label: {
@@ -189,17 +214,12 @@ struct TasksView: View {
         let goal = model.settings.dailyGoalMinutes
 
         return VStack(alignment: .leading, spacing: 10) {
-            NonnaCard(padding: 0) {
-                HStack(spacing: 0) {
-                    stat("\(open.count)", "To do")
-                    divider
-                    stat(left.minutesString, "Time needed", detail: unestimated > 0 ? "\(unestimated) not timed yet" : nil)
-                    divider
-                    stat((focused / 60).minutesString, showsToday ? "Focused today" : "Focused on these")
-                    divider
-                    stat("\(completedToday)", "Done today")
-                }
-                .padding(.vertical, 18)
+            // One quiet line of numbers instead of a strip of big ones.
+            HStack(spacing: 22) {
+                inlineStat("\(open.count)", "to do")
+                inlineStat(left.minutesString, unestimated > 0 ? "needed, \(unestimated) not timed" : "needed")
+                inlineStat((focused / 60).minutesString, showsToday ? "focused today" : "focused on these")
+                inlineStat("\(completedToday)", "done today")
             }
             if scope == .today, goal > 0, left > goal {
                 Label("That’s \(left.minutesString) of work against your \(goal.minutesString) daily goal. Maybe move something to tomorrow.", systemImage: "exclamationmark.circle")
@@ -213,6 +233,18 @@ struct TasksView: View {
         Rectangle().fill(NonnaTheme.line).frame(width: 1, height: 44)
     }
 
+    private func inlineStat(_ value: String, _ label: String) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 5) {
+            Text(value)
+                .font(.system(size: 15, weight: .semibold))
+                .monospacedDigit()
+                .foregroundStyle(NonnaTheme.ink)
+            Text(label)
+                .font(.system(size: 12))
+                .foregroundStyle(NonnaTheme.secondaryInk)
+        }
+    }
+
     private func stat(_ value: String, _ label: String, detail: String? = nil) -> some View {
         VStack(spacing: 5) {
             Text(value)
@@ -224,7 +256,7 @@ struct TasksView: View {
                 .foregroundStyle(NonnaTheme.secondaryInk)
             if let detail {
                 Text(detail)
-                    .font(.system(size: 9))
+                    .font(.system(size: 11))
                     .foregroundStyle(NonnaTheme.secondaryInk.opacity(0.8))
             }
         }
@@ -285,8 +317,8 @@ struct TasksView: View {
             let byDay = Dictionary(grouping: open) { calendar.startOfDay(for: $0.due ?? Date()) }
             return byDay.keys.sorted().map { day in
                 let label = TodoItem(title: "", due: day).dueLabel() ?? ""
-                let title = DueBucket.of(day) == .overdue ? "Overdue · \(day.formatted(.dateTime.month(.abbreviated).day()))"
-                    : "\(label) · \(day.formatted(.dateTime.weekday(.wide)))"
+                let title = DueBucket.of(day) == .overdue ? "Overdue, \(day.formatted(.dateTime.month(.abbreviated).day()))"
+                    : "\(label), \(day.formatted(.dateTime.weekday(.wide)))"
                 return Group(id: "day-\(day.timeIntervalSince1970)", title: title, color: nil, todos: byDay[day] ?? [])
             }
         default:
@@ -360,6 +392,8 @@ private struct TaskSidebar: View {
     @Binding var scope: TaskScope
     let onNewList: () -> Void
     @State private var renaming: UUID?
+    @State private var dropTarget: TaskScope?
+    @State private var colouring: UUID?
     @State private var renameText = ""
 
     var body: some View {
@@ -371,9 +405,8 @@ private struct TaskSidebar: View {
                 row(scope: .completed, title: "Completed", color: nil, icon: "checkmark.circle")
 
                 HStack {
-                    Text("LISTS")
-                        .font(.system(size: 9, weight: .semibold, design: .monospaced))
-                        .tracking(1.6)
+                    Text("Lists")
+                        .font(.system(size: 11, weight: .semibold).monospacedDigit())
                         .foregroundStyle(NonnaTheme.secondaryInk)
                     Spacer()
                     Button(action: onNewList) {
@@ -404,14 +437,28 @@ private struct TaskSidebar: View {
                             .onExitCommand { renaming = nil }
                     } else {
                         row(scope: .list(list.id), title: list.name, color: NonnaTheme.taskColor(for: list.colorHex), icon: nil)
+                            .popover(isPresented: Binding(get: { colouring == list.id }, set: { if !$0 { colouring = nil } }), arrowEdge: .trailing) {
+                                ListColorPicker(hex: Binding(
+                                    get: { list.colorHex },
+                                    set: { model.setListColor(list.id, to: $0) }
+                                ), size: 22)
+                                .frame(width: 236)
+                                .padding(14)
+                            }
                             .contextMenu {
                                 Button("Rename…") {
                                     renameText = list.name
                                     renaming = list.id
                                 }
-                                Button("Archive list", role: .destructive) {
+                                Button("Change colour…") { colouring = list.id }
+                                Button("Archive list") {
                                     if scope == .list(list.id) { scope = .board }
                                     model.archiveTask(list.id)
+                                }
+                                Divider()
+                                Button("Delete list…", role: .destructive) {
+                                    let wasOpen = scope == .list(list.id)
+                                    if model.confirmDeleteList(list.id), wasOpen { scope = .board }
                                 }
                             }
                     }
@@ -454,7 +501,7 @@ private struct TaskSidebar: View {
                 Spacer(minLength: 4)
                 if !open.isEmpty {
                     Text("\(open.count)")
-                        .font(.system(size: 11, weight: .medium, design: .monospaced))
+                        .font(.system(size: 11, weight: .medium).monospacedDigit())
                         .foregroundStyle(NonnaTheme.secondaryInk)
                 }
             }
@@ -463,10 +510,32 @@ private struct TaskSidebar: View {
             .background(selected ? NonnaTheme.raisedPaper : .clear, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
             .overlay {
                 if selected { RoundedRectangle(cornerRadius: 9, style: .continuous).stroke(NonnaTheme.line, lineWidth: 0.8) }
+                if dropTarget == target {
+                    RoundedRectangle(cornerRadius: 9, style: .continuous).stroke(color ?? NonnaTheme.terracotta, lineWidth: 1.6)
+                }
             }
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        // Drop a task here: onto a list to move it, Today to make it due today,
+        // Completed to tick it off.
+        .dropDestination(for: String.self) { items, _ in
+            let ids = items.compactMap(TodoDrag.id(from:))
+            for id in ids { drop(id, on: target) }
+            return !ids.isEmpty && target != .board && target != .upcoming
+        } isTargeted: { inside in
+            if inside { dropTarget = target } else if dropTarget == target { dropTarget = nil }
+        }
+    }
+
+    private func drop(_ id: UUID, on target: TaskScope) {
+        switch target {
+        case .list(let listID): model.updateTodo(id) { $0.listID = listID }
+        case .today: model.updateTodo(id) { $0.due = Calendar.current.startOfDay(for: Date()) }
+        case .completed:
+            if model.todos.first(where: { $0.id == id })?.isDone == false { model.toggleDone(id) }
+        case .board, .upcoming: break
+        }
     }
 }
 
@@ -475,6 +544,9 @@ private struct TaskSidebar: View {
 /// The short form behind "New task": what, which list, how long, and when.
 private struct NewTodoSheet: View {
     @Environment(AppModel.self) private var model
+    @State private var makingList = false
+    @State private var newListName = ""
+    @FocusState private var listNameFocused: Bool
     @State private var title = ""
     @State private var listID: UUID?
     @State private var minutes: Int?
@@ -512,6 +584,37 @@ private struct NewTodoSheet: View {
                             listID = listID == list.id ? nil : list.id
                         }
                     }
+                    if makingList {
+                        TextField("List name", text: $newListName)
+                            .textFieldStyle(.roundedBorder)
+                            .frame(width: 160)
+                            .focused($listNameFocused)
+                            .onSubmit(createList)
+                            .onExitCommand { makingList = false }
+                    } else {
+                        Button {
+                            makingList = true
+                            listNameFocused = true
+                        } label: {
+                            Label("New list", systemImage: "plus")
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundStyle(NonnaTheme.terracotta)
+                                .padding(.horizontal, 12)
+                                .frame(height: 30)
+                                .overlay { Capsule().strokeBorder(NonnaTheme.strongLine, style: StrokeStyle(lineWidth: 0.8, dash: [3, 3])) }
+                                .contentShape(Capsule())
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+
+            if let list = model.tasks.first(where: { $0.id == listID }) {
+                field("\(list.name) colour") {
+                    ListColorPicker(hex: Binding(
+                        get: { list.colorHex },
+                        set: { model.setListColor(list.id, to: $0) }
+                    ), size: 22)
                 }
             }
 
@@ -553,6 +656,15 @@ private struct NewTodoSheet: View {
         }
     }
 
+    /// A list made right here, picked for this task, with the next colour in line.
+    private func createList() {
+        let name = newListName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty else { makingList = false; return }
+        listID = model.list(named: name)
+        newListName = ""
+        makingList = false
+    }
+
     private func add() {
         guard !trimmed.isEmpty else { return }
         // Typed shortcuts like "1h" or "tomorrow" still work; the picks win when made.
@@ -562,46 +674,98 @@ private struct NewTodoSheet: View {
     }
 }
 
-/// A plain "Add a task" line: type and press Return.
+/// The "Add a task" line. Typing opens separate rows for the date, the length and the list,
+/// so nothing has to be remembered as a shortcut; Return adds it.
 private struct QuickAddBar: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let scope: TaskScope
     /// The new task's id, and whether it already has a length.
     let onAdd: (UUID, Bool) -> Void
     @State private var text = ""
+    @State private var due: Date?
+    @State private var minutes: Int?
+    @State private var listID: UUID?
     @FocusState private var focused: Bool
 
+    private var expanded: Bool { !text.isEmpty }
+
     var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: "plus")
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(NonnaTheme.terracotta)
-            TextField("Add a task", text: $text)
-                .textFieldStyle(.plain)
-                .font(.system(size: 14))
-                .focused($focused)
-                .onSubmit(add)
-            if !text.isEmpty {
-                Text("Return to add")
-                    .font(.system(size: 10))
-                    .foregroundStyle(NonnaTheme.secondaryInk)
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 12) {
+                Image(systemName: "plus")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(NonnaTheme.terracotta)
+                TextField("Add a task", text: $text)
+                    .textFieldStyle(.plain)
+                    .font(.system(size: 14))
+                    .focused($focused)
+                    .onSubmit(add)
+                if expanded {
+                    Text("Return to add")
+                        .font(.system(size: 10))
+                        .foregroundStyle(NonnaTheme.secondaryInk)
+                }
+            }
+            .frame(height: 50)
+
+            if expanded {
+                VStack(alignment: .leading, spacing: 10) {
+                    row("When", icon: "calendar") { DueChips(selected: due, small: true) { due = $0 } }
+                    row("How long", icon: "clock") { LengthChips(selected: minutes, small: true) { minutes = $0 } }
+                    if !model.tasks.isEmpty {
+                        row("List", icon: "tag") {
+                            FlowChips {
+                                ForEach(model.tasks) { list in
+                                    PillButton(title: list.name, dot: NonnaTheme.taskColor(for: list.colorHex), selected: listID == list.id, small: true) {
+                                        listID = listID == list.id ? nil : list.id
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                .padding(.bottom, 14)
+                .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
         .padding(.horizontal, 18)
-        .frame(height: 50)
         .background(NonnaTheme.paper, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .stroke(focused ? NonnaTheme.terracotta.opacity(0.6) : NonnaTheme.line, lineWidth: focused ? 1.2 : 0.8)
         }
+        .animation(reduceMotion ? nil : .easeOut(duration: 0.2), value: expanded)
+        .onAppear(perform: resetPicks)
+        .onChange(of: scope) { _, _ in resetPicks() }
+    }
+
+    private func row<Content: View>(_ label: String, icon: String, @ViewBuilder content: () -> Content) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 10) {
+            Label(label, systemImage: icon)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(NonnaTheme.secondaryInk)
+                .frame(width: 84, alignment: .leading)
+            content()
+        }
+    }
+
+    /// Starts from where you are: a list's page picks that list, Today picks today.
+    private func resetPicks() {
+        due = scope.defaultDue
+        minutes = nil
+        listID = scope.listID
     }
 
     private func add() {
         guard let parsed = TodoParser.parseLine(text, focusMinutes: model.settings.focusMinutes) else { return }
-        let id = model.addTodo(parsed, defaultList: scope.listID, defaultDue: scope.defaultDue)
+        // Typed shortcuts still work; the rows fill in whatever wasn't typed.
+        let entry = ParsedTodo(title: parsed.title, minutes: parsed.minutes ?? minutes, due: parsed.due ?? due, listName: parsed.listName)
+        let id = model.addTodo(entry, defaultList: listID, defaultDue: nil)
         text = ""
+        resetPicks()
         focused = true
-        onAdd(id, parsed.minutes != nil)
+        onAdd(id, entry.minutes != nil)
     }
 }
 
@@ -638,7 +802,7 @@ private struct EstimatePrompt: View {
 // MARK: - Chips
 
 /// A rounded choice button.
-private struct PillButton: View {
+struct PillButton: View {
     let title: String
     var dot: Color?
     let selected: Bool
@@ -664,7 +828,7 @@ private struct PillButton: View {
 }
 
 /// Wraps chips onto as many lines as they need.
-private struct FlowChips<Content: View>: View {
+struct FlowChips<Content: View>: View {
     @ViewBuilder let content: Content
 
     var body: some View {
@@ -753,12 +917,32 @@ private struct DueChips: View {
                 ("Next week", day(7)), ("No date", nil)]
     }
 
+    @State private var picking = false
+
     var body: some View {
+        let presetPicked = choices.contains { _, date in
+            date.flatMap { d in selected.map { Calendar.current.isDate($0, inSameDayAs: d) } } ?? (selected == nil && date == nil)
+        }
         FlowChips {
             ForEach(choices, id: \.0) { title, date in
                 let isSelected = date.flatMap { d in selected.map { Calendar.current.isDate($0, inSameDayAs: d) } } ?? (selected == nil && date == nil)
                 PillButton(title: title, selected: isSelected, small: small) { onPick(date) }
             }
+            // Any other day, from a calendar.
+            PillButton(title: !presetPicked ? (selected?.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day()) ?? "Pick a date") : "Pick a date…",
+                       selected: !presetPicked, small: small) { picking = true }
+                .popover(isPresented: $picking, arrowEdge: .bottom) {
+                    DatePicker("Due", selection: Binding(
+                        get: { selected ?? Calendar.current.startOfDay(for: Date()) },
+                        set: { date in
+                            onPick(Calendar.current.startOfDay(for: date))
+                            picking = false
+                        }
+                    ), displayedComponents: .date)
+                    .datePickerStyle(.graphical)
+                    .labelsHidden()
+                    .padding(12)
+                }
         }
     }
 }
@@ -772,6 +956,22 @@ struct TaskProgress: View {
     let tint: Color
 
     var body: some View {
+        HStack(spacing: 10) {
+            time
+            let steps = todo.steps
+            if !steps.isEmpty {
+                HStack(spacing: 4) {
+                    Image(systemName: "checklist").font(.system(size: 10))
+                    Text("\(steps.filter(\.isDone).count) of \(steps.count)")
+                        .monospacedDigit()
+                }
+                .help("Steps done")
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var time: some View {
         let focused = model.stats(for: todo.id).seconds / 60
         if let minutes = todo.minutes {
             HStack(spacing: 7) {
@@ -784,7 +984,7 @@ struct TaskProgress: View {
                         }
                     Text("\(focused.minutesString) of \(minutes.minutesString)")
                 } else {
-                    Image(systemName: "clock").font(.system(size: 9))
+                    Image(systemName: "clock").font(.system(size: 11))
                     Text(minutes.minutesString)
                 }
             }
@@ -806,13 +1006,12 @@ private struct GroupHeader: View {
             if let color = group.color {
                 Circle().fill(color).frame(width: 7, height: 7)
             }
-            Text(group.title.uppercased())
-                .font(.system(size: 10, weight: .semibold, design: .monospaced))
-                .tracking(1.6)
+            Text(group.title)
+                .font(.system(size: 10, weight: .semibold).monospacedDigit())
                 .foregroundStyle(group.color == NonnaTheme.alert ? NonnaTheme.alert : NonnaTheme.secondaryInk)
             if left > 0 {
-                Text("· \(left.minutesString)")
-                    .font(.system(size: 10, design: .monospaced))
+                Text("\(left.minutesString) left")
+                    .font(.system(size: 10).monospacedDigit())
                     .foregroundStyle(NonnaTheme.secondaryInk.opacity(0.8))
             }
             Spacer()
@@ -898,6 +1097,13 @@ private struct TodoRow: View {
         .onHover { hovering = $0 }
         .animation(NonnaMotion.quick, value: hovering)
         .contextMenu { TodoMenu(todo: todo) }
+        .draggable(TodoDrag.payload(for: todo.id)) {
+            Text(todo.title)
+                .font(.system(size: 13))
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(NonnaTheme.raisedPaper, in: Capsule())
+        }
     }
 }
 
@@ -925,7 +1131,7 @@ private struct StartButton: View {
             if model.status == .idle { model.startFocus(on: todo.id) } else { model.linkTodo(todo.id) }
         } label: {
             Image(systemName: isCurrent ? "waveform" : "play.fill")
-                .font(.system(size: 8, weight: .bold))
+                .font(.system(size: 10, weight: .bold))
                 .foregroundStyle(isCurrent ? NonnaTheme.onAccent : tint)
                 .frame(width: 22, height: 22)
                 .background(isCurrent ? tint : tint.opacity(0.14), in: Circle())
@@ -947,7 +1153,7 @@ private struct CheckCircle: View {
                 if isDone {
                     Circle().fill(tint)
                     Image(systemName: "checkmark")
-                        .font(.system(size: 9, weight: .heavy))
+                        .font(.system(size: 11, weight: .heavy))
                         .foregroundStyle(NonnaTheme.onAccent)
                         .transition(.scale.combined(with: .opacity))
                 }
@@ -990,7 +1196,7 @@ private struct TodoMenu: View {
             }
         }
         Divider()
-        Button("Delete", role: .destructive) { model.deleteTodo(todo.id) }
+        Button("Delete…", role: .destructive) { model.confirmDeleteTodo(todo.id) }
     }
 }
 
@@ -1009,6 +1215,21 @@ private struct TodoEditor: View {
                     .padding(.vertical, 7)
                     .background(NonnaTheme.sunken, in: RoundedRectangle(cornerRadius: 8))
                     .overlay { RoundedRectangle(cornerRadius: 8).stroke(NonnaTheme.line, lineWidth: 0.8) }
+            }
+            field("Steps") {
+                SubtaskList(todo: todo)
+            }
+            if let planned = todo.scheduledAt {
+                field("On the timeline") {
+                    HStack(spacing: 10) {
+                        Text(planned.formatted(.dateTime.weekday(.wide).hour().minute()))
+                            .font(.system(size: 12))
+                        Button("Take it off") { model.schedule(todo.id, at: nil) }
+                            .buttonStyle(.plain)
+                            .font(.system(size: 11))
+                            .foregroundStyle(NonnaTheme.terracotta)
+                    }
+                }
             }
             field("List") {
                 FlowChips {
@@ -1054,7 +1275,7 @@ private struct TodoEditor: View {
                 }
                 Spacer()
                 Button(role: .destructive) {
-                    model.deleteTodo(todo.id)
+                    model.confirmDeleteTodo(todo.id)
                 } label: {
                     Label("Delete", systemImage: "trash").font(.system(size: 11))
                 }
@@ -1067,9 +1288,8 @@ private struct TodoEditor: View {
 
     private func field<Content: View>(_ label: String, @ViewBuilder content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 7) {
-            Text(label.uppercased())
-                .font(.system(size: 9, weight: .semibold, design: .monospaced))
-                .tracking(1.5)
+            Text(label)
+                .font(.system(size: 11, weight: .semibold).monospacedDigit())
                 .foregroundStyle(NonnaTheme.secondaryInk)
             content()
         }
@@ -1083,19 +1303,70 @@ private struct TodoEditor: View {
 private struct BoardView: View {
     @Environment(AppModel.self) private var model
     let onNewList: () -> Void
+    let onOpen: (UUID) -> Void
 
     var body: some View {
         let hasLoose = model.todos.contains { todo in
             !todo.isDone && (todo.listID == nil || !model.tasks.contains { $0.id == todo.listID })
         }
-        LazyVGrid(columns: [GridItem(.adaptive(minimum: 300), spacing: 16, alignment: .top)], alignment: .leading, spacing: 16) {
-            ForEach(model.tasks) { list in
-                BoardCard(list: list)
+        let active = model.tasks.filter { list in model.todos.contains { !$0.isDone && $0.listID == list.id } }
+        let empty = model.tasks.filter { list in !model.todos.contains { !$0.isDone && $0.listID == list.id } }
+        VStack(alignment: .leading, spacing: 26) {
+            if active.isEmpty && !hasLoose {
+                Text("Nothing to do yet. Add a task to any list below, or start a new list.")
+                    .font(.system(size: 13))
+                    .foregroundStyle(NonnaTheme.secondaryInk)
+            } else {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 340), spacing: 18, alignment: .top)], alignment: .leading, spacing: 18) {
+                    ForEach(active) { list in
+                        BoardCard(list: list)
+                    }
+                    if hasLoose {
+                        BoardCard(list: nil)
+                    }
+                }
             }
-            if hasLoose {
-                BoardCard(list: nil)
+
+            // Lists with nothing left wait quietly in one row instead of taking up cards.
+            VStack(alignment: .leading, spacing: 10) {
+                if !empty.isEmpty {
+                    Text("Empty lists")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(NonnaTheme.secondaryInk)
+                }
+                FlowChips {
+                    ForEach(empty) { list in
+                        Button { onOpen(list.id) } label: {
+                            HStack(spacing: 7) {
+                                Circle().fill(NonnaTheme.taskColor(for: list.colorHex)).frame(width: 8, height: 8)
+                                Text(list.name).font(.system(size: 12, weight: .medium))
+                            }
+                            .padding(.horizontal, 12)
+                            .frame(height: 30)
+                            .background(NonnaTheme.paper, in: Capsule())
+                            .overlay { Capsule().stroke(NonnaTheme.line, lineWidth: 0.8) }
+                            .contentShape(Capsule())
+                        }
+                        .buttonStyle(.plain)
+                        .help("Open \(list.name) to add tasks, or drop a task here to move it")
+                        .dropDestination(for: String.self) { items, _ in
+                            let ids = items.compactMap(TodoDrag.id(from:))
+                            for id in ids { model.updateTodo(id) { $0.listID = list.id } }
+                            return !ids.isEmpty
+                        }
+                    }
+                    Button(action: onNewList) {
+                        Label("New list", systemImage: "plus")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(NonnaTheme.terracotta)
+                            .padding(.horizontal, 12)
+                            .frame(height: 30)
+                            .overlay { Capsule().strokeBorder(NonnaTheme.strongLine, style: StrokeStyle(lineWidth: 0.8, dash: [3, 3])) }
+                            .contentShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                }
             }
-            NewListCard(onMore: onNewList)
         }
     }
 }
@@ -1111,6 +1382,7 @@ private struct BoardCard: View {
     @State private var isTargeted = false
     @FocusState private var adding: Bool
     @FocusState private var naming: Bool
+    @State private var pickingColor = false
 
     private var tint: Color { list.map { NonnaTheme.taskColor(for: $0.colorHex) } ?? NonnaTheme.secondaryInk }
 
@@ -1126,11 +1398,29 @@ private struct BoardCard: View {
 
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 10) {
-                Circle().fill(tint).frame(width: 10, height: 10)
+                if let list {
+                    Button { pickingColor = true } label: {
+                        Circle().fill(tint).frame(width: 12, height: 12)
+                            .padding(4)
+                            .contentShape(Circle())
+                    }
+                    .buttonStyle(.plain)
+                    .help("Change colour")
+                    .popover(isPresented: $pickingColor, arrowEdge: .bottom) {
+                        ListColorPicker(hex: Binding(
+                            get: { list.colorHex },
+                            set: { model.setListColor(list.id, to: $0) }
+                        ), size: 22)
+                        .frame(width: 236)
+                        .padding(14)
+                    }
+                } else {
+                    Circle().fill(tint).frame(width: 10, height: 10)
+                }
                 if let list {
                     TextField("List name", text: $name)
                         .textFieldStyle(.plain)
-                        .font(.system(size: 18, weight: .semibold, design: .serif))
+                        .font(.system(size: 16, weight: .semibold))
                         .focused($naming)
                         .onSubmit { model.renameList(list.id, to: name) }
                         .onChange(of: naming) { _, isEditing in
@@ -1145,17 +1435,23 @@ private struct BoardCard: View {
                         .help("Click to rename")
                 } else {
                     Text("No list")
-                        .font(.system(size: 18, weight: .semibold, design: .serif))
+                        .font(.system(size: 16, weight: .semibold))
                         .lineLimit(1)
                 }
                 Spacer(minLength: 6)
-                Text(open.isEmpty ? "all done" : "\(open.count) to do\(left > 0 ? " · \(left.minutesString)" : "")")
-                    .font(.system(size: 11))
+                Text(open.isEmpty ? "All done" : "\(open.count) to do\(left > 0 ? ", \(left.minutesString)" : "")")
+                    .font(.system(size: 11, weight: .medium).monospacedDigit())
                     .foregroundStyle(NonnaTheme.secondaryInk)
+                    .padding(.horizontal, 8)
+                    .frame(height: 20)
+                    .background(NonnaTheme.sunken.opacity(0.7), in: Capsule())
                 if let list {
                     Menu {
                         Button("Rename") { naming = true }
-                        Button("Archive list", role: .destructive) { model.archiveTask(list.id) }
+                        Button("Change colour…") { pickingColor = true }
+                        Button("Archive list") { model.archiveTask(list.id) }
+                        Divider()
+                        Button("Delete list…", role: .destructive) { model.confirmDeleteList(list.id) }
                     } label: {
                         Image(systemName: "ellipsis")
                             .font(.system(size: 11, weight: .semibold))
@@ -1219,10 +1515,11 @@ private struct BoardCard: View {
         .padding(.bottom, 4)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(NonnaTheme.paper, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .overlay(alignment: .top) {
-            UnevenRoundedRectangle(topLeadingRadius: 16, topTrailingRadius: 16, style: .continuous)
+        .overlay(alignment: .leading) {
+            // The list's colour runs down the side, so lists read apart at a glance.
+            UnevenRoundedRectangle(topLeadingRadius: 16, bottomLeadingRadius: 16, style: .continuous)
                 .fill(tint)
-                .frame(height: 3)
+                .frame(width: 4)
         }
         .overlay {
             RoundedRectangle(cornerRadius: 16, style: .continuous)
@@ -1231,7 +1528,7 @@ private struct BoardCard: View {
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         .dropDestination(for: String.self) { items, _ in
             guard let list else { return false }
-            let ids = items.compactMap(UUID.init(uuidString:))
+            let ids = items.compactMap(TodoDrag.id(from:))
             for id in ids { model.updateTodo(id) { $0.listID = list.id } }
             return !ids.isEmpty
         } isTargeted: { isTargeted = $0 }
@@ -1300,7 +1597,7 @@ private struct BoardRow: View {
                 .environment(model)
         }
         .contextMenu { TodoMenu(todo: todo) }
-        .draggable(todo.id.uuidString) {
+        .draggable(TodoDrag.payload(for: todo.id)) {
             Text(todo.title)
                 .font(.system(size: 13))
                 .padding(.horizontal, 12)
@@ -1377,14 +1674,14 @@ private struct WriteItOutSheet: View {
                 ZStack(alignment: .topLeading) {
                     if text.isEmpty {
                         Text("Math:\n- Formula sheet 1h today\n- Problem set 5 tomorrow\n\nBio:\n- Read chapter 4 45m fri\n- Practice midterm 2h")
-                            .font(.system(size: 14, design: .monospaced))
+                            .font(.system(size: 14).monospacedDigit())
                             .foregroundStyle(NonnaTheme.secondaryInk.opacity(0.5))
                             .padding(.horizontal, 15)
                             .padding(.vertical, 14)
                             .allowsHitTesting(false)
                     }
                     TextEditor(text: $text)
-                        .font(.system(size: 14, design: .monospaced))
+                        .font(.system(size: 14).monospacedDigit())
                         .scrollContentBackground(.hidden)
                         .padding(10)
                 }
@@ -1490,14 +1787,28 @@ struct LinkedTodoControl: View {
                 withAnimation(reduceMotion ? nil : .spring(duration: 0.35, bounce: 0.3)) { model.toggleDone(todo.id) }
             }
             VStack(alignment: .leading, spacing: 3) {
-                Text("WORKING ON")
-                    .font(.system(size: 8, weight: .semibold, design: .monospaced))
-                    .tracking(1.4)
+                Text("Working on")
+                    .font(.system(size: 10, weight: .semibold).monospacedDigit())
                     .foregroundStyle(tint)
                 Text(todo.title)
                     .font(.system(size: 12, weight: .medium))
                     .strikethrough(todo.isDone, color: NonnaTheme.secondaryInk)
                     .lineLimit(1)
+                if let next = todo.steps.first(where: { !$0.isDone }) {
+                    // The next small step, checkable right here.
+                    Button {
+                        withAnimation(reduceMotion ? nil : .spring(duration: 0.3, bounce: 0.2)) { model.toggleSubtask(next.id, in: todo.id) }
+                    } label: {
+                        HStack(spacing: 5) {
+                            Image(systemName: "circle").font(.system(size: 10))
+                            Text("Next: \(next.title)").lineLimit(1)
+                        }
+                        .font(.system(size: 11))
+                        .foregroundStyle(NonnaTheme.secondaryInk)
+                    }
+                    .buttonStyle(.plain)
+                    .help("Check off this step")
+                }
             }
             TaskProgress(todo: todo, tint: tint)
                 .font(.system(size: 10.5))
@@ -1506,7 +1817,7 @@ struct LinkedTodoControl: View {
                 model.unlinkTodo()
             } label: {
                 Image(systemName: "xmark")
-                    .font(.system(size: 8, weight: .bold))
+                    .font(.system(size: 10, weight: .bold))
                     .foregroundStyle(NonnaTheme.secondaryInk)
                     .frame(width: 20, height: 20)
                     .background(NonnaTheme.sunken, in: Circle())
@@ -1540,7 +1851,7 @@ struct LinkedTodoControl: View {
             HStack(spacing: 6) {
                 Image(systemName: "checklist")
                 Text("Pick a task")
-                Image(systemName: "chevron.down").font(.system(size: 8, weight: .bold))
+                Image(systemName: "chevron.down").font(.system(size: 10, weight: .bold))
             }
             .font(.system(size: 12, weight: .medium))
             .foregroundStyle(NonnaTheme.secondaryInk)
@@ -1552,7 +1863,7 @@ struct LinkedTodoControl: View {
     }
 
     private func item(_ todo: TodoItem) -> some View {
-        let left = todo.minutes.map { _ in " · \(model.minutesLeft(on: todo).minutesString) left" } ?? ""
+        let left = todo.minutes.map { _ in ", \(model.minutesLeft(on: todo).minutesString) left" } ?? ""
         return Button("\(todo.title)\(left)") { model.linkTodo(todo.id) }
     }
 }
@@ -1612,5 +1923,85 @@ private struct EditButton: View {
         }
         .buttonStyle(.plain)
         .help(isOpen ? "Close details" : "Edit time, due date, list and notes")
+    }
+}
+
+
+/// A task's steps: tick them off, rename in place, remove, or add one with Return.
+private struct SubtaskList: View {
+    @Environment(AppModel.self) private var model
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    let todo: TodoItem
+    @State private var newStep = ""
+    @FocusState private var adding: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            ForEach(todo.steps) { step in
+                SubtaskRow(todo: todo, step: step)
+            }
+            HStack(spacing: 8) {
+                Image(systemName: "plus")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(NonnaTheme.terracotta)
+                    .frame(width: 16)
+                TextField(todo.steps.isEmpty ? "Break it into a first small step" : "Add a step", text: $newStep)
+                    .textFieldStyle(.plain)
+                    .font(.system(size: 12))
+                    .focused($adding)
+                    .onSubmit {
+                        withAnimation(reduceMotion ? nil : .spring(duration: 0.3, bounce: 0.1)) {
+                            model.addSubtask(to: todo.id, title: newStep)
+                        }
+                        newStep = ""
+                        adding = true
+                    }
+            }
+            .padding(.vertical, 2)
+        }
+    }
+}
+
+private struct SubtaskRow: View {
+    @Environment(AppModel.self) private var model
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    let todo: TodoItem
+    let step: Subtask
+    @State private var title = ""
+    @State private var hovering = false
+    @FocusState private var editing: Bool
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Button {
+                withAnimation(reduceMotion ? nil : .spring(duration: 0.3, bounce: 0.25)) { model.toggleSubtask(step.id, in: todo.id) }
+            } label: {
+                Image(systemName: step.isDone ? "checkmark.circle.fill" : "circle")
+                    .font(.system(size: 13))
+                    .foregroundStyle(step.isDone ? NonnaTheme.terracotta : NonnaTheme.secondaryInk)
+                    .frame(width: 16)
+            }
+            .buttonStyle(.plain)
+            TextField("Step", text: $title)
+                .textFieldStyle(.plain)
+                .font(.system(size: 12))
+                .strikethrough(step.isDone, color: NonnaTheme.secondaryInk)
+                .foregroundStyle(step.isDone ? NonnaTheme.secondaryInk : NonnaTheme.ink)
+                .focused($editing)
+                .onSubmit { model.renameSubtask(step.id, in: todo.id, to: title) }
+                .onExitCommand { title = step.title; editing = false }
+                .onChange(of: editing) { _, isEditing in if !isEditing { model.renameSubtask(step.id, in: todo.id, to: title) } }
+            Spacer(minLength: 4)
+            Button { model.removeSubtask(step.id, from: todo.id) } label: {
+                Image(systemName: "xmark").font(.system(size: 9, weight: .semibold))
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(NonnaTheme.secondaryInk)
+            .opacity(hovering ? 1 : 0)
+            .help("Remove this step")
+        }
+        .onHover { hovering = $0 }
+        .onAppear { title = step.title }
+        .onChange(of: step.title) { _, value in if !editing { title = value } }
     }
 }

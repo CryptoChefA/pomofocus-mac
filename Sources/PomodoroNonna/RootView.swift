@@ -32,6 +32,10 @@ struct RootView: View {
             HStack(spacing: 0) {
                 Sidebar(selection: $selection)
                     .frame(width: 82)
+                    .frame(maxHeight: .infinity)
+                    // The whole column, edge to edge and under the title bar, so no theme
+                    // scenery shows through beside the icons.
+                    .background(NonnaTheme.sunken.ignoresSafeArea())
                 Divider().overlay(NonnaTheme.line)
                 GeometryReader { proxy in
                 ZStack {
@@ -71,6 +75,52 @@ struct RootView: View {
             }
             .environment(model)
         }
+        .overlay {
+            if !model.needsOnboarding { LaunchGreeting() }
+        }
+        .background {
+            // Esc in Settings goes back to the timer.
+            if selection == .settings {
+                Button("Back to the timer") {
+                    withAnimation(reduceMotion ? nil : NonnaMotion.page) { selection = .focus }
+                }
+                .keyboardShortcut(.cancelAction)
+                .opacity(0)
+                .frame(width: 0, height: 0)
+                .accessibilityHidden(true)
+            }
+        }
+        .sheet(isPresented: Bindable(Updater.shared).showsSheet) {
+            UpdateSheet()
+        }
+        .sheet(isPresented: Bindable(model).showsWrapUp) {
+            WrapUpSheet { model.showsWrapUp = false }
+                .environment(model)
+        }
+        .sheet(isPresented: Bindable(Updater.shared).showsWhatsNew) {
+            WhatsNewSheet { Updater.shared.showsWhatsNew = false }
+        }
+        .task {
+            Updater.shared.prepareToQuit = { [model] in await model.flushForQuit() }
+            // Decide about onboarding vs What's new only once the data has loaded.
+            while !model.hasLoaded, model.storageError == nil {
+                try? await Task.sleep(for: .milliseconds(100))
+            }
+            guard model.hasLoaded else { return }
+            let defaults = UserDefaults.standard
+            let current = Updater.shared.currentVersion
+            if model.needsOnboarding {
+                // A fresh install has nothing "new" to announce.
+                defaults.set(current, forKey: WhatsNew.lastSeenKey)
+            } else if defaults.string(forKey: WhatsNew.lastSeenKey) != current {
+                defaults.set(current, forKey: WhatsNew.lastSeenKey)
+                // After the welcome greeting has had its moment.
+                try? await Task.sleep(for: .seconds(2.6))
+                Updater.shared.showsWhatsNew = true
+                return
+            }
+            await Updater.shared.checkAutomaticallyIfDue()
+        }
         .sheet(item: Bindable(model).reflectionSession) { session in
             ReflectionView(session: session)
                 .environment(model)
@@ -90,66 +140,142 @@ private struct Sidebar: View {
     @Binding var selection: AppSection
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Namespace private var selectionMotion
+    /// The user's order for the top icons, by raw value. Settings always sits at the bottom.
+    @AppStorage("sidebarOrder") private var storedOrder = ""
+    @State private var dragging: AppSection?
+
+    /// Focus is the home tile at the top and Settings sits at the bottom; the rest can move.
+    private static let defaultOrder = AppSection.allCases.filter { $0 != .settings && $0 != .focus }
+
+    private var order: [AppSection] {
+        let saved = storedOrder.split(separator: ",").compactMap { AppSection(rawValue: String($0)) }.filter { Self.defaultOrder.contains($0) }
+        // Keep anything new or missing at the end, in its usual place.
+        return saved + Self.defaultOrder.filter { !saved.contains($0) }
+    }
 
     var body: some View {
         VStack(spacing: 10) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 9, style: .continuous)
-                    .fill(NonnaTheme.ink)
-                Text("P")
-                    .font(.system(size: 18, weight: .semibold, design: .serif))
-                    .foregroundStyle(NonnaTheme.cream)
-            }
-            .frame(width: 36, height: 36)
-            .overlay {
-                RoundedRectangle(cornerRadius: 9, style: .continuous)
-                    .stroke(.white.opacity(0.22), lineWidth: 0.8)
-            }
-            .padding(.bottom, 25)
-
-            ForEach(AppSection.allCases) { item in
-                Button {
-                    withAnimation(reduceMotion ? nil : NonnaMotion.selection) { selection = item }
-                } label: {
-                    ZStack(alignment: .leading) {
-                        if selection == item {
-                            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                .fill(NonnaTheme.raisedPaper)
-                                .frame(width: 40, height: 40)
-                                .matchedGeometryEffect(id: "sidebar-surface", in: selectionMotion)
-                            Capsule()
-                                .fill(NonnaTheme.terracotta)
-                                .frame(width: 2, height: 18)
-                                .offset(x: -11)
-                                .matchedGeometryEffect(id: "sidebar-indicator", in: selectionMotion)
-                        }
-                        Image(systemName: item.icon)
-                            .font(.system(size: 15, weight: selection == item ? .semibold : .regular))
-                            .frame(width: 40, height: 40)
-                    }
+            // The timer is home, so it sits where an app's logo would.
+            Button {
+                dragging = nil
+                withAnimation(reduceMotion ? nil : NonnaMotion.selection) { selection = .focus }
+            } label: {
+                Image(systemName: AppSection.focus.icon)
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(selection == .focus ? NonnaTheme.onAccent : NonnaTheme.cream)
                     .frame(width: 40, height: 40)
-                    .foregroundStyle(selection == item ? NonnaTheme.ink : NonnaTheme.secondaryInk)
-                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-                }
-                .buttonStyle(SidebarButtonStyle(isSelected: selection == item))
-                .help(item.rawValue)
-                .accessibilityLabel(item.rawValue)
+                    .background(selection == .focus ? NonnaTheme.terracotta : NonnaTheme.ink,
+                                in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .stroke(.white.opacity(0.22), lineWidth: 0.8)
+                    }
+                    .shadow(color: selection == .focus ? NonnaTheme.terracotta.opacity(0.35) : .clear, radius: 8)
+                    .contentShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+            }
+            .buttonStyle(.plain)
+            .help("Focus")
+            .accessibilityLabel("Focus")
+            .padding(.bottom, 21)
+
+            ForEach(order) { item in
+                button(for: item)
+                    .opacity(dragging == item ? 0.4 : 1)
+                    .onDrag {
+                        dragging = item
+                        return NSItemProvider(object: item.rawValue as NSString)
+                    }
+                    .onDrop(of: [.text], delegate: SidebarDropDelegate(item: item, dragging: $dragging, move: move))
+                    .contextMenu {
+                        Button("Move up") { shift(item, by: -1) }
+                            .disabled(order.first == item)
+                        Button("Move down") { shift(item, by: 1) }
+                            .disabled(order.last == item)
+                        Divider()
+                        Button("Reset order") { storedOrder = "" }
+                    }
             }
 
             Spacer()
 
-            Image(systemName: "lock.fill")
-                .font(.system(size: 10, weight: .medium))
-                .foregroundStyle(NonnaTheme.sage)
-                .frame(width: 32, height: 32)
-                .background(NonnaTheme.raisedPaper.opacity(0.7))
-                .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
-                .help("Local-first · no cloud")
+            button(for: .settings)
         }
         .padding(.top, 24)
         .padding(.horizontal, 15)
         .padding(.bottom, 18)
-        .background(NonnaTheme.sunken.opacity(0.94))
+        // Solid, so theme scenery (frost, petals) never shows through the sidebar.
+        .background(NonnaTheme.sunken)
+        // A drop anywhere else in the sidebar just ends the drag.
+        .onDrop(of: [.text], isTargeted: nil) { _ in
+            dragging = nil
+            return true
+        }
+    }
+
+    private func button(for item: AppSection) -> some View {
+        Button {
+            dragging = nil
+            withAnimation(reduceMotion ? nil : NonnaMotion.selection) { selection = item }
+        } label: {
+            ZStack(alignment: .leading) {
+                if selection == item {
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .fill(NonnaTheme.raisedPaper)
+                        .frame(width: 40, height: 40)
+                        .matchedGeometryEffect(id: "sidebar-surface", in: selectionMotion)
+                    Capsule()
+                        .fill(NonnaTheme.terracotta)
+                        .frame(width: 2, height: 18)
+                        .offset(x: -11)
+                        .matchedGeometryEffect(id: "sidebar-indicator", in: selectionMotion)
+                }
+                Image(systemName: item.icon)
+                    .font(.system(size: 15, weight: selection == item ? .semibold : .regular))
+                    .frame(width: 40, height: 40)
+            }
+            .frame(width: 40, height: 40)
+            .foregroundStyle(selection == item ? NonnaTheme.ink : NonnaTheme.secondaryInk)
+            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+            .contentShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+        }
+        .buttonStyle(SidebarButtonStyle(isSelected: selection == item))
+        .help(item == .settings ? "Settings" : "\(item.rawValue), drag to reorder")
+        .accessibilityLabel(item.rawValue)
+    }
+
+    private func move(_ item: AppSection, to target: AppSection) {
+        var items = order
+        guard item != target, let from = items.firstIndex(of: item), let to = items.firstIndex(of: target) else { return }
+        items.remove(at: from)
+        items.insert(item, at: to)
+        withAnimation(reduceMotion ? nil : NonnaMotion.selection) {
+            storedOrder = items.map(\.rawValue).joined(separator: ",")
+        }
+    }
+
+    private func shift(_ item: AppSection, by offset: Int) {
+        let items = order
+        guard let index = items.firstIndex(of: item), items.indices.contains(index + offset) else { return }
+        move(item, to: items[index + offset])
+    }
+}
+
+/// Reorders the sidebar live as an icon is dragged over another.
+private struct SidebarDropDelegate: DropDelegate {
+    let item: AppSection
+    @Binding var dragging: AppSection?
+    let move: (AppSection, AppSection) -> Void
+
+    func dropEntered(info: DropInfo) {
+        guard let dragging, dragging != item else { return }
+        move(dragging, item)
+    }
+
+    func dropUpdated(info: DropInfo) -> DropProposal? { DropProposal(operation: .move) }
+
+    func performDrop(info: DropInfo) -> Bool {
+        dragging = nil
+        return true
     }
 }
 

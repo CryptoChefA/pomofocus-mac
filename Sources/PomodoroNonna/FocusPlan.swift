@@ -61,6 +61,10 @@ struct FocusPlan: Codable, Equatable, Sendable {
     /// Below this completion rate over enough attempts, the plan steps back a level.
     static let stepBackCompletion = 0.4
     static let stepBackAttempts = 5
+    /// Struggling is judged on the most recent attempts, so an early good run can't hide a slump.
+    static let recentWindow = 6
+    /// Days fully missed before the first blocks back become shorter warm-ups.
+    static let reentryAfterDays = 3
     /// Lally et al. (2010): median days for a repeated behaviour to become automatic.
     static let habitDays = 66
 
@@ -107,6 +111,9 @@ struct FocusPlan: Codable, Equatable, Sendable {
         let attempts: Int
         let fullBlocks: Int
         let days: Int
+        /// The same, for only the latest `recentWindow` attempts.
+        var recentAttempts = 0
+        var recentFull = 0
 
         var completionRate: Double { attempts == 0 ? 0 : Double(fullBlocks) / Double(attempts) }
 
@@ -116,7 +123,8 @@ struct FocusPlan: Codable, Equatable, Sendable {
         }
 
         var isStruggling: Bool {
-            attempts >= FocusPlan.stepBackAttempts && completionRate < FocusPlan.stepBackCompletion
+            recentAttempts >= FocusPlan.stepBackAttempts
+                && Double(recentFull) / Double(recentAttempts) < FocusPlan.stepBackCompletion
         }
 
         var fraction: Double {
@@ -129,13 +137,83 @@ struct FocusPlan: Codable, Equatable, Sendable {
 
     /// Blocks started at the current length since this level began.
     func progress(sessions: [FocusSession], calendar: Calendar = .current) -> Progress {
+        // A block split across lists is still one block.
+        let sessions = FocusSession.mergedBlocks(sessions)
         let minutes = level.focusMinutes
         let started = sessions.filter {
             $0.startedAt >= levelStartedAt && $0.plannedSeconds >= minutes * 60 - 30 && $0.plannedSeconds > 0
         }
-        let full = started.filter { $0.outcome != .abandoned && $0.focusedSeconds >= minutes * 60 }
+        let isFull = { (s: FocusSession) in s.outcome != .abandoned && s.focusedSeconds >= minutes * 60 }
+        let full = started.filter(isFull)
         let days = Set(full.map { calendar.startOfDay(for: $0.startedAt) })
-        return Progress(attempts: started.count, fullBlocks: full.count, days: days.count)
+        let recent = started.sorted { $0.startedAt < $1.startedAt }.suffix(FocusPlan.recentWindow)
+        return Progress(attempts: started.count, fullBlocks: full.count, days: days.count,
+                        recentAttempts: recent.count, recentFull: recent.filter(isFull).count)
+    }
+
+    // MARK: Coming back
+
+    /// Shorter warm-up blocks after time away. Attention you haven't used for a while comes
+    /// back quickly, but not instantly; a first block that's easy to finish rebuilds the sense
+    /// that you can (Bandura, 1977) instead of a failed full-length block on day one.
+    struct Reentry: Equatable, Sendable {
+        let daysAway: Int
+        let warmupMinutes: Int
+        /// Warm-up blocks still to do today before full-length blocks return.
+        let blocksLeft: Int
+    }
+
+    func reentry(sessions: [FocusSession], now: Date = Date(), calendar: Calendar = .current) -> Reentry? {
+        // A block split across lists is still one block.
+        let sessions = FocusSession.mergedBlocks(sessions)
+        let today = calendar.startOfDay(for: now)
+        let real = sessions.filter { $0.outcome != .abandoned && $0.focusedSeconds >= 10 * 60 }
+        guard let last = real.filter({ $0.startedAt < today }).map(\.startedAt).max(),
+              let gap = calendar.dateComponents([.day], from: calendar.startOfDay(for: last), to: today).day else { return nil }
+        let daysAway = gap - 1
+        guard daysAway >= FocusPlan.reentryAfterDays else { return nil }
+        let stepsDown = daysAway >= 14 ? 3 : daysAway >= 7 ? 2 : 1
+        let warmup = levelIndex >= stepsDown
+            ? levels[levelIndex - stepsDown].focusMinutes
+            : max(10, level.focusMinutes - 5 * stepsDown)
+        guard warmup < level.focusMinutes else { return nil }
+        let needed = daysAway >= 7 ? 2 : 1
+        let done = real.filter { $0.startedAt >= today && $0.focusedSeconds >= warmup * 60 }.count
+        guard done < needed else { return nil }
+        return Reentry(daysAway: daysAway, warmupMinutes: warmup, blocksLeft: needed - done)
+    }
+
+    /// True when yesterday had no focus but the days before did. Missing one day barely
+    /// affects habit formation; missing two in a row is where routines slip (Lally et al., 2010).
+    func missedYesterday(sessions: [FocusSession], now: Date = Date(), calendar: Calendar = .current) -> Bool {
+        // A block split across lists is still one block.
+        let sessions = FocusSession.mergedBlocks(sessions)
+        let today = calendar.startOfDay(for: now)
+        guard let yesterday = calendar.date(byAdding: .day, value: -1, to: today),
+              let weekBefore = calendar.date(byAdding: .day, value: -7, to: yesterday),
+              createdAt < yesterday else { return false }
+        let real = sessions.filter { $0.outcome != .abandoned && $0.focusedSeconds >= 10 * 60 }
+        let focusedYesterday = real.contains { $0.startedAt >= yesterday && $0.startedAt < today }
+        let focusedBefore = real.contains { $0.startedAt >= weekBefore && $0.startedAt < yesterday }
+        return !focusedYesterday && focusedBefore
+    }
+
+    /// Today's block target: what you've actually been managing lately, plus one, capped by
+    /// the plan. After a missed day or time away, one block is the whole goal.
+    func todayTarget(sessions: [FocusSession], now: Date = Date(), calendar: Calendar = .current) -> Int {
+        // A block split across lists is still one block.
+        let sessions = FocusSession.mergedBlocks(sessions)
+        if reentry(sessions: sessions, now: now, calendar: calendar) != nil
+            || missedYesterday(sessions: sessions, now: now, calendar: calendar) { return 1 }
+        let today = calendar.startOfDay(for: now)
+        guard let start = calendar.date(byAdding: .day, value: -7, to: today) else { return dailyBlocks }
+        let recent = sessions.filter {
+            $0.startedAt >= start && $0.startedAt < today && $0.outcome != .abandoned && $0.focusedSeconds >= 10 * 60
+        }
+        let activeDays = Set(recent.map { calendar.startOfDay(for: $0.startedAt) }).count
+        guard activeDays >= 2 else { return dailyBlocks }
+        let typical = Int((Double(recent.count) / Double(activeDays)).rounded())
+        return max(1, min(dailyBlocks, typical + 1))
     }
 
     enum Adjustment: Equatable, Sendable { case levelUp, stepBack }
@@ -150,7 +228,9 @@ struct FocusPlan: Codable, Equatable, Sendable {
 
     /// Blocks finished today at (or above) the current length.
     func blocksToday(sessions: [FocusSession], now: Date = Date(), calendar: Calendar = .current) -> Int {
-        sessions.filter {
+        // A block split across lists is still one block.
+        let sessions = FocusSession.mergedBlocks(sessions)
+        return sessions.filter {
             calendar.isDate($0.startedAt, inSameDayAs: now) && $0.outcome != .abandoned
                 && $0.focusedSeconds >= level.focusMinutes * 60
         }.count
