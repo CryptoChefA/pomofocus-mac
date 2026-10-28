@@ -37,6 +37,9 @@ Pomofocus is a beautiful, local-first focus timer for macOS. It brings together 
 - Cockpit-style overtime alert: the time, status tag, and menu-bar item flash caution red (steady red with Reduce Motion, and switchable in Settings)
 - Break-complete reminder with one-click Next straight into the next focus block
 - Visible Skip break action that immediately begins the next focus session
+- Keep tasks simple (on by default): Tasks opens on Today with one Up next task and Start focusing, adding a task is just its name, there are no hour totals or colour pickers, a gentle nudge after five minutes of planning, and the day planner folds away while a block runs; turn it off in Settings for the full board
+- Bring your work into Tasks: after updating, a one-time offer turns what you've timed (and your lists) into tasks; recent, repeated work is ticked, everything else is left for you to choose
+- Updates that respect a running block: the timer keeps counting through an in-app update, and What's New waits until the block ends
 - Tasks: a New task button (⇧⌘N) asks what, which list, how long (15m to 3h) and when; or type straight into any list and press Return, and the app asks how long it will take
 - All lists board: every list (a class, a project) as a card with its tasks underneath and an add line in each card; click a task to edit it, drag it onto another card to move it
 - Today, Upcoming and Completed views, plus your own colour-coded lists with open counts and estimated time; renaming and archiving from the sidebar
@@ -51,7 +54,7 @@ Pomofocus is a beautiful, local-first focus timer for macOS. It brings together 
 - Insights with a 7, 30, 90-day or all-time range: week-over-week trend, six-month totals, daily goal hit rate, focus by hour and weekday, rating by task and start hour, completion rate, focus-to-break ratio, skipped breaks, and overtime trend
 - Read-only calendar overlay on the day timeline through EventKit, so any account added to macOS (Google included) appears behind your sessions, with a per-calendar picker and Start focus from an event
 - Intention for each focus block
-- Optional post-session focus rating and reflection
+- One-click session rating (Scattered, Restless, Steady, Focused, Flow) at the end of a whole session, or after every block if you prefer; it sits beside the session in History and feeds Insights
 - Focus rebuild plan: eight questions build a research-based plan in four phases (Reset, Build, Extend, Sustain). Blocks climb five minutes per level once you finish 4 full blocks on 2+ days with a 70% completion rate, and step back a level if under 40% are finished. Weekly metrics (completion rate, longest unbroken stretch, pauses per block, start-time spread, active days), house rules from your distractions, a restorative break menu and an end-of-day reward; every recommendation cites peer-reviewed research, with a Sources page and an honest note on what the science doesn't say
 - Collapsible day timeline (⌥⌘T)
 - Session celebration: when you press End session, screen-wide confetti and a cinematic breakdown of the whole sitting (every pomodoro, total focus, breaks, pauses, overtime, today vs goal, streak); single pomodoros pass quietly; switchable in Settings
@@ -139,7 +142,7 @@ swiftc Sources/PomodoroNonna/Models.swift Sources/PomodoroNonna/TodoModels.swift
 - `LocalStore.swift`: atomic JSON persistence in Application Support
 - `WidgetSnapshotWriter.swift`: private local timer snapshots and WidgetKit refreshes
 - `PomofocusWidget.swift`: small, medium, and large macOS widget layouts
-- `FocusView.swift`: main focus ritual and reflection
+- `FocusView.swift`: main focus ritual and the one-click session rating
 - `FocusCanvasView.swift`: local text, pasted images, captions, resizing, and ordering
 - `CinematicMode.swift`: full-screen Cinema scene, with Core Animation backdrop and minute tape
 - `CelebrationMode.swift`: end-of-sitting confetti and stats breakdown
@@ -152,6 +155,8 @@ swiftc Sources/PomodoroNonna/Models.swift Sources/PomodoroNonna/TodoModels.swift
 - `FocusScore.swift`: the daily focus score and runaway-timer trimming (pure, tested); `FocusScoreViews.swift` draws them
 - `HistoryView.swift`: searchable session ledger and CSV export
 - `TasksView.swift`: Tasks (board, smart views, New task form, Paste a list) and the timer's task link
+- `SimpleTasks.swift`: the Keep tasks simple Today view (Up next, planning nudge)
+- `WorkImport.swift`: picks past work to offer as tasks after updating (pure, tested); `WorkImportSheet.swift` shows the offer
 - `SettingsView.swift`: timer, rhythm, sound, and privacy controls
 
 ## Roadmap

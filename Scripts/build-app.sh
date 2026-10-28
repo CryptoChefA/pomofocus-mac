@@ -57,5 +57,9 @@ rm -f -- "$ARCHIVE_PATH"
 # --norsrc keeps macOS metadata (._ files) out of the archive.
 /usr/bin/ditto -c -k --norsrc --keepParent "$TEMP_APP_DIR" "$ARCHIVE_PATH"
 /usr/bin/ditto "$TEMP_APP_DIR" "$APP_DIR"
+# The unpacked copy has the installed app's bundle id. Unregister it so macOS keeps
+# running the widget from /Applications; otherwise the widget can vanish from the gallery.
+/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -u "$APP_DIR" 2>/dev/null || true
+/usr/bin/pluginkit -r "$APP_DIR/Contents/PlugIns/PomofocusWidgetExtension.appex" 2>/dev/null || true
 
 echo "$ARCHIVE_PATH"
