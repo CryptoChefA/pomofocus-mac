@@ -41,8 +41,11 @@ struct FocusView: View {
             ScrollView {
                 VStack(spacing: 24) {
                     HStack {
-                        if isBespoke {
-                            BespokeWordmark(greeting: displayName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : greeting)
+                        if isBespoke, !displayName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                            // Bespoke greets you in a quick handwritten note.
+                            Text(greeting)
+                                .font(.custom("Bradley Hand", size: 18).weight(.bold))
+                                .foregroundStyle(NonnaTheme.ink.opacity(0.88))
                         } else if isBlackIce {
                             // Black Ice signs its name in an icy script, glowing like frost.
                             IcyGreeting(text: greeting)
@@ -949,32 +952,5 @@ private struct RomanDialMarkings: View {
         }
         .allowsHitTesting(false)
         .accessibilityHidden(true)
-    }
-}
-
-
-/// Bespoke's letterhead: the name in tall, narrow capitals between fine rules, and the
-/// greeting below it in a quick handwritten note.
-private struct BespokeWordmark: View {
-    let greeting: String?
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            VStack(spacing: 3) {
-                Rectangle().fill(NonnaTheme.ink.opacity(0.6)).frame(width: 96, height: 0.6)
-                Text("POMOFOCUS")
-                    .font(.custom("Didot", size: 17).weight(.semibold))
-                    .tracking(1.5)
-                    .scaleEffect(x: 0.78, y: 1.25)
-                    .foregroundStyle(NonnaTheme.ink)
-                    .frame(width: 96)
-                Rectangle().fill(NonnaTheme.ink.opacity(0.6)).frame(width: 96, height: 0.6)
-            }
-            if let greeting {
-                Text(greeting)
-                    .font(.custom("Bradley Hand", size: 17).weight(.bold))
-                    .foregroundStyle(NonnaTheme.ink.opacity(0.85))
-            }
-        }
     }
 }
