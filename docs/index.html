@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Pomofocus — Focus, beautifully.</title>
-<meta name="description" content="Pomofocus is a beautiful, local-first focus timer for macOS: a menu-bar timer, desktop widgets, a cinematic full-screen mode, end-of-session celebrations and private analytics. Free and open source.">
+<meta name="description" content="Pomofocus is a beautiful, local-first focus timer for macOS: a menu-bar timer, desktop widgets, twelve themes, recorded ambient sound, a day timeline, a cinematic full-screen mode, end-of-session celebrations and private analytics. It updates itself. Free and open source.">
 <meta name="theme-color" content="#000000">
 <meta name="color-scheme" content="dark">
 <link rel="icon" type="image/png" href="assets/favicon.png">
@@ -223,7 +223,7 @@ kbd {
 .privacy-tile .lock svg { width: 38px; height: 38px; }
 .privacy-tile p { max-width: 560px; }
 .privacy-tile .path { margin-left: auto; flex: none; padding: 16px 18px; border-radius: 14px; background: #000; box-shadow: 0 0 0 1px rgba(127,155,142,.3) inset; font: 13px/1.6 var(--mono); color: #b8cdc3; }
-.privacy-tile .path span { display: block; color: var(--ink-3); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; margin-bottom: 4px; font-family: var(--text); }
+.privacy-tile .path span { display: block; color: var(--ink-3); font-size: 12px; margin-bottom: 4px; font-family: var(--text); }
 @media (max-width: 980px) { .privacy-tile .path { display: none; } }
 @media (max-width: 600px) { .privacy-tile { flex-direction: column; align-items: flex-start; padding: 30px; } }
 
@@ -249,7 +249,7 @@ kbd {
   display: grid; justify-items: center; gap: 8px;
 }
 .menubar-panel .tm { font: 300 42px/1 var(--display); letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
-.menubar-panel .ph { font: 600 9px/1 var(--mono); letter-spacing: .24em; color: var(--gold-2); }
+.menubar-panel .ph { font: 600 12px/1 var(--display); letter-spacing: -.01em; color: var(--gold-2); }
 .menubar-panel .bar { width: 100%; height: 3px; border-radius: 3px; background: rgba(255,255,255,.1); overflow: hidden; margin-top: 4px; }
 .menubar-panel .bar i { display: block; height: 100%; width: 60%; background: var(--gold); transition: width .3s linear; }
 .tile.has-panel h3, .tile.has-panel p { max-width: calc(100% - 250px); }
@@ -259,7 +259,7 @@ kbd {
 .dial-wrap { margin: auto; width: min(100%, 290px); display: grid; justify-items: center; gap: 10px; }
 .dial-wrap svg { width: 100%; height: auto; overflow: visible; }
 .dial-read { text-align: center; }
-.dial-read .ph { font: 600 10px/1 var(--mono); letter-spacing: .26em; color: var(--gold-2); }
+.dial-read .ph { font: 600 13px/1 var(--display); letter-spacing: -.01em; color: var(--gold-2); }
 .clock { display: inline-flex; font: 300 52px/1 var(--display); letter-spacing: -.035em; font-variant-numeric: tabular-nums; margin-top: 8px; }
 .clock .slot { display: block; height: 1.1em; overflow: hidden; clip-path: inset(0); }
 .clock .strip { display: flex; flex-direction: column; transition: transform .5s var(--ease); }
@@ -289,14 +289,21 @@ kbd {
 .waves i { flex: 1; border-radius: 3px; background: linear-gradient(180deg, var(--gold-2), var(--gold-3)); opacity: .85; }
 @media (prefers-reduced-motion: no-preference) { .waves i { animation: wave 1.6s ease-in-out infinite alternate; } @keyframes wave { from { transform: scaleY(.25); } to { transform: scaleY(1); } } }
 .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
-.chips span { font-size: 13px; padding: 5px 11px; border-radius: 980px; background: rgba(255,255,255,.06); color: var(--ink-2); box-shadow: 0 0 0 1px rgba(255,255,255,.08) inset; }
+.chips span, .chips button { font: inherit; font-size: 13px; padding: 5px 11px; border: 0; border-radius: 980px; background: rgba(255,255,255,.06); color: var(--ink-2); box-shadow: 0 0 0 1px rgba(255,255,255,.08) inset; }
+.chips button { cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: background .2s, color .2s, box-shadow .2s; }
+.chips button:hover { background: rgba(255,255,255,.1); color: var(--ink); }
+.chips button[aria-pressed="true"] { background: rgba(201,176,122,.18); color: var(--gold-2); box-shadow: 0 0 0 1px rgba(201,176,122,.5) inset; }
+.chips button[aria-pressed="true"]::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--gold); }
+.tile .sound-note { font-size: 14px; margin-top: 8px; }
+.waves.playing i { animation-play-state: running; }
+@media (prefers-reduced-motion: no-preference) { .waves:not(.playing) i { animation-play-state: paused; } }
 
 /* Image tiles */
 .tile.media { padding: 0; }
 .tile.media .copy { padding: 34px 34px 0; position: relative; z-index: 1; }
 .tile.media .pic { position: absolute; left: 0; right: 0; bottom: 0; height: 54%; background-repeat: no-repeat; }
 .tile.media .pic::before { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, var(--tile) 0%, transparent 30%); }
-.pic-timeline { background-image: url(assets/focus.jpg); background-size: 230% auto; background-position: 100% 18%; }
+.pic-timeline { background-image: url(assets/focus.jpg); background-size: 190% auto; background-position: 100% 42%; }
 .pic-dash { background-image: url(assets/dashboard.jpg); background-size: 120% auto; background-position: 40% 12%; }
 .pic-widgets { background-image: url(assets/widgets.jpg); background-size: 82% auto; background-position: 50% 26%; }
 
@@ -308,6 +315,31 @@ kbd {
 /* Privacy tile */
 .lock { width: 56px; height: 56px; border-radius: 16px; display: grid; place-items: center; background: linear-gradient(180deg, #1e2321, #121514); box-shadow: 0 0 0 1px rgba(127,155,142,.35) inset; margin-bottom: auto; color: var(--sage); }
 .lock svg { width: 26px; height: 26px; }
+
+
+/* ───────── Themes ───────── */
+.themes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 44px 20px; }
+@media (max-width: 900px) { .themes { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 560px) { .themes { grid-template-columns: 1fr; } }
+.themes figure { margin: 0; }
+.themes .frame { position: relative; border-radius: 18px; overflow: hidden; box-shadow: 0 0 0 1px rgba(255,255,255,.1), 0 40px 80px -40px #000; transition: transform .5s var(--ease-out); }
+.themes figure:hover .frame { transform: translateY(-4px); }
+.themes figcaption { margin-top: 14px; font-size: 15px; color: var(--ink-2); }
+.themes figcaption b { display: block; color: var(--ink); font-family: var(--display); font-size: 19px; font-weight: 600; letter-spacing: -.02em; margin-bottom: 2px; }
+.badge { position: absolute; top: 14px; right: 14px; padding: 4px 10px; border-radius: 980px; font-size: 12px; font-weight: 600; background: rgba(0,0,0,.6); color: #f0c9a0; box-shadow: 0 0 0 1px rgba(240,201,160,.4) inset; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+.codes { margin: 70px auto 0; max-width: 860px; display: flex; gap: 30px; align-items: center; padding: 34px 40px; border-radius: 30px; background: var(--tile); box-shadow: 0 0 0 1px rgba(255,255,255,.07) inset; }
+.codes h3 { margin: 0; font-family: var(--display); font-size: 26px; letter-spacing: -.03em; }
+.codes p { margin: 8px 0 0; color: var(--ink-2); font-size: 16px; }
+.codes .code { flex: none; padding: 14px 16px; border-radius: 14px; background: #000; box-shadow: 0 0 0 1px rgba(201,176,122,.3) inset; color: var(--gold-2); font: 13px/1.5 var(--mono); max-width: 260px; overflow-wrap: anywhere; }
+@media (max-width: 700px) { .codes { flex-direction: column; align-items: flex-start; padding: 28px; } .codes .code { max-width: none; } }
+
+/* ───────── New in 0.22 ───────── */
+.news { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+@media (max-width: 900px) { .news { grid-template-columns: 1fr; } }
+.news article { padding: 32px; border-radius: 26px; background: var(--tile); box-shadow: 0 0 0 1px rgba(255,255,255,.07) inset; }
+.news h4 { margin: 0 0 8px; font-family: var(--display); font-size: 22px; letter-spacing: -.025em; }
+.news p { margin: 0; color: var(--ink-2); font-size: 15px; }
+.news .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #e5534b; margin-left: 6px; vertical-align: 3px; }
 
 /* ───────── Celebration ───────── */
 .celebrate { position: relative; padding: 200px 22px 40px; text-align: center; }
@@ -324,7 +356,7 @@ kbd {
 .num > span { display: block; margin-top: 12px; color: var(--ink-2); font-size: 16px; line-height: 1.35; }
 
 /* Gallery */
-.gallery { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.gallery { display: grid; grid-template-columns: 1fr 1fr; gap: 56px 20px; }
 @media (max-width: 760px) { .gallery { grid-template-columns: 1fr; } }
 .gallery figure { margin: 0; }
 .gallery .frame { border-radius: 16px; overflow: hidden; box-shadow: 0 0 0 1px rgba(255,255,255,.1), 0 50px 100px -40px #000; }
@@ -352,7 +384,7 @@ kbd {
 .update-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
 .update-grid .step p + p { margin-top: 10px; }
 @media (max-width: 1000px) { .update-grid { grid-template-columns: 1fr; } }
-.install .step, .update-grid .step { padding: 30px; border-radius: 24px; background: var(--tile); box-shadow: 0 0 0 1px rgba(255,255,255,.07) inset; }
+.install .step, .update-grid .step { min-width: 0; padding: 30px; border-radius: 24px; background: var(--tile); box-shadow: 0 0 0 1px rgba(255,255,255,.07) inset; }
 .install .n, .update-grid .n { font: 600 13px/1 var(--display); color: var(--gold-2); margin-bottom: 14px; }
 .install h4, .update-grid h4 { margin: 0 0 8px; font-family: var(--display); font-size: 21px; letter-spacing: -.02em; }
 .install p, .update-grid p { margin: 0; color: var(--ink-2); font-size: 15px; }
@@ -362,6 +394,8 @@ kbd {
 footer { border-top: 1px solid rgba(255,255,255,.08); padding: 26px 22px 40px; color: var(--ink-3); font-size: 12px; }
 footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 14px; }
 footer a { color: var(--ink-2); }
+footer .links { display: flex; flex-wrap: wrap; gap: 18px; }
+footer .credits { flex-basis: 100%; }
 footer a:hover { color: var(--ink); text-decoration: underline; }
 
 /* Reveal */
@@ -395,6 +429,8 @@ footer a:hover { color: var(--ink); text-decoration: underline; }
     <div class="nav-links">
       <a href="#cinema">Cinema</a>
       <a href="#features">Features</a>
+      <a href="#themes">Themes</a>
+      <a href="#new">What's new</a>
       <a href="#celebrate">Celebrate</a>
       <a href="#privacy">Privacy</a>
       <a href="https://github.com/CryptoChefA/pomofocus-mac">GitHub</a>
@@ -421,7 +457,7 @@ footer a:hover { color: var(--ink); text-decoration: underline; }
       <div class="hero-fine">Free and open source. macOS 14 or later on Apple silicon.</div>
     </div>
     <div class="device">
-      <div class="device-frame"><img src="assets/focus.jpg" alt="Pomofocus on the Mac: a live analog dial for the current focus block, the intention, and a timeline of today's focus and breaks" width="2400" height="1433" fetchpriority="high"></div>
+      <div class="device-frame"><img src="assets/focus.jpg" alt="Pomofocus on the Mac: a live analog dial for the current focus block, the intention, and a timeline of today's focus and breaks" width="2400" height="1467" fetchpriority="high"></div>
       <div class="device-reflection" aria-hidden="true"></div>
     </div>
     <div class="scroll-cue" aria-hidden="true">Scroll<i></i></div>
@@ -476,7 +512,7 @@ footer a:hover { color: var(--ink); text-decoration: underline; }
           <span class="muted" data-wallclock>Thu 10:48</span>
         </div>
         <div class="menubar-panel" aria-hidden="true">
-          <div class="ph">FOCUS</div>
+          <div class="ph">Focus</div>
           <div class="tm" data-live>07:48</div>
           <div class="bar"><i></i></div>
         </div>
@@ -499,7 +535,7 @@ footer a:hover { color: var(--ink); text-decoration: underline; }
             <g id="hand"><rect x="-1.5" y="-101" width="3" height="101" rx="1.5" fill="url(#handg)"/><rect x="-1" y="0" width="2" height="20" rx="1" fill="#c9b07a" fill-opacity=".4"/></g>
             <circle r="12.5" fill="#0a0a0b" stroke="#c9b07a" stroke-opacity=".85" stroke-width="3.5"/><circle r="2.5" fill="#f5f5f7"/>
           </svg>
-          <div class="dial-read"><div class="ph">FOCUS</div><div class="clock" id="clock" role="timer" aria-label="Demo timer"></div></div>
+          <div class="dial-read"><div class="ph">Focus</div><div class="clock" id="clock" role="timer" aria-label="Demo timer"></div></div>
         </div>
         <p>It redraws only as often as the hand moves, about twice a second.</p>
       </article>
@@ -515,8 +551,11 @@ footer a:hover { color: var(--ink); text-decoration: underline; }
 
       <article class="tile span-2 rv d1">
         <div class="kicker">Ambience</div>
-        <h3>Sound, made on your Mac.</h3>
-        <div class="chips"><span>Rain</span><span>Ocean</span><span>Brown noise</span><span>Ticking</span></div>
+        <h3>Real rain. Real waves.</h3>
+        <p class="sound-note">Recorded loops, softened for long sittings. Tap one to listen.</p>
+        <div class="chips sounds" role="group" aria-label="Sound previews">
+          <button type="button" data-sound="rain">Rain</button><button type="button" data-sound="ocean">Ocean</button><button type="button" data-sound="clock">Wall clock</button><button type="button" data-sound="brown">Brown noise</button><button type="button" data-sound="white">White noise</button>
+        </div>
         <div class="waves" aria-hidden="true" id="waves"></div>
       </article>
 
@@ -551,10 +590,54 @@ footer a:hover { color: var(--ink); text-decoration: underline; }
         <div>
           <div class="kicker" style="color:var(--sage)">Privacy</div>
           <h3>Nothing leaves your Mac.</h3>
-          <p>No account, no telemetry, no network code. Your history is one human-readable JSON file you can open, back up or delete.</p>
+          <p>No account and no telemetry. Your history is one human-readable JSON file you can open, back up or delete. The only thing Pomofocus ever asks the internet is whether a newer version is out, and you can switch that off.</p>
         </div>
         <div class="path" aria-label="Where your data lives"><span>Everything lives here</span>~/Library/Application Support/<br>Pomofocus/pomofocus-data.json</div>
       </article>
+    </div>
+  </div>
+</section>
+
+<!-- ───────── Themes ───────── -->
+<section class="section" id="themes">
+  <div class="wrap">
+    <div class="head rv">
+      <div class="eyebrow">Themes</div>
+      <h2>Twelve looks.<br>Each one <span class="gold-text">alive.</span></h2>
+      <p>Petals fall in Sakura, frost creeps in and thaws in Black Ice, and the dial, the menu bar and the widgets all follow along.</p>
+    </div>
+    <div class="themes">
+      <figure class="rv"><div class="frame"><img src="assets/theme-ivory.jpg" alt="The Ivory theme: warm paper with a quiet gold dial" width="1000" height="978" loading="lazy"></div><figcaption><b>Ivory</b>Warm paper, quiet gold.</figcaption></figure>
+      <figure class="rv d1"><div class="frame"><img src="assets/theme-sakura.jpg" alt="The Sakura theme: blossom pink with cherry branches and falling petals" width="1000" height="978" loading="lazy"></div><figcaption><b>Sakura</b>Blossom pink, with petals drifting down.</figcaption></figure>
+      <figure class="rv d2"><div class="frame"><img src="assets/theme-blackice.jpg" alt="The Black Ice theme: a black-to-blue gradient with frost in the corners and an icy greeting" width="1000" height="978" loading="lazy"></div><figcaption><b>Black Ice</b>Black fading to ice blue. Frost grows, melts and grows back.</figcaption></figure>
+      <figure class="rv"><div class="frame"><img src="assets/theme-piano.jpg" alt="The Piano theme: an ivory dial with Roman numerals and blued hands" width="1000" height="978" loading="lazy"></div><figcaption><b>Piano</b>An ivory dial, Roman numerals and blued hands.</figcaption></figure>
+      <figure class="rv d1"><div class="frame"><img src="assets/theme-bespoke.jpg" alt="The Bespoke theme: black and graphite with a handwritten greeting" width="1000" height="978" loading="lazy"></div><figcaption><b>Bespoke</b>Black and graphite, tailored, with a handwritten hello.</figcaption></figure>
+      <figure class="rv d2"><div class="frame"><img src="assets/theme-autumn.jpg" alt="The Autumn theme: cream and rust with falling leaves" width="1000" height="978" loading="lazy"><span class="badge">Limited</span></div><figcaption><b>Autumn</b>Falling leaves, here from September to November only.</figcaption></figure>
+    </div>
+    <div class="codes rv">
+      <div>
+        <h3>Share a theme with a code.</h3>
+        <p>Make your own colours, copy its code and send it to a friend. They paste it into Settings and it's theirs. Every so often a rare theme code goes out, and only those ones carry the rare mark.</p>
+      </div>
+      <div class="code" aria-label="An example theme code">PF-THEME-1.eyJhY2NlbnQiOiJDOUIwN0Ei…</div>
+    </div>
+  </div>
+</section>
+
+<!-- ───────── New in 0.22 ───────── -->
+<section class="section" id="new">
+  <div class="wrap">
+    <div class="head rv">
+      <div class="eyebrow">New in 0.22</div>
+      <h2>Plan the day.<br>Then <span class="gold-text">do it.</span></h2>
+    </div>
+    <div class="news">
+      <article class="rv"><h4>Updates itself</h4><p>When a new version is out, Settings gets a red dot<span class="dot" aria-hidden="true"></span> and an <b>Update now</b> button. One click and it reopens on the new version, with everything kept.</p></article>
+      <article class="rv d1"><h4>A day you can see</h4><p>Drag tasks into the free time on today's timeline, or let <b>Plan my day</b> fit them around your calendar. Break big tasks into steps, and wrap the day up in one go.</p></article>
+      <article class="rv d2"><h4>Sounds worth keeping on</h4><p>Recorded rain, ocean waves and a ticking wall clock, plus soft brown and white noise, all looped so you never hear the seam.</p></article>
+      <article class="rv"><h4>Your kind of celebration</h4><p>Confetti, fireworks or balloons when you finish a sitting, or a surprise each time.</p></article>
+      <article class="rv d1"><h4>Rate the session</h4><p>Say how focused you felt at the end of a sitting, or after every block if you prefer. Each rating sits beside its session in History and feeds your insights.</p></article>
+      <article class="rv d2"><h4>Split blocks</h4><p>Switch lists halfway through a block and both halves are counted where they belong, as one block.</p></article>
     </div>
   </div>
 </section>
@@ -563,7 +646,7 @@ footer a:hover { color: var(--ink); text-decoration: underline; }
 <section class="celebrate" id="celebrate">
   <div class="eyebrow rv">The end of a sitting</div>
   <h2 class="brava rv d1"><span class="gold-text shimmer">Brava.</span></h2>
-  <p class="lead rv d2">Single pomodoros pass quietly. When you end the whole sitting, confetti fills your screen and every block you finished is laid out in front of you.</p>
+  <p class="lead rv d2">Single pomodoros pass quietly. When you end the whole sitting, confetti, fireworks or balloons fill your screen, and every block you finished is laid out in front of you.</p>
   <div class="celebrate-card rv d2" id="celebrate-card" title="Click for another round">
     <img src="assets/celebration.png" alt="The end-of-session breakdown: 'Brava.', 1:43:28 focused across four pomodoros, with breaks, pauses, overtime, today's total and streak" width="1600" height="1040" loading="lazy">
   </div>
@@ -576,7 +659,7 @@ footer a:hover { color: var(--ink); text-decoration: underline; }
     <div class="head rv"><h2>Light by <span class="gold-text">design.</span></h2><p>Every animation takes the cheapest path macOS offers. Your battery will barely notice.</p></div>
     <div class="numbers">
       <div class="num rv"><b>0</b><span>accounts, logins or subscriptions</span></div>
-      <div class="num rv d1"><b>0</b><span>network requests, ever</span></div>
+      <div class="num rv d1"><b>1</b><span>daily question to GitHub, "is there a new version?", and nothing about you</span></div>
       <div class="num rv d2"><b><span data-count="8">8</span>%</b><span>CPU with a timer running, down from around 50%</span></div>
       <div class="num rv d3"><b>1</b><span>JSON file holds your entire history</span></div>
     </div>
@@ -587,8 +670,10 @@ footer a:hover { color: var(--ink); text-decoration: underline; }
 <section class="section">
   <div class="wrap">
     <div class="gallery">
-      <figure class="rv"><div class="frame"><img src="assets/dashboard.jpg" alt="The dashboard" width="2400" height="1433" loading="lazy"></div><figcaption><b>Dashboard.</b> Totals, streaks and the shape of your fortnight.</figcaption></figure>
-      <figure class="rv d1"><div class="frame"><img src="assets/history.jpg" alt="The session history" width="2400" height="1433" loading="lazy"></div><figcaption><b>History.</b> Every session, searchable and exportable.</figcaption></figure>
+      <figure class="rv"><div class="frame"><img src="assets/dashboard.jpg" alt="The dashboard: a focus score of 67, totals with green and red trend lines, the current rhythm and time by list" width="2400" height="1467" loading="lazy"></div><figcaption><b>Dashboard.</b> A daily focus score, and trends that say which way you're heading.</figcaption></figure>
+      <figure class="rv d1"><div class="frame"><img src="assets/history.jpg" alt="The session history grouped by day, with ratings for each session" width="2400" height="1467" loading="lazy"></div><figcaption><b>History.</b> Every session, searchable, renameable and exportable.</figcaption></figure>
+      <figure class="rv"><div class="frame"><img src="assets/plan.jpg" alt="The focus rebuild plan: start where you are, earn every minute, rest that restores" width="2400" height="1467" loading="lazy"></div><figcaption><b>Focus plan.</b> Eight questions, then a plan that grows your focus five minutes at a time.</figcaption></figure>
+      <figure class="rv d1"><div class="frame"><img src="assets/settings.jpg" alt="Settings with an update banner reading Pomofocus is ready, an Update now button, and the theme picker" width="2200" height="1424" loading="lazy"></div><figcaption><b>Settings.</b> When a new version is out, a red dot and one button.</figcaption></figure>
     </div>
   </div>
 </section>
@@ -605,7 +690,7 @@ footer a:hover { color: var(--ink); text-decoration: underline; }
     </a>
     <a class="btn btn-glass" href="https://github.com/CryptoChefA/pomofocus-mac">Source on GitHub</a>
   </div>
-  <div class="req rv d3">Version 0.22.2 · macOS 14 or later · Apple silicon · Free and open source (MIT)</div>
+  <div class="req rv d3">Version 0.22.2 for macOS 14 or later on Apple silicon. Free and open source under the MIT license.</div>
 
   <div class="install">
     <div class="step rv"><div class="n">Step 1</div><h4>Download</h4><p>Get <b>Pomofocus.zip</b> and unzip it.</p></div>
@@ -628,7 +713,8 @@ footer a:hover { color: var(--ink); text-decoration: underline; }
 <footer>
   <div class="wrap">
     <span>Pomofocus is free, open source software released under the MIT license.</span>
-    <span><a href="https://github.com/CryptoChefA/pomofocus-mac">Source</a> · <a href="https://github.com/CryptoChefA/pomofocus-mac/releases">Releases</a> · <a href="#update">How to update</a> · <a href="https://github.com/CryptoChefA/pomofocus-mac/issues">Report an issue</a></span>
+    <span class="links"><a href="https://github.com/CryptoChefA/pomofocus-mac">Source</a><a href="https://github.com/CryptoChefA/pomofocus-mac/releases">Releases</a><a href="#update">How to update</a><a href="https://github.com/CryptoChefA/pomofocus-mac/issues">Report an issue</a></span>
+    <span class="credits">Sound previews: rain (public domain) and ocean (CC0) from Wikimedia Commons; wall clock by Work With Sounds / Technical Museum of Slovenia, <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a> (<a href="https://commons.wikimedia.org/wiki/File:WWS_Wallclockwithweightticking.ogg">source</a>); noise made for Pomofocus.</span>
   </div>
 </footer>
 
@@ -732,6 +818,20 @@ footer a:hover { color: var(--ink); text-decoration: underline; }
     b.style.animationDelay = (-(i * .17) % 1.6).toFixed(2) + 's';
     waves.appendChild(b);
   }
+
+  /* Sound previews: one at a time, tap again to stop */
+  const player = new Audio(); player.preload = 'none'; player.volume = .6;
+  const soundButtons = [...document.querySelectorAll('[data-sound]')];
+  const setPlaying = btn => { soundButtons.forEach(b => b.setAttribute('aria-pressed', b === btn ? 'true' : 'false')); waves.classList.toggle('playing', !!btn); };
+  soundButtons.forEach(b => {
+    b.setAttribute('aria-pressed', 'false');
+    b.addEventListener('click', () => {
+      if (b.getAttribute('aria-pressed') === 'true') { player.pause(); setPlaying(null); return; }
+      player.src = `assets/sounds/${b.dataset.sound}.m4a`;
+      player.play().then(() => setPlaying(b)).catch(() => setPlaying(null));
+    });
+  });
+  player.addEventListener('ended', () => setPlaying(null));
 
   /* ───────── Count-up ───────── */
   const cio = new IntersectionObserver(es => es.forEach(e => {
