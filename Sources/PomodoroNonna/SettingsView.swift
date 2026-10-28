@@ -14,6 +14,8 @@ struct SettingsView: View {
                     subtitle: "You're on Pomofocus \(Updater.shared.currentVersion). No account, telemetry, cloud service, or hidden data collection."
                 )
 
+                UpdateBanner()
+
                 NameSettingsRow()
 
                 AppearanceSettingsCard()

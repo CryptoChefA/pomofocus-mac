@@ -8,7 +8,7 @@ import SwiftUI
 final class Updater {
     static let shared = Updater()
 
-    struct Release: Equatable {
+    struct Release: Equatable, Codable {
         let version: String
         let notes: String
         let downloadURL: URL
@@ -26,6 +26,9 @@ final class Updater {
 
     var phase: Phase = .idle
     var showsSheet = false
+    /// A newer version waiting to be installed: shows the red dot on Settings and the
+    /// banner. Remembered across launches until it's installed.
+    private(set) var available: Release?
     var showsWhatsNew = false
     /// Saves the user's data before the app quits to update. Set by the app at launch.
     @ObservationIgnored var prepareToQuit: (() async -> Bool)?
@@ -34,12 +37,39 @@ final class Updater {
     private static let latestAPI = URL(string: "https://api.github.com/repos/CryptoChefA/pomofocus-mac/releases/latest")!
     static let autoCheckKey = "checkForUpdatesAutomatically"
     private static let lastCheckKey = "lastUpdateCheck"
+    private static let availableKey = "availableUpdate"
 
     var currentVersion: String {
         Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0"
     }
 
-    private init() {}
+    private init() {
+        // Bring back an update found earlier, if it's still newer than this copy.
+        if let data = UserDefaults.standard.data(forKey: Self.availableKey),
+           let release = try? JSONDecoder().decode(Release.self, from: data),
+           Self.isVersion(release.version, newerThan: currentVersion) {
+            available = release
+        } else {
+            UserDefaults.standard.removeObject(forKey: Self.availableKey)
+        }
+    }
+
+    private func remember(_ release: Release?) {
+        available = release
+        if let release, let data = try? JSONEncoder().encode(release) {
+            UserDefaults.standard.set(data, forKey: Self.availableKey)
+        } else {
+            UserDefaults.standard.removeObject(forKey: Self.availableKey)
+        }
+    }
+
+    /// The banner's Update now: opens the progress sheet and installs straight away.
+    func installAvailable() {
+        guard let release = available else { return }
+        phase = .available(release)
+        showsSheet = true
+        Task { await install(release) }
+    }
 
     /// At most once a day, quietly; only speaks up when there's something new.
     func checkAutomaticallyIfDue() async {
@@ -62,10 +92,13 @@ final class Updater {
             let release = try Self.parse(data)
             UserDefaults.standard.set(Date(), forKey: Self.lastCheckKey)
             if Self.isVersion(release.version, newerThan: currentVersion) {
-                phase = .available(release)
-                showsSheet = true
+                remember(release)
+                // Asked for: answer with the sheet. Found on the daily check: just the red dot
+                // on Settings and the banner there, no pop-up.
+                phase = userInitiated ? .available(release) : .idle
             } else {
-                phase = .upToDate
+                remember(nil)
+                phase = userInitiated ? .upToDate : .idle
             }
         } catch {
             phase = userInitiated ? .failed("Couldn't reach GitHub. Check your connection and try again.") : .idle
@@ -299,7 +332,9 @@ struct UpdateSettingsCard: View {
                 Spacer()
                 Button("What's new") { updater.showsWhatsNew = true }
                     .buttonStyle(NonnaButtonStyle(prominent: false))
-                Button("Update Pomofocus") { Task { await updater.check(userInitiated: true) } }
+                Button(updater.available == nil ? "Update Pomofocus" : "Update now") {
+                    if updater.available != nil { updater.installAvailable() } else { Task { await updater.check(userInitiated: true) } }
+                }
                     .buttonStyle(NonnaButtonStyle(prominent: false))
                     .disabled(updater.phase == .checking)
             }
@@ -326,5 +361,55 @@ struct UpdateSettingsCard: View {
             }
             .font(.system(size: 11))
         }
+    }
+}
+
+
+/// "Pomofocus 0.22.2 is ready", across the top of Settings, with Update now.
+struct UpdateBanner: View {
+    @Bindable var updater = Updater.shared
+
+    var body: some View {
+        if let release = updater.available {
+            HStack(spacing: 14) {
+                Image(systemName: "arrow.down.circle.fill")
+                    .font(.system(size: 22))
+                    .foregroundStyle(NonnaTheme.terracotta)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Pomofocus \(release.version) is ready")
+                        .font(.system(size: 14, weight: .semibold))
+                    Text(Self.summary(release.notes))
+                        .font(.system(size: 12))
+                        .foregroundStyle(NonnaTheme.secondaryInk)
+                        .lineLimit(1)
+                }
+                Spacer(minLength: 12)
+                Button("What's in it") {
+                    updater.showsSheet = true
+                    updater.phase = .available(release)
+                }
+                .buttonStyle(.plain)
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(NonnaTheme.secondaryInk)
+                Button("Update now") { updater.installAvailable() }
+                    .buttonStyle(NonnaButtonStyle())
+                    .keyboardShortcut(.defaultAction)
+            }
+            .padding(.horizontal, 18)
+            .padding(.vertical, 14)
+            .background(NonnaTheme.raisedPaper, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .stroke(NonnaTheme.terracotta.opacity(0.5), lineWidth: 1)
+            }
+            .transition(.opacity.combined(with: .move(edge: .top)))
+        }
+    }
+
+    /// The first plain sentence of the release notes, without markdown.
+    static func summary(_ notes: String) -> String {
+        let plain = notes.replacingOccurrences(of: "**", with: "").replacingOccurrences(of: "#", with: "")
+        let line = plain.split(whereSeparator: \.isNewline).map { $0.trimmingCharacters(in: .whitespaces) }.first { !$0.isEmpty } ?? ""
+        return line.isEmpty ? "Your sessions and settings stay as they are." : line
     }
 }

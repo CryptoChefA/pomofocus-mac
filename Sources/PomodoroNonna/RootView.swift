@@ -199,6 +199,18 @@ private struct Sidebar: View {
             Spacer()
 
             button(for: .settings)
+                // A red dot when an update is waiting.
+                .overlay(alignment: .topTrailing) {
+                    if Updater.shared.available != nil {
+                        Circle()
+                            .fill(Color(red: 0.95, green: 0.26, blue: 0.24))
+                            .frame(width: 9, height: 9)
+                            .overlay { Circle().stroke(NonnaTheme.sunken, lineWidth: 2) }
+                            .offset(x: 1, y: -1)
+                            .transition(.scale.combined(with: .opacity))
+                            .help("An update is ready")
+                    }
+                }
         }
         .padding(.top, 24)
         .padding(.horizontal, 15)
