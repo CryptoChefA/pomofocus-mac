@@ -54,6 +54,9 @@ struct WhatsNewSheet: View {
     @AppStorage("displayName") private var displayName = ""
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var appeared = false
+    /// Decided once when the sheet opens, so the field stays put while the name is typed.
+    @State private var asksForName = (UserDefaults.standard.string(forKey: "displayName") ?? "")
+        .trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     let onDone: () -> Void
 
     private var name: String { displayName.trimmingCharacters(in: .whitespacesAndNewlines) }
@@ -94,7 +97,7 @@ struct WhatsNewSheet: View {
             }
             .frame(maxHeight: 380)
 
-            if name.isEmpty {
+            if asksForName {
                 HStack(spacing: 10) {
                     Image(systemName: "person.crop.circle")
                         .foregroundStyle(NonnaTheme.terracotta)

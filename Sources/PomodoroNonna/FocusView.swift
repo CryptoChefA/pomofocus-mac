@@ -771,61 +771,72 @@ struct NewTaskView: View {
 
 struct ReflectionView: View {
     @Environment(AppModel.self) private var model
-    @State private var rating = 3
-    @State private var note: String
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var picked: Int?
     let session: FocusSession
 
-    init(session: FocusSession) {
-        self.session = session
-        _note = State(initialValue: session.note)
-    }
+    private static let feelings = ["Scattered", "Restless", "Steady", "Focused", "Flow"]
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 22) {
-            SectionHeading(
-                title: "Reflection"
-            )
+        VStack(alignment: .leading, spacing: 24) {
+            VStack(alignment: .leading, spacing: 8) {
+                SectionHeading(title: model.settings.rateFocus == .everyBlock ? "How did that block feel?" : "How did this session feel?")
+                Label(summary, systemImage: "timer")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(NonnaTheme.secondaryInk)
+            }
 
-            HStack(spacing: 12) {
-                ForEach(1...5, id: \.self) { value in
-                    Button {
-                        rating = value
-                    } label: {
-                        VStack(spacing: 6) {
-                            Image(systemName: rating >= value ? "circle.inset.filled" : "circle")
-                                .font(.system(size: 23))
-                            Text(["Scattered", "Restless", "Steady", "Focused", "Flow"][value - 1])
-                                .font(.system(size: 11, design: .default))
+            // One click rates it and closes; no writing at the end of a sitting.
+            HStack(spacing: 10) {
+                ForEach(Self.feelings.indices, id: \.self) { index in
+                    let value = index + 1
+                    let isPicked = picked == value
+                    Button { choose(value) } label: {
+                        VStack(spacing: 8) {
+                            Image(systemName: isPicked ? "circle.inset.filled" : "circle")
+                                .font(.system(size: 22))
+                            Text(Self.feelings[index])
+                                .font(.system(size: 12, weight: .medium))
                         }
-                        .foregroundStyle(rating >= value ? NonnaTheme.terracotta : NonnaTheme.secondaryInk)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 16)
+                        .foregroundStyle(isPicked ? NonnaTheme.terracotta : NonnaTheme.secondaryInk)
+                        .background(isPicked ? NonnaTheme.terracotta.opacity(0.12) : NonnaTheme.paper,
+                                    in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .stroke(isPicked ? NonnaTheme.terracotta.opacity(0.5) : NonnaTheme.line, lineWidth: 1)
+                        }
+                        .contentShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                     }
                     .buttonStyle(.plain)
+                    .keyboardShortcut(KeyEquivalent(Character(String(value))), modifiers: [])
+                    .help("\(Self.feelings[index]) (\(value))")
                 }
             }
 
-            TextEditor(text: $note)
-                .font(.system(size: 13, design: .default))
-                .scrollContentBackground(.hidden)
-                .padding(10)
-                .background(NonnaTheme.paper)
-                .clipShape(RoundedRectangle(cornerRadius: 14))
-                .overlay { RoundedRectangle(cornerRadius: 14).stroke(NonnaTheme.line) }
-                .frame(height: 130)
-
             HStack {
-                Label(summary, systemImage: "timer")
-                    .font(.system(size: 12, weight: .semibold, design: .default))
-                    .foregroundStyle(NonnaTheme.secondaryInk)
                 Spacer()
-                Button("Save reflection") {
-                    model.saveReflection(rating: rating, note: note)
-                }
-                .buttonStyle(NonnaButtonStyle())
+                Button("Skip") { model.skipReflection() }
+                    .buttonStyle(.plain)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(NonnaTheme.secondaryInk)
+                    .keyboardShortcut(.cancelAction)
             }
         }
         .padding(30)
         .frame(width: 560)
         .background(NonnaTheme.cream)
+    }
+
+    private func choose(_ value: Int) {
+        guard picked == nil else { return }
+        withAnimation(reduceMotion ? nil : NonnaMotion.selection) { picked = value }
+        // A moment to see the choice land before the sheet goes.
+        Task {
+            try? await Task.sleep(for: .milliseconds(reduceMotion ? 0 : 350))
+            model.saveReflection(rating: value)
+        }
     }
 
     /// One block's time, or the whole sitting's when rating a session.

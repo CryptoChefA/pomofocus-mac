@@ -1103,15 +1103,13 @@ final class AppModel {
         if phase == .focus { startBreak() } else { skipBreakAndStartFocus() }
     }
 
-    func saveReflection(rating: Int, note: String) {
-        guard var reflected = reflectionSession,
+    func saveReflection(rating: Int) {
+        guard let reflected = reflectionSession,
               let index = data.sessions.firstIndex(where: { $0.id == reflected.id }) else {
-            reflectionSession = nil
+            skipReflection()
             return
         }
-        reflected.focusRating = rating
-        reflected.note = note.trimmingCharacters(in: .whitespacesAndNewlines)
-        data.sessions[index] = reflected
+        data.sessions[index].focusRating = rating
         // A session rating covers every block in the sitting.
         for id in reflectionRunIDs where id != reflected.id {
             if let other = data.sessions.firstIndex(where: { $0.id == id }) { data.sessions[other].focusRating = rating }
@@ -1119,6 +1117,12 @@ final class AppModel {
         reflectionRunIDs = []
         reflectionSession = nil
         save()
+    }
+
+    /// Closes the rating without one; the blocks stay unrated.
+    func skipReflection() {
+        reflectionRunIDs = []
+        reflectionSession = nil
     }
 
     /// Fixes a finished block's name or list, e.g. when it was started under the wrong one.
