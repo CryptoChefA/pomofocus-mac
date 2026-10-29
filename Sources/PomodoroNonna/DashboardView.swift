@@ -140,6 +140,7 @@ struct DashboardView: View {
                 tasks: model.data.tasks,
                 dailyGoalMinutes: model.settings.dailyGoalMinutes
             )
+            .closesOnClickOutside { selectedMetric = nil }
         }
     }
 

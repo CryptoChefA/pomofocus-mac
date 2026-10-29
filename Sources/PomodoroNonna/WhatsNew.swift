@@ -14,6 +14,11 @@ enum WhatsNew {
 
     /// Newest first. Add an entry with every release.
     static let releases: [(version: String, items: [Item])] = [
+        ("0.22.5", [
+            Item(icon: "arrow.down.app", title: "Updates that just work", detail: "If Pomofocus is in a folder it can't change, your Mac asks for its password instead of sending you to the website."),
+            Item(icon: "hand.point.up.left", title: "Click away to close", detail: "Your focus score, the dashboard details and the plan's sources close when you click outside them."),
+            Item(icon: "tv", title: "Calmer Cinema", detail: "Cinema mode's small labels read plainly now, without the wide letter spacing."),
+        ]),
         ("0.22.4", [
             Item(icon: "tray.and.arrow.down", title: "Your work, now in Tasks", detail: "Pomofocus offers to turn what you've been focusing on, and your lists, into tasks. You pick which."),
             Item(icon: "circle.inset.filled", title: "Rate a session in one click", detail: "When you end a session, just pick how it felt, from Scattered to Flow. No writing."),

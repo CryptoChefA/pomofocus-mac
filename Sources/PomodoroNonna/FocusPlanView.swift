@@ -40,6 +40,7 @@ struct FocusPlanView: View {
         }
         .sheet(isPresented: $showsSources) {
             SourcesSheet { showsSources = false }
+                .closesOnClickOutside { showsSources = false }
         }
         .confirmationDialog("Remove your focus plan?", isPresented: $confirmsRemoval) {
             Button("Remove plan", role: .destructive) { model.removePlan() }

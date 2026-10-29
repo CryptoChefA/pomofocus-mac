@@ -126,6 +126,7 @@ struct FocusScoreCard: View {
         .sheet(isPresented: $showsDetail) {
             FocusScoreDetail(initialDay: Self.latestScoredDay(model)) { showsDetail = false }
                 .environment(model)
+                .closesOnClickOutside { showsDetail = false }
         }
     }
 }

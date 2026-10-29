@@ -267,7 +267,6 @@ struct CinematicView: View {
                     .foregroundStyle(NonnaTheme.secondaryInk)
             }
             .font(.system(size: max(10, unit * 0.0115), weight: .semibold).monospacedDigit())
-            .tracking(max(1.8, unit * 0.0035))
 
             Spacer()
 
@@ -279,7 +278,6 @@ struct CinematicView: View {
                         .foregroundStyle(NonnaTheme.ink.opacity(0.82))
                 }
                 .font(.system(size: max(10, unit * 0.0115), weight: .medium).monospacedDigit())
-                .tracking(max(1.2, unit * 0.002))
             }
         }
     }
@@ -295,7 +293,6 @@ struct CinematicView: View {
                     .shadow(color: accent.opacity(0.7), radius: unit * 0.006)
                 Text(eyebrow)
                     .font(.system(size: max(11, unit * 0.014), weight: .semibold).monospacedDigit())
-                    .tracking(max(2.4, unit * 0.005))
                     .foregroundStyle(accent)
                     .contentTransition(.opacity)
                     .animation(reduceMotion ? nil : NonnaMotion.quick, value: eyebrow)
@@ -347,7 +344,6 @@ struct CinematicView: View {
                         Text(task.name)
                     }
                     .font(.system(size: max(10, unit * 0.0105), weight: .medium).monospacedDigit())
-                    .tracking(max(1.5, unit * 0.003))
                     .foregroundStyle(NonnaTheme.secondaryInk)
                 }
             }
@@ -380,7 +376,6 @@ struct CinematicView: View {
                     .frame(maxWidth: .infinity, alignment: .trailing)
             }
             .font(.system(size: max(10, unit * 0.011), weight: .medium).monospacedDigit())
-            .tracking(max(1.4, unit * 0.0026))
             .foregroundStyle(NonnaTheme.secondaryInk)
             .lineLimit(1)
         }

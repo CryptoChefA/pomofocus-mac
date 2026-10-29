@@ -125,13 +125,20 @@ final class Updater {
                   Self.isVersion(version, newerThan: currentVersion) else { throw UpdateError.notPomofocus }
             try await Self.run("/usr/bin/codesign", ["--verify", "--deep", "--strict", newApp.path])
 
-            let target = Bundle.main.bundleURL
-            guard FileManager.default.isWritableFile(atPath: target.deletingLastPathComponent().path) else {
-                throw UpdateError.noPermission
-            }
+            let target = Self.originalLocation(of: Bundle.main.bundleURL)
+            guard !target.path.contains("/AppTranslocation/") else { throw UpdateError.translocated }
+            let writable = FileManager.default.isWritableFile(atPath: target.deletingLastPathComponent().path)
             // Never quit to update if the user's data didn't save.
             guard await prepareToQuit?() ?? true else { throw UpdateError.notSaved }
-            try launchSwap(newApp: newApp, target: target)
+            if writable {
+                try launchSwap(newApp: newApp, target: target)
+            } else {
+                // A folder this account can't write to, such as Applications on a standard
+                // account: macOS asks for an administrator's password and swaps the app
+                // in place, then the new version opens once this one has quit.
+                try await Self.swapAsAdministrator(newApp: newApp, target: target)
+                try launchReopen(target: target)
+            }
             // An open sheet makes macOS refuse to quit, so close them first.
             for window in NSApp.windows {
                 if let sheet = window.attachedSheet { window.endSheet(sheet) }
@@ -168,7 +175,54 @@ final class Updater {
         try process.run()
     }
 
-    private static func run(_ tool: String, _ arguments: [String]) async throws {
+    /// Swaps the new app in with an administrator's password. The running copy can be
+    /// replaced underneath itself; it quits straight after. If anything fails, the old app
+    /// is put back and nothing changes.
+    private static func swapAsAdministrator(newApp: URL, target: URL) async throws {
+        let script = """
+        owner=$(/usr/bin/stat -f %u:%g "$2")
+        rm -rf "$3"
+        if mv "$2" "$3" && /usr/bin/ditto "$1" "$2"; then
+          /usr/sbin/chown -R "$owner" "$2"
+          /usr/bin/xattr -dr com.apple.quarantine "$2" 2>/dev/null
+          rm -rf "$3"
+        else
+          rm -rf "$2"; mv "$3" "$2"; exit 1
+        fi
+        """
+        // Every value is passed as a quoted argument, never pasted into the command.
+        try await run("/usr/bin/osascript", [
+            "-e", "on run argv",
+            "-e", "do shell script \"/bin/sh -c \" & quoted form of item 1 of argv & \" pomofocus-update \" & quoted form of item 2 of argv & \" \" & quoted form of item 3 of argv & \" \" & quoted form of item 4 of argv with administrator privileges",
+            "-e", "end run",
+            script, newApp.path, target.path, target.path + ".previous",
+        ], failure: .noPermission)
+    }
+
+    /// Waits for Pomofocus to quit, then opens the copy that was just put in place.
+    private func launchReopen(target: URL) throws {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/bin/sh")
+        process.arguments = ["-c", """
+        while kill -0 \(ProcessInfo.processInfo.processIdentifier) 2>/dev/null; do sleep 0.2; done
+        /usr/bin/open "$1"
+        """, "pomofocus-update", target.path]
+        try process.run()
+    }
+
+    /// Where the app really is. Opened straight from Downloads without being moved,
+    /// macOS runs it from a hidden read-only copy ("App Translocation") that can't be
+    /// replaced; the original it came from can.
+    private static func originalLocation(of url: URL) -> URL {
+        guard url.path.contains("/AppTranslocation/"),
+              let security = dlopen("/System/Library/Frameworks/Security.framework/Security", RTLD_LAZY),
+              let symbol = dlsym(security, "SecTranslocateCreateOriginalPathForURL") else { return url }
+        typealias OriginalPath = @convention(c) (CFURL, UnsafeMutablePointer<Unmanaged<CFError>?>?) -> Unmanaged<CFURL>?
+        let originalPath = unsafeBitCast(symbol, to: OriginalPath.self)
+        return originalPath(url as CFURL, nil)?.takeRetainedValue() as URL? ?? url
+    }
+
+    private static func run(_ tool: String, _ arguments: [String], failure: UpdateError = .notPomofocus) async throws {
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
             let process = Process()
             process.executableURL = URL(fileURLWithPath: tool)
@@ -177,7 +231,7 @@ final class Updater {
                 if finished.terminationStatus == 0 {
                     continuation.resume()
                 } else {
-                    continuation.resume(throwing: UpdateError.notPomofocus)
+                    continuation.resume(throwing: failure)
                 }
             }
             do { try process.run() } catch { continuation.resume(throwing: error) }
@@ -217,13 +271,14 @@ final class Updater {
     }
 
     enum UpdateError: Error {
-        case unreachable, notPomofocus, noPermission, notSaved
+        case unreachable, notPomofocus, noPermission, translocated, notSaved
 
         var message: String {
             switch self {
             case .unreachable: "Couldn't reach GitHub. Check your connection and try again."
             case .notPomofocus: "The download didn't check out, so nothing was changed. Try again later."
-            case .noPermission: "Pomofocus can't replace itself in this folder. Download the new version from the website instead."
+            case .noPermission: "Pomofocus needs your Mac's password to update in this folder. Try again and enter it when asked, or download the new version from the website."
+            case .translocated: "Pomofocus is running from your Downloads folder, so it can't update itself. Drag Pomofocus into Applications, open it from there, and try again."
             case .notSaved: "Your latest changes couldn't be saved, so Pomofocus didn't update. Nothing was changed."
             }
         }
