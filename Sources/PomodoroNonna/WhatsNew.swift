@@ -14,6 +14,12 @@ enum WhatsNew {
 
     /// Newest first. Add an entry with every release.
     static let releases: [(version: String, items: [Item])] = [
+        ("0.22.6", [
+            Item(icon: "figure.stairs", title: "Easing back in", detail: "After a few days off, blocks start shorter and add five minutes each time you finish one, until you're back at your level."),
+            Item(icon: "arrow.down.right", title: "A tough block, a shorter next one", detail: "Give up on a block, cut it short or rate it Scattered, and the next one is five minutes shorter. A good block puts it back."),
+            Item(icon: "circle.inset.filled", title: "Your rating counts", detail: "Flow blocks count twice toward your next level. Scattered or Restless ones don't count as held."),
+            Item(icon: "cup.and.saucer", title: "Breaks that fit the block", detail: "After a block full of pauses, or one you kept going long past the end, the break is five minutes longer."),
+        ]),
         ("0.22.5", [
             Item(icon: "arrow.down.app", title: "Updates that just work", detail: "If Pomofocus is in a folder it can't change, your Mac asks for its password instead of sending you to the website."),
             Item(icon: "hand.point.up.left", title: "Click away to close", detail: "Your focus score, the dashboard details and the plan's sources close when you click outside them."),

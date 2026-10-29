@@ -159,11 +159,7 @@ final class AppModel {
 
     var nextActionTitle: String {
         guard let next = cycleNextPhase else { return "Next" }
-        let minutes: Int = switch next {
-        case .focus: settings.focusMinutes
-        case .shortBreak: settings.shortBreakMinutes
-        case .longBreak: settings.longBreakMinutes
-        }
+        let minutes = duration(for: next) / 60
         return next == .focus ? "Next: \(minutes) min focus" : "Next: \(minutes) min break"
     }
 
@@ -1124,6 +1120,18 @@ final class AppModel {
         reflectionRunIDs = []
         reflectionSession = nil
         save()
+        // A Scattered or Restless rating can shorten the next block; show it straight away.
+        if status == .idle, phase == .focus, awaitingNextPhase == nil, !isBreathing { applyIdleDuration() }
+    }
+
+    /// Why the next focus block is shorter than the plan's level, if it is.
+    var easedFocusReason: String? {
+        guard let plan = focusPlan, phase == .focus, status == .idle else { return nil }
+        if plan.easing(sessions: data.sessions) > 0 { return "Shorter after a tough block. Finish it and the usual length comes back." }
+        if let reentry = plan.reentry(sessions: data.sessions) {
+            return "Easing back in after \(reentry.daysAway) days away. Each block you finish adds five minutes."
+        }
+        return nil
     }
 
     /// Closes the rating without one; the blocks stay unrated.
@@ -1430,8 +1438,14 @@ final class AppModel {
 
     private func duration(for phase: TimerPhase) -> Int {
         switch phase {
-        case .focus: min(focusPlan?.reentry(sessions: data.sessions)?.warmupMinutes ?? settings.focusMinutes, settings.focusMinutes) * 60
-        case .shortBreak: settings.shortBreakMinutes * 60
+        case .focus: min(focusPlan?.nextFocusMinutes(sessions: data.sessions) ?? settings.focusMinutes, settings.focusMinutes) * 60
+        case .shortBreak:
+            // With a plan, a demanding or rough block earns a longer break.
+            if let plan = focusPlan, plan.level.breakMinutes == settings.shortBreakMinutes {
+                plan.breakMinutes(after: FocusSession.mergedBlocks(data.sessions).last) * 60
+            } else {
+                settings.shortBreakMinutes * 60
+            }
         case .longBreak: settings.longBreakMinutes * 60
         }
     }

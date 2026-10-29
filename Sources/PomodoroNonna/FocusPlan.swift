@@ -114,11 +114,14 @@ struct FocusPlan: Codable, Equatable, Sendable {
         /// The same, for only the latest `recentWindow` attempts.
         var recentAttempts = 0
         var recentFull = 0
+        /// Full blocks rated Flow, which count twice toward the blocks needed.
+        var flowBlocks = 0
 
         var completionRate: Double { attempts == 0 ? 0 : Double(fullBlocks) / Double(attempts) }
+        var credit: Int { fullBlocks + flowBlocks }
 
         var isComplete: Bool {
-            fullBlocks >= FocusPlan.blocksPerLevel && days >= FocusPlan.daysPerLevel
+            credit >= FocusPlan.blocksPerLevel && days >= FocusPlan.daysPerLevel
                 && completionRate >= FocusPlan.levelUpCompletion
         }
 
@@ -128,7 +131,7 @@ struct FocusPlan: Codable, Equatable, Sendable {
         }
 
         var fraction: Double {
-            let blocks = Double(min(fullBlocks, FocusPlan.blocksPerLevel)) / Double(FocusPlan.blocksPerLevel)
+            let blocks = Double(min(credit, FocusPlan.blocksPerLevel)) / Double(FocusPlan.blocksPerLevel)
             let spread = Double(min(days, FocusPlan.daysPerLevel)) / Double(FocusPlan.daysPerLevel)
             let quality = attempts == 0 ? 0 : min(1, completionRate / FocusPlan.levelUpCompletion)
             return min(blocks, spread, quality)
@@ -143,23 +146,31 @@ struct FocusPlan: Codable, Equatable, Sendable {
         let started = sessions.filter {
             $0.startedAt >= levelStartedAt && $0.plannedSeconds >= minutes * 60 - 30 && $0.plannedSeconds > 0
         }
-        let isFull = { (s: FocusSession) in s.outcome != .abandoned && s.focusedSeconds >= minutes * 60 }
+        // A block rated Scattered or Restless was sat through, not held, so it doesn't count
+        // as full; one rated Flow counts twice toward the blocks needed to climb.
+        let isFull = { (s: FocusSession) in
+            s.outcome != .abandoned && s.focusedSeconds >= minutes * 60 && (s.focusRating ?? 3) > 2
+        }
         let full = started.filter(isFull)
         let days = Set(full.map { calendar.startOfDay(for: $0.startedAt) })
         let recent = started.sorted { $0.startedAt < $1.startedAt }.suffix(FocusPlan.recentWindow)
         return Progress(attempts: started.count, fullBlocks: full.count, days: days.count,
-                        recentAttempts: recent.count, recentFull: recent.filter(isFull).count)
+                        recentAttempts: recent.count, recentFull: recent.filter(isFull).count,
+                        flowBlocks: full.filter { $0.focusRating == 5 }.count)
     }
 
     // MARK: Coming back
 
-    /// Shorter warm-up blocks after time away. Attention you haven't used for a while comes
-    /// back quickly, but not instantly; a first block that's easy to finish rebuilds the sense
-    /// that you can (Bandura, 1977) instead of a failed full-length block on day one.
+    /// Shorter warm-up blocks after time away, climbing back to your level. Attention you
+    /// haven't used for a while comes back quickly, but not instantly; a first block that's
+    /// easy to finish rebuilds the sense that you can (Bandura, 1977) instead of a failed
+    /// full-length block on day one. Each block finished on the way back adds five minutes,
+    /// so the ramp is earned the same way the ladder is, just faster.
     struct Reentry: Equatable, Sendable {
         let daysAway: Int
+        /// The length of the next block on the way back.
         let warmupMinutes: Int
-        /// Warm-up blocks still to do today before full-length blocks return.
+        /// Finished blocks still to go before the plan's own length returns.
         let blocksLeft: Int
     }
 
@@ -167,20 +178,76 @@ struct FocusPlan: Codable, Equatable, Sendable {
         // A block split across lists is still one block.
         let sessions = FocusSession.mergedBlocks(sessions)
         let today = calendar.startOfDay(for: now)
-        let real = sessions.filter { $0.outcome != .abandoned && $0.focusedSeconds >= 10 * 60 }
-        guard let last = real.filter({ $0.startedAt < today }).map(\.startedAt).max(),
-              let gap = calendar.dateComponents([.day], from: calendar.startOfDay(for: last), to: today).day else { return nil }
-        let daysAway = gap - 1
-        guard daysAway >= FocusPlan.reentryAfterDays else { return nil }
-        let stepsDown = daysAway >= 14 ? 3 : daysAway >= 7 ? 2 : 1
-        let warmup = levelIndex >= stepsDown
+        let real = sessions.filter { $0.outcome != .abandoned && $0.focusedSeconds >= 10 * 60 && $0.startedAt < now }
+        // The latest return from time away: today if nothing has been done since, otherwise
+        // the day of the first block back. The ramp carries over the days after it.
+        var days = Set(real.map { calendar.startOfDay(for: $0.startedAt) }).sorted()
+        if days.last != today { days.append(today) }
+        guard days.count > 1 else { return nil }
+        var returnDay: Date?
+        var daysAway = 0
+        for index in stride(from: days.count - 1, through: 1, by: -1) {
+            let gap = (calendar.dateComponents([.day], from: days[index - 1], to: days[index]).day ?? 0) - 1
+            if gap >= FocusPlan.reentryAfterDays {
+                returnDay = days[index]
+                daysAway = gap
+                break
+            }
+        }
+        guard let returnDay else { return nil }
+        let stepsDown = daysAway >= 10 ? 4 : daysAway >= 5 ? 3 : 2
+        let first = levelIndex >= stepsDown
             ? levels[levelIndex - stepsDown].focusMinutes
             : max(10, level.focusMinutes - 5 * stepsDown)
-        guard warmup < level.focusMinutes else { return nil }
-        let needed = daysAway >= 7 ? 2 : 1
-        let done = real.filter { $0.startedAt >= today && $0.focusedSeconds >= warmup * 60 }.count
-        guard done < needed else { return nil }
-        return Reentry(daysAway: daysAway, warmupMinutes: warmup, blocksLeft: needed - done)
+        let finished = real.filter {
+            $0.startedAt >= returnDay && $0.plannedSeconds > 0 && $0.focusedSeconds >= $0.plannedSeconds - 30
+        }.count
+        let minutes = first + 5 * finished
+        guard minutes < level.focusMinutes else { return nil }
+        return Reentry(daysAway: daysAway, warmupMinutes: minutes,
+                       blocksLeft: Int((Double(level.focusMinutes - minutes) / 5).rounded(.up)))
+    }
+
+    // MARK: Within the day
+
+    /// A block that went badly: given up on, cut well short, or rated Scattered or
+    /// Restless. A start abandoned within a minute is a misclick, not a struggle.
+    static func wasRough(_ block: FocusSession) -> Bool {
+        if block.outcome == .abandoned { return block.focusedSeconds >= 60 }
+        if block.plannedSeconds > 0, block.focusedSeconds * 4 < block.plannedSeconds * 3 { return true }
+        return (block.focusRating ?? 3) <= 2
+    }
+
+    /// Minutes to take off the next block after rough ones today: five after one, ten after
+    /// two in a row. One that goes well clears it. Small, immediate steps keep the next start
+    /// winnable (Bandura, 1977) without waiting days for the ladder to step back.
+    func easing(sessions: [FocusSession], now: Date = Date(), calendar: Calendar = .current) -> Int {
+        let today = FocusSession.mergedBlocks(sessions)
+            .filter { calendar.isDate($0.startedAt, inSameDayAs: now) && $0.startedAt < now }
+            .sorted { $0.startedAt < $1.startedAt }
+        let rough = today.reversed().prefix { Self.wasRough($0) }.count
+        return 5 * min(2, rough)
+    }
+
+    /// The next focus block's length: the warm-up on the way back from time away, or the
+    /// plan's level, eased after a rough block today. Never under ten minutes.
+    func nextFocusMinutes(sessions: [FocusSession], now: Date = Date(), calendar: Calendar = .current) -> Int {
+        let base = reentry(sessions: sessions, now: now, calendar: calendar)?.warmupMinutes ?? level.focusMinutes
+        return max(min(10, base), base - easing(sessions: sessions, now: now, calendar: calendar))
+    }
+
+    /// A block that took a lot: kept going well past its end, or broken up by pauses.
+    static func wasDemanding(_ block: FocusSession) -> Bool {
+        let pauses = max(0, (block.activeIntervals?.count ?? 1) - 1)
+        return block.focusedSeconds >= block.plannedSeconds + 10 * 60 || pauses >= 3 || block.pausedSeconds >= 5 * 60
+    }
+
+    /// The break after `block`: five minutes longer when the block was demanding or rough,
+    /// since tired directed attention needs real rest to recover (Kaplan, 1995; Albulescu
+    /// et al., 2022).
+    func breakMinutes(after block: FocusSession?) -> Int {
+        guard let block, Self.wasDemanding(block) || Self.wasRough(block) else { return level.breakMinutes }
+        return level.breakMinutes + 5
     }
 
     /// True when yesterday had no focus but the days before did. Missing one day barely

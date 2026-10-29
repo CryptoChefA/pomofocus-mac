@@ -281,6 +281,7 @@ struct FocusView: View {
                             Text(timerStateLabel)
                                 .font(.system(size: 10, weight: .semibold).monospacedDigit())
                                 .foregroundStyle(accent)
+                                .help(model.easedFocusReason ?? "")
                                 .padding(.horizontal, isAlerting ? 9 : 0)
                                 .frame(height: isAlerting ? 20 : nil)
                                 .background {
@@ -332,6 +333,7 @@ struct FocusView: View {
     private var timerStateLabel: String {
         if model.awaitingNextPhase != nil { return "Break complete" }
         if model.status == .overtime { return model.phase == .focus ? "Focus overtime" : "Break overtime" }
+        if model.easedFocusReason != nil { return "Warm-up" }
         return model.phase.compactTitle
     }
 

@@ -108,11 +108,19 @@ func at(_ day: Int) -> Date { start.addingTimeInterval(TimeInterval(day * 86_400
 let beforeBreak = [session(day: 0, minutes: 35), session(day: 1, minutes: 35)]
 check(climbed.reentry(sessions: beforeBreak, now: at(3), calendar: calendar) == nil, "one day off is not a break")
 let back = climbed.reentry(sessions: beforeBreak, now: at(6), calendar: calendar)
-check(back?.daysAway == 4 && back?.warmupMinutes == 30 && back?.blocksLeft == 1, "four days away: one 30-minute warm-up")
+check(back?.daysAway == 4 && back?.warmupMinutes == 25 && back?.blocksLeft == 2, "four days away: start at 25 and climb back to 35")
+let weekBack = climbed.reentry(sessions: beforeBreak, now: at(8), calendar: calendar)
+check(weekBack?.warmupMinutes == 20, "six days away: start at 20")
 let longBack = climbed.reentry(sessions: beforeBreak, now: at(12), calendar: calendar)
-check(longBack?.warmupMinutes == 25 && longBack?.blocksLeft == 2, "ten days away: two 25-minute warm-ups")
-let warmedUp = beforeBreak + [session(day: 6, minutes: 30)]
-check(climbed.reentry(sessions: warmedUp, now: at(6).addingTimeInterval(3_600), calendar: calendar) == nil, "after the warm-up, full blocks return")
+check(longBack?.warmupMinutes == 15 && longBack?.blocksLeft == 4, "ten days away: start at 15")
+func planned(_ s: FocusSession, _ minutes: Int) -> FocusSession { var s = s; s.plannedSeconds = minutes * 60; return s }
+let firstBack = beforeBreak + [planned(session(day: 6, minutes: 25), 25)]
+check(climbed.reentry(sessions: firstBack, now: at(6).addingTimeInterval(3_600), calendar: calendar)?.warmupMinutes == 30, "each finished warm-up adds five")
+let cutShort = beforeBreak + [planned(session(day: 6, minutes: 10, outcome: .finishedEarly), 25)]
+check(climbed.reentry(sessions: cutShort, now: at(6).addingTimeInterval(3_600), calendar: calendar)?.warmupMinutes == 25, "a warm-up cut short doesn't climb")
+check(climbed.reentry(sessions: firstBack, now: at(7), calendar: calendar)?.warmupMinutes == 30, "the ramp carries over to the next day")
+let rampDone = firstBack + [planned(session(day: 7, minutes: 30), 30)]
+check(climbed.reentry(sessions: rampDone, now: at(7).addingTimeInterval(3_600), calendar: calendar) == nil, "back at the level, full blocks return")
 check(climbed.todayTarget(sessions: beforeBreak, now: at(6), calendar: calendar) == 1, "the first day back asks for one block")
 
 // Never miss twice.
@@ -189,3 +197,39 @@ check(WorkImport.suggestions(sessions: busy, lists: [], todos: [], now: soon).fi
 check(offered.filter { $0.source == .list }.map(\.title) == ["Law", "Biology"], "open lists are offered, archived ones aren't")
 
 print("Focus plan checks passed")
+
+// Within the day: a rough block makes the next one shorter; a good one clears it.
+func block(_ minute: Int, focused: Int, planned plannedMinutes: Int = 35, outcome: SessionOutcome = .completed, rating: Int? = nil) -> FocusSession {
+    var s = session(day: 1, minutes: focused, outcome: outcome)
+    s.startedAt = start.addingTimeInterval(TimeInterval(86_400 + minute * 60))
+    s.plannedSeconds = plannedMinutes * 60
+    s.focusRating = rating
+    return s
+}
+let afterBlocks = start.addingTimeInterval(86_400 + 3 * 3_600) // same day as the blocks, three hours on
+let steady = [session(day: 0, minutes: 35)]
+check(climbed.easing(sessions: steady + [block(0, focused: 35)], now: afterBlocks, calendar: calendar) == 0, "a good block changes nothing")
+check(climbed.easing(sessions: steady + [block(0, focused: 12, outcome: .abandoned)], now: afterBlocks, calendar: calendar) == 5, "after an abandoned block, five minutes off")
+check(climbed.easing(sessions: steady + [block(0, focused: 0, outcome: .abandoned)], now: afterBlocks, calendar: calendar) == 0, "a misclick isn't a struggle")
+let twoRough = steady + [block(0, focused: 10, outcome: .finishedEarly), block(60, focused: 35, rating: 1)]
+check(climbed.easing(sessions: twoRough, now: afterBlocks, calendar: calendar) == 10, "two rough blocks in a row (cut short, then Scattered): ten off")
+check(climbed.nextFocusMinutes(sessions: twoRough, now: afterBlocks, calendar: calendar) == 25, "35 eased by ten is 25")
+let recovered = twoRough + [block(120, focused: 35)]
+check(climbed.easing(sessions: recovered, now: afterBlocks, calendar: calendar) == 0, "a good block clears the easing")
+check(climbed.easing(sessions: [block(0, focused: 12, outcome: .abandoned)], now: afterBlocks.addingTimeInterval(86_400), calendar: calendar) == 0, "easing resets the next day")
+
+// Ratings in the ladder.
+var rated = FocusPlan.build(from: answers, now: start)
+let flowDays = [0, 0, 1].map { d -> FocusSession in var s = session(day: d, minutes: 10); s.focusRating = 5; return s }
+check(rated.progress(sessions: flowDays, calendar: calendar).isComplete, "Flow blocks count twice: three Flow blocks on two days climb")
+let scattered = (0..<4).map { i -> FocusSession in var s = session(day: i % 2, minutes: 10); s.focusRating = 1; return s }
+check(!rated.progress(sessions: scattered, calendar: calendar).isComplete, "blocks rated Scattered don't count as held")
+check(rated.progress(sessions: scattered, calendar: calendar).completionRate == 0, "Scattered blocks lower the completion rate")
+rated.levelIndex = 0
+
+// Breaks that adapt.
+check(climbed.breakMinutes(after: block(0, focused: 35)) == climbed.level.breakMinutes, "a smooth block gets the usual break")
+var paused = block(0, focused: 35); paused.pausedSeconds = 6 * 60
+check(climbed.breakMinutes(after: paused) == climbed.level.breakMinutes + 5, "a block broken by long pauses earns five more minutes")
+check(climbed.breakMinutes(after: block(0, focused: 47)) == climbed.level.breakMinutes + 5, "running well past the end earns a longer break")
+check(climbed.breakMinutes(after: block(0, focused: 35, rating: 2)) == climbed.level.breakMinutes + 5, "a Restless block earns a longer break")

@@ -57,8 +57,12 @@ struct FocusPlanView: View {
         if done >= target {
             return done > target ? "Past today's goal. Anything more is a bonus." : "Done for today. Go enjoy your reward."
         }
+        let next = plan.nextFocusMinutes(sessions: model.sessions)
+        if plan.easing(sessions: model.sessions) > 0 {
+            return "That last block was a tough one, so the next is \(next) minutes. Finish it and the usual length comes back."
+        }
         if let reentry {
-            return "\(reentry.daysAway) days away, so the next \(reentry.blocksLeft == 1 ? "block is" : "\(reentry.blocksLeft) blocks are") a \(reentry.warmupMinutes)-minute warm-up. Your \(plan.level.focusMinutes)-minute level is still yours."
+            return "\(reentry.daysAway) days away, so you'll ease back in. This block is \(next) minutes, and each one you finish adds five until you're back at \(plan.level.focusMinutes)."
         }
         if missedYesterday {
             return "Yesterday was a day off, and that's fine. One block today keeps the habit going."
@@ -144,8 +148,8 @@ struct FocusPlanView: View {
                             let next = plan.levels[plan.levelIndex + 1]
                             Text("\(next.focusMinutes) min focus, \(next.breakMinutes) min break")
                                 .font(.system(size: 20, weight: .semibold))
-                            requirement("Full \(plan.level.focusMinutes)-minute blocks", value: "\(min(progress.fullBlocks, FocusPlan.blocksPerLevel)) of \(FocusPlan.blocksPerLevel)",
-                                        met: progress.fullBlocks >= FocusPlan.blocksPerLevel)
+                            requirement("Full \(plan.level.focusMinutes)-minute blocks", value: "\(min(progress.credit, FocusPlan.blocksPerLevel)) of \(FocusPlan.blocksPerLevel)",
+                                        met: progress.credit >= FocusPlan.blocksPerLevel)
                             requirement("On different days", value: "\(min(progress.days, FocusPlan.daysPerLevel)) of \(FocusPlan.daysPerLevel)",
                                         met: progress.days >= FocusPlan.daysPerLevel)
                             requirement("Blocks finished", value: progress.attempts == 0 ? "–" : "\(Int((progress.completionRate * 100).rounded()))%, need \(Int(FocusPlan.levelUpCompletion * 100))%",
