@@ -14,6 +14,9 @@ enum WhatsNew {
 
     /// Newest first. Add an entry with every release.
     static let releases: [(version: String, items: [Item])] = [
+        ("0.22.7", [
+            Item(icon: "calendar.day.timeline.left", title: "Your day stays in view", detail: "The timeline stays open while you focus, and shows your break and next block ahead, so you can see where the time is going."),
+        ]),
         ("0.22.6", [
             Item(icon: "figure.stairs", title: "Easing back in", detail: "After a few days off, blocks start shorter and add five minutes each time you finish one, until you're back at your level."),
             Item(icon: "arrow.down.right", title: "A tough block, a shorter next one", detail: "Give up on a block, cut it short or rate it Scattered, and the next one is five minutes shorter. A good block puts it back."),

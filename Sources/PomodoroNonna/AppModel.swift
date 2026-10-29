@@ -1509,6 +1509,16 @@ final class AppModel {
         return completedFocusCycleCount > 0 && completedFocusCycleCount % interval == 0 ? .longBreak : .shortBreak
     }
 
+    /// What follows the block on the dial, for the timeline's forecast: a focus block's
+    /// break and the block after it, or after a break, the next block. Lengths follow the
+    /// plan, so a warm-up or a longer break shows as it will run.
+    var upcomingPhases: [(phase: TimerPhase, seconds: Int)] {
+        let first = awaitingNextPhase ?? (phase == .focus ? upcomingBreakPhase() : .focus)
+        return first == .focus
+            ? [(.focus, duration(for: .focus))]
+            : [(first, duration(for: first)), (.focus, duration(for: .focus))]
+    }
+
     private func upcomingBreakPhase() -> TimerPhase {
         let interval = max(1, settings.longBreakEvery)
         let completedAfterCurrentFocus = completedFocusCycleCount + 1

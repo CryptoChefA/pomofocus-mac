@@ -5,8 +5,8 @@ struct FocusView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var showingNewTask = false
     @AppStorage("pomofocus.timelineCollapsed") private var timelineCollapsed = false
-    /// Simple tasks folds the planner away while a focus block runs; this remembers that it
-    /// was the app, not you, so it comes back when the block ends.
+    /// Set when an earlier version folded the planner away for a focus block, so it can be
+    /// brought back; the timeline no longer folds by itself.
     @AppStorage("pomofocus.timelineAutoCollapsed") private var timelineAutoCollapsed = false
     @Environment(\.compactLayout) private var compact
     /// On a narrow window the timeline slides out over the timer instead of beside it.
@@ -139,8 +139,7 @@ struct FocusView: View {
                 }
             }
         }
-        .onAppear(perform: foldPlannerWhileFocusing)
-        .onChange(of: model.status) { _, _ in foldPlannerWhileFocusing() }
+        .onAppear(perform: unfoldPlannerFoldedByApp)
         .onChange(of: compact) { _, isCompact in
             if !isCompact { timelineDrawerOpen = false }
         }
@@ -154,19 +153,12 @@ struct FocusView: View {
 
     private var isFocusing: Bool { model.status != .idle && model.phase == .focus }
 
-    /// With simple tasks, the day planner steps aside during a focus block so starting
-    /// doesn't open another thing to arrange. Opening it by hand mid-block is left alone.
-    private func foldPlannerWhileFocusing() {
-        guard !compact else { return }
-        if isFocusing, model.settings.simpleTasks {
-            if !timelineCollapsed, !timelineAutoCollapsed {
-                timelineAutoCollapsed = true
-                toggleTimeline()
-            }
-        } else if model.status == .idle, timelineAutoCollapsed {
-            timelineAutoCollapsed = false
-            if timelineCollapsed { toggleTimeline() }
-        }
+    /// The timeline stays open through a block, so its forecast stays in view. Versions
+    /// 0.22.3 to 0.22.6 folded it away during focus; bring back one they left folded.
+    private func unfoldPlannerFoldedByApp() {
+        guard !compact, timelineAutoCollapsed else { return }
+        timelineAutoCollapsed = false
+        if timelineCollapsed { toggleTimeline() }
     }
 
     private func toggleDrawer() {
