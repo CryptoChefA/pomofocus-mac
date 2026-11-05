@@ -1,10 +1,12 @@
-# Pomofocus
+# Pomofocus for Mac
 
-Pomofocus is a free, open source Pomodoro timer for macOS: a beautiful, local-first focus timer that brings together clear intentions, flexible intervals, breaks, reflection, and useful analytics—without accounts, subscriptions, tracking, or cloud infrastructure.
+Pomofocus for Mac is a free, open source Pomodoro and study timer for macOS. It keeps your intention, your timer, your breaks and your history in one calm window, and it has no account, subscription, tracking or cloud service.
 
 > Piano piano. One meaningful thing at a time.
 
 **[Download for Mac](https://github.com/CryptoChefA/pomofocus-mac/releases/latest/download/Pomofocus.zip)** · **[Website](https://cryptochefa.github.io/pomofocus-mac/)** · macOS 14+ · Apple silicon · free and open source
+
+![Pomofocus for Mac in the London theme: rain falling on the Thames behind a glass timer card counting down a focus block](docs/assets/pomofocus-london.gif)
 
 ![The Pomofocus focus screen: an analog dial, the current intention, and a day timeline of focus blocks and breaks](docs/assets/focus.jpg)
 

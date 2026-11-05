@@ -2,12 +2,18 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
   <url>
     <loc>https://cryptochefa.github.io/pomofocus-mac/</loc>
-    <lastmod>2026-10-29</lastmod>
+    <lastmod>2026-11-05</lastmod>
     <changefreq>monthly</changefreq>
     <priority>1.0</priority>
     <image:image>
       <image:loc>https://cryptochefa.github.io/pomofocus-mac/assets/og.jpg</image:loc>
-      <image:title>Pomofocus, a free Pomodoro timer for Mac</image:title>
+      <image:title>Pomofocus for Mac, a free Pomodoro timer</image:title>
     </image:image>
+  </url>
+  <url>
+    <loc>https://cryptochefa.github.io/pomofocus-mac/students/</loc>
+    <lastmod>2026-11-05</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
   </url>
 </urlset>

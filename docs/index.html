@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Pomofocus: a free Pomodoro timer for Mac</title>
-<meta name="description" content="Pomofocus is a free, open source Pomodoro timer for Mac: a native menu bar timer with tasks, thirteen themes, real ambient sound, widgets and one-click updates.">
+<title>Pomofocus for Mac: a free Pomodoro and study timer for macOS</title>
+<meta name="description" content="Pomofocus for Mac is a free, open source Pomodoro and study timer: a native menu bar timer with tasks, thirteen themes, real ambient sound, widgets and one-click updates.">
 <meta name="robots" content="index, follow, max-image-preview:large">
 <link rel="canonical" href="https://cryptochefa.github.io/pomofocus-mac/">
 <meta name="theme-color" content="#000000">
@@ -12,9 +12,9 @@
 <link rel="icon" type="image/png" sizes="64x64" href="assets/favicon.png">
 <link rel="apple-touch-icon" sizes="360x360" href="assets/app-icon.png">
 <meta property="og:type" content="website">
-<meta property="og:site_name" content="Pomofocus">
+<meta property="og:site_name" content="Pomofocus for Mac">
 <meta property="og:locale" content="en_US">
-<meta property="og:title" content="Pomofocus: a free Pomodoro timer for Mac">
+<meta property="og:title" content="Pomofocus for Mac: a free Pomodoro and study timer for macOS">
 <meta property="og:description" content="A free, open source Pomodoro timer for macOS. Menu bar timer, tasks, thirteen themes, recorded ambient sound, desktop widgets and one-click updates. No account, no tracking.">
 <meta property="og:url" content="https://cryptochefa.github.io/pomofocus-mac/">
 <meta property="og:image" content="https://cryptochefa.github.io/pomofocus-mac/assets/og.jpg">
@@ -22,7 +22,7 @@
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="The Pomofocus focus screen on a Mac: an analog dial counting down 25 minutes beside a timeline of today's focus blocks">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Pomofocus: a free Pomodoro timer for Mac">
+<meta name="twitter:title" content="Pomofocus for Mac: a free Pomodoro and study timer for macOS">
 <meta name="twitter:description" content="A free, open source Pomodoro timer for macOS. Menu bar timer, tasks, thirteen themes, recorded ambient sound, desktop widgets and one-click updates. No account, no tracking.">
 <meta name="twitter:image" content="https://cryptochefa.github.io/pomofocus-mac/assets/og.jpg">
 <meta name="twitter:image:alt" content="The Pomofocus focus screen on a Mac: an analog dial counting down 25 minutes beside a timeline of today's focus blocks">
@@ -33,8 +33,8 @@
   {
    "@type": "SoftwareApplication",
    "@id": "https://cryptochefa.github.io/pomofocus-mac/#app",
-   "name": "Pomofocus",
-   "alternateName": "Pomofocus for Mac",
+   "name": "Pomofocus for Mac",
+   "alternateName": "Pomofocus",
    "url": "https://cryptochefa.github.io/pomofocus-mac/",
    "description": "A free, open source Pomodoro timer for macOS with a menu bar timer, tasks and a day timeline, thirteen themes, recorded ambient sound, desktop widgets, a full-screen Cinema mode, local analytics and one-click updates. No account and no telemetry.",
    "applicationCategory": "ProductivityApplication",
@@ -158,6 +158,30 @@
      "acceptedAnswer": {
       "@type": "Answer",
       "text": "From version 0.22.1 on, Pomofocus checks GitHub for a new release and shows Update now. One click downloads it, reopens the app and keeps every session, task and setting. Older versions are updated once by hand."
+     }
+    },
+    {
+     "@type": "Question",
+     "name": "Is this the same as pomofocus.io?",
+     "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "No. Pomofocus for Mac is an independent, open source Mac app. It isn't made by or connected to the pomofocus.io website, which is a separate timer that runs in the browser."
+     }
+    },
+    {
+     "@type": "Question",
+     "name": "Is it good for studying?",
+     "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "Yes, it was built with students in mind. Keep a list for each class, plan study blocks around your timetable, and let the focus plan build up how long you can concentrate. There's more on the study timer page."
+     }
+    },
+    {
+     "@type": "Question",
+     "name": "Does it work offline?",
+     "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "Yes. Everything works without a connection. The only time Pomofocus goes online is to check GitHub for a new version, and you can turn that off."
      }
     }
    ]
@@ -505,6 +529,8 @@ kbd {
 .faq h3 { color: var(--gold-2); font-size: 19px; }
 
 /* ───────── Celebration ───────── */
+.plan-shot { max-width: 1100px; margin: 0 auto; border-radius: 18px; overflow: hidden; box-shadow: 0 0 0 1px rgba(255,255,255,.1), 0 50px 100px -40px #000; }
+.plan-note { max-width: 640px; margin: 34px auto 0; text-align: center; color: var(--ink-3); font-size: 15px; }
 .celebrate { position: relative; padding: 200px 22px 40px; text-align: center; }
 .brava { font-family: var(--serif); font-weight: 400; font-size: clamp(84px, 14vw, 210px); letter-spacing: -.03em; line-height: .95; margin: 0; }
 .celebrate-card { position: relative; max-width: 980px; margin: 70px auto 0; cursor: pointer; }
@@ -592,6 +618,7 @@ footer a:hover { color: var(--ink); text-decoration: underline; }
     <a class="nav-brand" href="#top"><img src="assets/favicon.png" alt="" width="22" height="22">Pomofocus</a>
     <div class="nav-links">
       <a href="#cinema">Cinema</a>
+      <a href="#plan">Focus plan</a>
       <a href="#features">Features</a>
       <a href="#themes">Themes</a>
       <a href="#new">What's new</a>
@@ -609,7 +636,7 @@ footer a:hover { color: var(--ink); text-decoration: underline; }
   <div class="sticky">
     <div class="hero-glow" aria-hidden="true"></div>
     <div class="hero-copy">
-      <h1 class="eyebrow">Pomofocus, a free Pomodoro timer for Mac</h1>
+      <h1 class="eyebrow">Pomofocus for Mac, a free Pomodoro timer</h1>
       <p class="display">Focus,<br><span class="gold-text shimmer">beautifully.</span></p>
       <p class="hero-sub">A quiet, good-looking Pomodoro timer for the Mac. The kind you leave open all day.</p>
       <div class="hero-ctas">
@@ -652,6 +679,24 @@ footer a:hover { color: var(--ink); text-decoration: underline; }
       <p>Thin rolling digits, the dial unrolled into a minute tape, and light drifting slowly behind it, or the London skyline in the rain. Read a book with one eye on the clock.</p>
       <div class="keys"><span><kbd>⇧⌘F</kbd>Enter</span><span><kbd>Space</kbd>Pause</span><span><kbd>E</kbd>End session</span><span><kbd>S</kbd>Skyline</span><span><kbd>Esc</kbd>Leave</span></div>
     </div>
+  </div>
+</section>
+
+<!-- ───────── Focus plan ───────── -->
+<section class="section" id="plan">
+  <div class="wrap">
+    <div class="head rv">
+      <div class="eyebrow">Focus plan</div>
+      <h2>Rebuild your focus,<br><span class="gold-text">one block at a time.</span></h2>
+      <p>If 25 minutes feels impossible right now, Pomofocus doesn't pretend otherwise. Answer eight questions and it starts you just under what you can manage today, then adds five minutes each time you've earned it.</p>
+    </div>
+    <div class="plan-shot rv d1"><img src="assets/plan.jpg" alt="The focus plan: start where you are, earn every minute, and rest that restores" width="2400" height="1467" loading="lazy" decoding="async"></div>
+    <div class="news" style="margin-top:20px">
+      <article class="rv"><h3>Starts where you are</h3><p>Your first blocks sit just below your real limit, so you finish them. Finishing a block is what makes the next one easier to start.</p></article>
+      <article class="rv d1"><h3>Five minutes at a time</h3><p>Finish full blocks on different days and the plan moves you up five minutes, towards 45-minute blocks or whatever you're aiming for.</p></article>
+      <article class="rv d2"><h3>Bends on bad days</h3><p>Give up on a block or rate it Scattered and the next one is five minutes shorter. Take a few days off and it eases you back in, instead of starting you where you left off.</p></article>
+    </div>
+    <p class="plan-note rv">Every step has a reason behind it, and the app shows you the studies it's based on under <b>Read the science</b>.</p>
   </div>
 </section>
 
@@ -890,6 +935,9 @@ footer a:hover { color: var(--ink); text-decoration: underline; }
       <article class="rv"><h3>Does it sync between Macs or with iPhone?</h3><p>No. Pomofocus is a Mac app and keeps everything local. To move your history to another Mac, copy the JSON file across before you open the app there.</p></article>
       <article class="rv d1"><h3>Can I change the focus and break lengths?</h3><p>Yes. Focus, short break and long break each have their own stepper in Settings, and the focus plan can raise them for you a few minutes at a time as your focus grows.</p></article>
       <article class="rv d2"><h3>How do updates work?</h3><p>From version 0.22.1 on, Pomofocus checks GitHub for a new release and shows Update now. One click downloads it, reopens the app and keeps every session, task and setting. Older versions are updated once by hand.</p></article>
+      <article class="rv"><h3>Is this the same as pomofocus.io?</h3><p>No. Pomofocus for Mac is an independent, open source Mac app. It isn't made by or connected to the pomofocus.io website, which is a separate timer that runs in the browser.</p></article>
+      <article class="rv d1"><h3>Is it good for studying?</h3><p>Yes, it was built with students in mind. Keep a list for each class, plan study blocks around your timetable, and let the focus plan build up how long you can concentrate. There's more on the <a href="students/">study timer page</a>.</p></article>
+      <article class="rv d2"><h3>Does it work offline?</h3><p>Yes. Everything works without a connection. The only time Pomofocus goes online is to check GitHub for a new version, and you can turn that off.</p></article>
     </div>
   </div>
 </section>
@@ -929,7 +977,7 @@ footer a:hover { color: var(--ink); text-decoration: underline; }
 <footer>
   <div class="wrap">
     <span>Pomofocus is a free, open source Pomodoro timer for macOS, released under the MIT license.</span>
-    <span class="links"><a href="https://github.com/CryptoChefA/pomofocus-mac">Source</a><a href="https://github.com/CryptoChefA/pomofocus-mac/releases">Releases</a><a href="#update">How to update</a><a href="https://github.com/CryptoChefA/pomofocus-mac/issues">Report an issue</a></span>
+    <span class="links"><a href="https://github.com/CryptoChefA/pomofocus-mac">Source</a><a href="https://github.com/CryptoChefA/pomofocus-mac/releases">Releases</a><a href="#update">How to update</a><a href="students/">For students</a> <a href="https://github.com/CryptoChefA/pomofocus-mac/issues">Report an issue</a></span>
     <span class="credits">Sound previews: rain (public domain) and ocean (CC0) from Wikimedia Commons; wall clock by Work With Sounds / Technical Museum of Slovenia, <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a> (<a href="https://commons.wikimedia.org/wiki/File:WWS_Wallclockwithweightticking.ogg">source</a>); noise made for Pomofocus.</span>
   </div>
 </footer>
