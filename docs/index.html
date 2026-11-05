@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Pomofocus: a free Pomodoro timer for Mac</title>
-<meta name="description" content="Pomofocus is a free, open source Pomodoro timer for Mac: a native menu bar timer with tasks, twelve themes, real ambient sound, widgets and one-click updates.">
+<meta name="description" content="Pomofocus is a free, open source Pomodoro timer for Mac: a native menu bar timer with tasks, thirteen themes, real ambient sound, widgets and one-click updates.">
 <meta name="robots" content="index, follow, max-image-preview:large">
 <link rel="canonical" href="https://cryptochefa.github.io/pomofocus-mac/">
 <meta name="theme-color" content="#000000">
@@ -15,7 +15,7 @@
 <meta property="og:site_name" content="Pomofocus">
 <meta property="og:locale" content="en_US">
 <meta property="og:title" content="Pomofocus: a free Pomodoro timer for Mac">
-<meta property="og:description" content="A free, open source Pomodoro timer for macOS. Menu bar timer, tasks, twelve themes, recorded ambient sound, desktop widgets and one-click updates. No account, no tracking.">
+<meta property="og:description" content="A free, open source Pomodoro timer for macOS. Menu bar timer, tasks, thirteen themes, recorded ambient sound, desktop widgets and one-click updates. No account, no tracking.">
 <meta property="og:url" content="https://cryptochefa.github.io/pomofocus-mac/">
 <meta property="og:image" content="https://cryptochefa.github.io/pomofocus-mac/assets/og.jpg">
 <meta property="og:image:width" content="1200">
@@ -23,7 +23,7 @@
 <meta property="og:image:alt" content="The Pomofocus focus screen on a Mac: an analog dial counting down 25 minutes beside a timeline of today’s focus blocks">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Pomofocus: a free Pomodoro timer for Mac">
-<meta name="twitter:description" content="A free, open source Pomodoro timer for macOS. Menu bar timer, tasks, twelve themes, recorded ambient sound, desktop widgets and one-click updates. No account, no tracking.">
+<meta name="twitter:description" content="A free, open source Pomodoro timer for macOS. Menu bar timer, tasks, thirteen themes, recorded ambient sound, desktop widgets and one-click updates. No account, no tracking.">
 <meta name="twitter:image" content="https://cryptochefa.github.io/pomofocus-mac/assets/og.jpg">
 <meta name="twitter:image:alt" content="The Pomofocus focus screen on a Mac: an analog dial counting down 25 minutes beside a timeline of today’s focus blocks">
 <script type="application/ld+json">
@@ -36,7 +36,7 @@
    "name": "Pomofocus",
    "alternateName": "Pomofocus for Mac",
    "url": "https://cryptochefa.github.io/pomofocus-mac/",
-   "description": "A free, open source Pomodoro timer for macOS with a menu bar timer, tasks and a day timeline, twelve themes, recorded ambient sound, desktop widgets, a full-screen Cinema mode, local analytics and one-click updates. No account and no telemetry.",
+   "description": "A free, open source Pomodoro timer for macOS with a menu bar timer, tasks and a day timeline, thirteen themes, recorded ambient sound, desktop widgets, a full-screen Cinema mode, local analytics and one-click updates. No account and no telemetry.",
    "applicationCategory": "ProductivityApplication",
    "applicationSubCategory": "Pomodoro timer",
    "operatingSystem": "macOS 14 or later",
@@ -59,13 +59,14 @@
    "screenshot": [
     "https://cryptochefa.github.io/pomofocus-mac/assets/focus.jpg",
     "https://cryptochefa.github.io/pomofocus-mac/assets/cinema.jpg",
+    "https://cryptochefa.github.io/pomofocus-mac/assets/theme-london.jpg",
     "https://cryptochefa.github.io/pomofocus-mac/assets/dashboard.jpg",
     "https://cryptochefa.github.io/pomofocus-mac/assets/widgets.jpg"
    ],
    "featureList": [
     "Menu bar timer",
     "Tasks and a day timeline",
-    "Twelve themes and custom theme codes",
+    "Thirteen themes, including a live London skyline, and custom theme codes",
     "Recorded ambient sound",
     "Desktop widgets",
     "Cinema full-screen mode",
@@ -471,7 +472,9 @@ kbd {
 .themes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 44px 20px; }
 @media (max-width: 900px) { .themes { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 560px) { .themes { grid-template-columns: 1fr; } }
-.themes figure { margin: 0; }
+.themes figure { margin: 0; min-width: 0; }
+.themes .feature { grid-column: 1 / -1; }
+.themes .feature figcaption { max-width: 640px; }
 .themes .frame { position: relative; border-radius: 18px; overflow: hidden; box-shadow: 0 0 0 1px rgba(255,255,255,.1), 0 40px 80px -40px #000; transition: transform .5s var(--ease-out); }
 .themes figure:hover .frame { transform: translateY(-4px); }
 .themes figcaption { margin-top: 14px; font-size: 15px; color: var(--ink-2); }
@@ -518,7 +521,7 @@ kbd {
 /* Gallery */
 .gallery { display: grid; grid-template-columns: 1fr 1fr; gap: 56px 20px; }
 @media (max-width: 760px) { .gallery { grid-template-columns: 1fr; } }
-.gallery figure { margin: 0; }
+.gallery figure { margin: 0; min-width: 0; }
 .gallery .frame { border-radius: 16px; overflow: hidden; box-shadow: 0 0 0 1px rgba(255,255,255,.1), 0 50px 100px -40px #000; }
 .gallery figcaption { margin-top: 18px; text-align: center; font-size: 15px; color: var(--ink-2); }
 .gallery figcaption b { color: var(--ink); font-weight: 600; }
@@ -646,8 +649,8 @@ footer a:hover { color: var(--ink); text-decoration: underline; }
     </div>
     <div class="cine-caption">
       <h3>Made for the ultrawide on your desk.</h3>
-      <p>Thin rolling digits, the dial unrolled into a minute tape, and light drifting slowly behind it. Read a book with one eye on the clock.</p>
-      <div class="keys"><span><kbd>⇧⌘F</kbd>Enter</span><span><kbd>Space</kbd>Pause</span><span><kbd>E</kbd>End session</span><span><kbd>Esc</kbd>Leave</span></div>
+      <p>Thin rolling digits, the dial unrolled into a minute tape, and light drifting slowly behind it, or the London skyline in the rain. Read a book with one eye on the clock.</p>
+      <div class="keys"><span><kbd>⇧⌘F</kbd>Enter</span><span><kbd>Space</kbd>Pause</span><span><kbd>E</kbd>End session</span><span><kbd>S</kbd>Skyline</span><span><kbd>Esc</kbd>Leave</span></div>
     </div>
   </div>
 </section>
@@ -772,7 +775,7 @@ footer a:hover { color: var(--ink); text-decoration: underline; }
       <article class="rv"><h3>Native macOS app</h3><p>Written in SwiftUI for macOS 14 and later on Apple silicon. It can follow light and dark mode, respects Reduce Motion, and sits in the Dock like any other Mac app.</p></article>
       <article class="rv d1"><h3>Menu bar timer</h3><p>The countdown lives in your menu bar as a small tank that drains while you work, turns green on a break and blinks red in overtime. Click it to pause, skip the break or end the session without opening the window.</p></article>
       <article class="rv d2"><h3>Tasks and a day timeline</h3><p>Keep lists for a class or a project, start a block from any task, and its focus time counts toward that task. Drag tasks onto today's timeline, or let Plan my day fit them around your calendar.</p></article>
-      <article class="rv"><h3>Twelve themes</h3><p>Obsidian, Ivory, Sakura, Black Ice and eight more, each with its own dial, menu bar and widgets. Build your own from a few colours and share it as a code.</p></article>
+      <article class="rv"><h3>Thirteen themes</h3><p>Obsidian, Ivory, Sakura, Black Ice, London and eight more, each with its own dial, menu bar and widgets. Build your own from a few colours and share it as a code.</p></article>
       <article class="rv d1"><h3>Recorded sound</h3><p>Rain, ocean waves and a ticking wall clock, recorded for real, plus brown and white noise, all looped without a seam. A small bell marks the end of each block.</p></article>
       <article class="rv d2"><h3>Desktop widgets</h3><p>Small, medium and large macOS widgets with a live countdown and one gold progress band, so the time left is there when the app is hidden.</p></article>
       <article class="rv"><h3>Updates itself</h3><p>When a new version is out, Settings shows Update now. One click downloads it, reopens the app and keeps every session, task and setting. The check can be switched off.</p></article>
@@ -786,10 +789,11 @@ footer a:hover { color: var(--ink); text-decoration: underline; }
   <div class="wrap">
     <div class="head rv">
       <div class="eyebrow">Themes</div>
-      <h2>Twelve looks.<br>Each one <span class="gold-text">alive.</span></h2>
-      <p>Petals fall in Sakura, frost creeps in and thaws in Black Ice, and the dial, the menu bar and the widgets all follow along.</p>
+      <h2>Thirteen looks.<br>Each one <span class="gold-text">alive.</span></h2>
+      <p>Rain falls on the Thames in London, petals fall in Sakura, frost creeps in and thaws in Black Ice, and the dial, the menu bar and the widgets all follow along.</p>
     </div>
     <div class="themes">
+      <figure class="rv feature"><div class="frame"><img src="assets/theme-london.jpg" alt="The London theme: Westminster across the Thames at night in the rain, with the floodlit Palace, Big Ben and the London Eye glowing through a glass timer card" width="2200" height="1314" loading="lazy" decoding="async"><span class="badge">New</span></div><figcaption><b>London</b>Westminster across the Thames on a rainy night. Big Ben keeps the real time, the Eye turns at its real speed, and the lights shimmer on the river. Turn on a storm for lightning in the clouds, or put the skyline behind the clock in Cinema. Shown here with Glass turned up.</figcaption></figure>
       <figure class="rv"><div class="frame"><img src="assets/theme-ivory.jpg" alt="The Ivory theme: warm paper with a quiet gold dial" width="1000" height="978" loading="lazy" decoding="async"></div><figcaption><b>Ivory</b>Warm paper, quiet gold.</figcaption></figure>
       <figure class="rv d1"><div class="frame"><img src="assets/theme-sakura.jpg" alt="The Sakura theme: blossom pink with cherry branches and falling petals" width="1000" height="978" loading="lazy" decoding="async"></div><figcaption><b>Sakura</b>Blossom pink, with petals drifting down.</figcaption></figure>
       <figure class="rv d2"><div class="frame"><img src="assets/theme-blackice.jpg" alt="The Black Ice theme: a black-to-blue gradient with frost in the corners and an icy greeting" width="1000" height="978" loading="lazy" decoding="async"></div><figcaption><b>Black Ice</b>Black fading to ice blue. Frost grows, melts and grows back.</figcaption></figure>
