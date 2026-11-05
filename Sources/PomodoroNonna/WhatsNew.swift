@@ -14,6 +14,9 @@ enum WhatsNew {
 
     /// Newest first. Add an entry with every release.
     static let releases: [(version: String, items: [Item])] = [
+        ("0.22.9", [
+            Item(icon: "heart.text.square", title: "How are you feeling?", detail: "A quick daily check-in, like State of Mind on iPhone: slide to how today feels and watch the shape change, then pick a word or two, what's behind it and a line of your own. The Dashboard shows your mood over the last 30 days and five weeks, and it all stays on this Mac."),
+        ]),
         ("0.22.8", [
             Item(icon: "building.columns", title: "Skyline in Cinema", detail: "With a dark theme, press Skyline (or S) in Cinema to put Westminster at night along the bottom of the screen, with open sky for the clock."),
             Item(icon: "square.on.square.dashed", title: "Glass", detail: "A Glass slider in Settings, under Appearance, turns the timer, cards and panels from solid to glass, so your theme shows through."),

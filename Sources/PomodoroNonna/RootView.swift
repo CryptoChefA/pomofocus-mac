@@ -113,6 +113,10 @@ struct RootView: View {
             WrapUpSheet { model.showsWrapUp = false }
                 .environment(model)
         }
+        .sheet(isPresented: Bindable(model).showsMoodCheckIn) {
+            MoodCheckInSheet { model.showsMoodCheckIn = false }
+                .environment(model)
+        }
         .sheet(isPresented: Bindable(Updater.shared).showsWhatsNew) {
             WhatsNewSheet { Updater.shared.showsWhatsNew = false }
         }

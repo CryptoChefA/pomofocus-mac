@@ -54,6 +54,7 @@ struct PomodoroNonnaApp: App {
                 Button("Skip Break and Start Focus") { model.skipBreakAndStartFocus() }
                     .disabled(model.phase == .focus && !model.isOvertime)
                 Divider()
+                Button("How Are You Feeling…") { model.showsMoodCheckIn = true }
                 Button("Wrap Up Today…") { model.showsWrapUp = true }
                 Divider()
                 Button("Cinema Mode") { CinematicController.shared.toggle(model: model) }

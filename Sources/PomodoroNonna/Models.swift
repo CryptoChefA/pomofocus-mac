@@ -388,6 +388,8 @@ struct AppData: Codable, Sendable {
     var focusPlan: FocusPlan? = nil
     /// To-dos, organised into the task lists above.
     var todos: [TodoItem]? = nil
+    /// Daily "How are you feeling?" check-ins, one per day.
+    var moodCheckIns: [MoodCheckIn]? = nil
 
     static let starter = AppData(
         tasks: [

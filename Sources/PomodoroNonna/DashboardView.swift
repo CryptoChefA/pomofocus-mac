@@ -126,6 +126,8 @@ struct DashboardView: View {
                         .frame(width: compact ? nil : 330)
                 }
 
+                MoodCard()
+
                 consistencyCard
 
                 InsightsSection()

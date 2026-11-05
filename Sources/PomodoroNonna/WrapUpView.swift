@@ -165,6 +165,7 @@ struct WrapUpSheet: View {
 /// A quiet evening nudge on the timer screen.
 struct WrapUpBanner: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var dismissed = false
 
     var body: some View {
@@ -178,8 +179,10 @@ struct WrapUpBanner: View {
                 Button("Wrap up") { model.showsWrapUp = true }
                     .buttonStyle(NonnaButtonStyle(prominent: false))
                 Button {
-                    model.markWrappedUp()
-                    dismissed = true
+                    withAnimation(reduceMotion ? nil : NonnaMotion.dismiss) {
+                        model.markWrappedUp()
+                        dismissed = true
+                    }
                 } label: {
                     Image(systemName: "xmark").font(.system(size: 10, weight: .semibold))
                 }
@@ -189,8 +192,9 @@ struct WrapUpBanner: View {
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 10)
-            .background(NonnaTheme.raisedPaper.opacity(0.8), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .background(NonnaTheme.pane(NonnaTheme.raisedPaper, 0.8), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
             .overlay { RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(NonnaTheme.line, lineWidth: 0.8) }
+            .transition(.banner(reduceMotion: reduceMotion))
         }
     }
 }

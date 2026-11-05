@@ -31,6 +31,8 @@ final class AppModel {
     var awayPausedAt: Date?
     /// The end-of-day wrap-up sheet.
     var showsWrapUp = false
+    /// The daily "How are you feeling?" check-in sheet.
+    var showsMoodCheckIn = false
     /// The last day wrapped up, kept here so the evening banner hides as soon as it's done.
     var lastWrapUpDay: Date?
     /// The blocks a session-end rating applies to (empty when rating a single block).
@@ -592,6 +594,39 @@ final class AppModel {
     func minutesLeft(on todo: TodoItem) -> Int {
         guard let minutes = todo.minutes else { return 0 }
         return max(0, minutes - stats(for: todo.id).seconds / 60)
+    }
+
+    // MARK: Mood check-ins
+
+    var moodCheckIns: [MoodCheckIn] { data.moodCheckIns ?? [] }
+
+    var todaysCheckIn: MoodCheckIn? {
+        moodCheckIns.last { Calendar.current.isDateInToday($0.date) }
+    }
+
+    /// Saves a check-in, replacing any earlier one from the same day.
+    func saveCheckIn(_ checkIn: MoodCheckIn) {
+        let calendar = Calendar.current
+        var list = moodCheckIns.filter { !calendar.isDate($0.date, inSameDayAs: checkIn.date) }
+        list.append(checkIn)
+        list.sort { $0.date < $1.date }
+        data.moodCheckIns = list
+        save()
+    }
+
+    func deleteCheckIn(_ id: UUID) {
+        data.moodCheckIns = moodCheckIns.filter { $0.id != id }
+        save()
+    }
+
+    /// Focused seconds per day, for setting mood beside focus.
+    var focusSecondsByDay: [Date: Int] {
+        let calendar = Calendar.current
+        var totals: [Date: Int] = [:]
+        for session in sessions where session.outcome != .abandoned && session.focusedSeconds > 0 {
+            totals[calendar.startOfDay(for: session.startedAt), default: 0] += session.focusedSeconds
+        }
+        return totals
     }
 
     @discardableResult

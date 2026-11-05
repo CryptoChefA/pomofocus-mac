@@ -137,6 +137,19 @@ enum NonnaMotion {
     static let settle = Animation.spring(duration: 0.58, bounce: 0.08)
     static let page = Animation.easeInOut(duration: 0.28)
     static let numeric = Animation.easeInOut(duration: 0.24)
+    /// Banners coming and going, and sections folding: smooth, with no bounce.
+    static let dismiss = Animation.spring(duration: 0.42, bounce: 0)
+}
+
+extension AnyTransition {
+    /// Banners and notices ease down into place, then fade and lift away as they go, while
+    /// what's below glides up to fill the gap. A plain fade with Reduce Motion.
+    static func banner(reduceMotion: Bool) -> AnyTransition {
+        reduceMotion ? .opacity : .asymmetric(
+            insertion: .opacity.combined(with: .offset(y: -10)).combined(with: .scale(scale: 0.98, anchor: .top)),
+            removal: .opacity.combined(with: .offset(y: -8)).combined(with: .scale(scale: 0.97, anchor: .top))
+        )
+    }
 }
 
 /// Gives cautions a slow, restrained pulse. With Reduce Motion on, it holds steady.

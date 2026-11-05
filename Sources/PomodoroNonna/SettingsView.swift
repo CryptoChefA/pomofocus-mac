@@ -3,6 +3,7 @@ import SwiftUI
 
 struct SettingsView: View {
     @Environment(AppModel.self) private var model
+    @AppStorage(MoodPrompt.enabledKey) private var dailyCheckIn = true
     @EnvironmentObject private var calendarStore: CalendarStore
     @Environment(\.compactLayout) private var compact
 
@@ -224,6 +225,11 @@ struct SettingsView: View {
                 title: "Keep tasks simple",
                 subtitle: "Tasks shows what's next, not everything at once, and nudges you to start after a few minutes of planning",
                 binding: settingsBinding(\.simpleTasks)
+            )
+            ToggleRow(
+                title: "Daily check-in",
+                subtitle: "Ask how you're feeling once a day, with a flower at the top of the timer to check in any time. Your mood shows on the Dashboard and stays on this Mac",
+                binding: $dailyCheckIn
             )
             ToggleRow(
                 title: "Timer cues",
@@ -466,7 +472,7 @@ struct SettingsCard<Content: View>: View {
         NonnaCard {
             VStack(alignment: .leading, spacing: 17) {
                 Button {
-                    withAnimation(reduceMotion ? nil : .spring(duration: 0.35, bounce: 0.05)) { open.toggle() }
+                    withAnimation(reduceMotion ? nil : NonnaMotion.dismiss) { open.toggle() }
                 } label: {
                     HStack(spacing: 10) {
                         Label(title, systemImage: icon)
@@ -492,8 +498,13 @@ struct SettingsCard<Content: View>: View {
 
                 if open {
                     Divider().overlay(NonnaTheme.line)
-                    content
                         .transition(.opacity)
+                    // Opening, the settings ease down into place; closing, they fade quickly
+                    // while the card folds up around them.
+                    content
+                        .transition(reduceMotion ? .opacity : .asymmetric(
+                            insertion: .opacity.combined(with: .offset(y: -8)).animation(.easeOut(duration: 0.32).delay(0.06)),
+                            removal: .opacity.animation(.easeIn(duration: 0.14))))
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)

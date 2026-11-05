@@ -58,6 +58,7 @@ Pomofocus is a free, open source Pomodoro timer for macOS: a beautiful, local-fi
 - Focus rebuild plan: eight questions build a research-based plan in four phases (Reset, Build, Extend, Sustain). Blocks climb five minutes per level once you finish 4 full blocks on 2+ days with a 70% completion rate, and step back a level if under 40% are finished. Weekly metrics (completion rate, longest unbroken stretch, pauses per block, start-time spread, active days), house rules from your distractions, a restorative break menu and an end-of-day reward; every recommendation cites peer-reviewed research, with a Sources page and an honest note on what the science doesn't say
 - Collapsible day timeline (⌥⌘T)
 - Session celebration: when you press End session, screen-wide confetti and a cinematic breakdown of the whole sitting (every pomodoro, total focus, breaks, pauses, overtime, today vs goal, streak); single pomodoros pass quietly; switchable in Settings
+- Daily check-in: "How are you feeling today?" once a day (a continuous slider from very unpleasant to very pleasant, like Apple's State of Mind, with a shape that morphs from spiky to a soft bloom; then optional feeling words from a 45-word vocabulary, what's affecting you and a note); the Dashboard's Mood card shows the last 30 days with hover details, a five-week mood calendar, the feelings named most, what's been affecting you, and focus on good days versus hard ones. Turn the prompt off in Settings → Experience
 - Focus reset: pick one of three short guided sessions (one minute; settle a busy mind; coming back after days away) and an ambience (rain, binaural beats, meditation music, or just the voice), then the window goes quiet in the theme's colour with a breathing flower that follows the voice's breath cues; optional captions in Settings
 - Three-cycle guided breathing ritual with animated inhale and exhale cues
 - Local notifications and a locally generated bell ding for every timer cue
@@ -115,15 +116,17 @@ The current command-line Swift installation does not bundle XCTest, so the core 
 
 ```sh
 mkdir -p .build/checks
-swiftc Sources/PomodoroNonna/Models.swift Sources/PomodoroNonna/TodoModels.swift Sources/PomodoroNonna/FocusPlan.swift Sources/PomodoroNonna/FocusScience.swift Sources/PomodoroNonna/ThemePalette.swift Sources/PomodoroNonna/Insights.swift Sources/PomodoroNonna/DeepDiveAnalytics.swift Tests/AnalyticsCheck/main.swift -o .build/checks/analytics-check
+swiftc Sources/PomodoroNonna/Models.swift Sources/PomodoroNonna/MoodCheckIn.swift Sources/PomodoroNonna/TodoModels.swift Sources/PomodoroNonna/FocusPlan.swift Sources/PomodoroNonna/FocusScience.swift Sources/PomodoroNonna/ThemePalette.swift Sources/PomodoroNonna/Insights.swift Sources/PomodoroNonna/DeepDiveAnalytics.swift Tests/AnalyticsCheck/main.swift -o .build/checks/analytics-check
 .build/checks/analytics-check
-swiftc Sources/PomodoroNonna/Models.swift Sources/PomodoroNonna/TodoModels.swift Sources/PomodoroNonna/FocusPlan.swift Sources/PomodoroNonna/FocusScience.swift Sources/PomodoroNonna/ThemePalette.swift Sources/PomodoroNonna/WorkImport.swift Tests/FocusPlanCheck/main.swift -o .build/checks/focus-plan-check
+swiftc Sources/PomodoroNonna/Models.swift Sources/PomodoroNonna/MoodCheckIn.swift Sources/PomodoroNonna/TodoModels.swift Sources/PomodoroNonna/FocusPlan.swift Sources/PomodoroNonna/FocusScience.swift Sources/PomodoroNonna/ThemePalette.swift Sources/PomodoroNonna/WorkImport.swift Tests/FocusPlanCheck/main.swift -o .build/checks/focus-plan-check
 .build/checks/focus-plan-check
 swiftc Sources/PomodoroNonna/ThemePalette.swift Sources/PomodoroNonna/ThemeCodes.swift Tests/ThemeCheck/main.swift -o .build/checks/theme-check
 .build/checks/theme-check
+swiftc Sources/PomodoroNonna/MoodCheckIn.swift Tests/MoodCheck/main.swift -o .build/checks/mood-check
+.build/checks/mood-check
 swiftc Sources/PomodoroNonna/TodoModels.swift Tests/TodoCheck/main.swift -o .build/checks/todo-check
 .build/checks/todo-check
-swiftc Sources/PomodoroNonna/Models.swift Sources/PomodoroNonna/TodoModels.swift Sources/PomodoroNonna/FocusPlan.swift Sources/PomodoroNonna/FocusScience.swift Sources/PomodoroNonna/ThemePalette.swift Sources/PomodoroNonna/FocusScore.swift Tests/FocusScoreCheck/main.swift -o .build/checks/focus-score-check
+swiftc Sources/PomodoroNonna/Models.swift Sources/PomodoroNonna/MoodCheckIn.swift Sources/PomodoroNonna/TodoModels.swift Sources/PomodoroNonna/FocusPlan.swift Sources/PomodoroNonna/FocusScience.swift Sources/PomodoroNonna/ThemePalette.swift Sources/PomodoroNonna/FocusScore.swift Tests/FocusScoreCheck/main.swift -o .build/checks/focus-score-check
 .build/checks/focus-score-check
 ```
 
@@ -152,6 +155,8 @@ swiftc Sources/PomodoroNonna/Models.swift Sources/PomodoroNonna/TodoModels.swift
 - `FocusPlanView.swift`: the Plan section and its questionnaire
 - `ThemePalette.swift`: theme palettes, presets and custom-theme colour derivation
 - `ThemePickerView.swift`: the theme picker, custom theme editor and first-launch welcome
+- `MoodCheckIn.swift`: daily check-in data, the feeling and influence lists, and the Mood card's summary
+- `MoodViews.swift`: the check-in banner, the three-step check-in sheet and the Dashboard's Mood card
 - `LondonScene.swift`: the London theme's Metal scene; its skyline layers are drawn by `Scripts/london/layers.html` and rendered to `Resources/London` with `Scripts/london/render.sh`
 - `DashboardView.swift`: local charts, lifetime task totals, streaks, and usage days
 - `FocusScore.swift`: the daily focus score and runaway-timer trimming (pure, tested); `FocusScoreViews.swift` draws them

@@ -27,6 +27,7 @@ struct FocusView: View {
     private var isFlashing: Bool { isAlerting && model.status == .overtime }
 
     @AppStorage("displayName") private var displayName = ""
+    @AppStorage(MoodPrompt.enabledKey) private var dailyCheckIn = true
     private var isBlackIce: Bool { ThemeManager.shared.themeID == ThemeChoice.blackIce.rawValue }
     private var isBespoke: Bool { ThemeManager.shared.themeID == ThemeChoice.bespoke.rawValue }
 
@@ -58,6 +59,9 @@ struct FocusView: View {
                                 .foregroundStyle(NonnaTheme.terracotta)
                         }
                         Spacer()
+                        if dailyCheckIn {
+                            MoodButton()
+                        }
                         Button {
                             CinematicController.shared.enter(model: model)
                         } label: {
@@ -69,17 +73,21 @@ struct FocusView: View {
 
                     if let change = model.planChange {
                         PlanChangeBanner(change: change) {
-                            withAnimation(reduceMotion ? nil : NonnaMotion.quick) { model.planChange = nil }
+                            withAnimation(reduceMotion ? nil : NonnaMotion.dismiss) { model.planChange = nil }
                         }
                         .frame(maxWidth: 690)
+                        .transition(.banner(reduceMotion: reduceMotion))
                     }
 
                     if let pausedAt = model.awayPausedAt {
                         AwayBanner(pausedAt: pausedAt)
                             .frame(maxWidth: 690)
+                            .transition(.banner(reduceMotion: reduceMotion))
                     }
 
                     if model.status == .idle {
+                        MoodCheckInBanner()
+                            .frame(maxWidth: 690)
                         WrapUpBanner()
                             .frame(maxWidth: 690)
                     }
@@ -930,6 +938,7 @@ private struct TimelineRail: View {
 
 /// Shown after the away guard paused a timer that was running over.
 private struct AwayBanner: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(AppModel.self) private var model
     let pausedAt: Date
 
@@ -946,14 +955,14 @@ private struct AwayBanner: View {
                     .foregroundStyle(NonnaTheme.secondaryInk)
             }
             Spacer()
-            Button("I was here") { model.countAwayTime() }
+            Button("I was here") { withAnimation(reduceMotion ? nil : NonnaMotion.dismiss) { model.countAwayTime() } }
                 .buttonStyle(.plain)
                 .font(.system(size: 12))
                 .foregroundStyle(NonnaTheme.secondaryInk)
                 .help("Count the time since then after all")
-            Button("End session") { model.endSession() }
+            Button("End session") { withAnimation(reduceMotion ? nil : NonnaMotion.dismiss) { model.endSession() } }
                 .buttonStyle(NonnaButtonStyle(prominent: false))
-            Button("Resume") { model.togglePause() }
+            Button("Resume") { withAnimation(reduceMotion ? nil : NonnaMotion.dismiss) { model.togglePause() } }
                 .buttonStyle(NonnaButtonStyle())
         }
         .padding(16)
