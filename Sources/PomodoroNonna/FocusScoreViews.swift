@@ -14,6 +14,7 @@ struct FocusScoreRing: View {
 
     var body: some View {
         let fraction = Double(score ?? 0) / 100
+        let tint = score.map { FocusScore.tone(for: $0).color } ?? NonnaTheme.terracotta
         ZStack {
             Circle()
                 .trim(from: 0, to: sweep)
@@ -22,12 +23,12 @@ struct FocusScoreRing: View {
             Circle()
                 .trim(from: 0, to: sweep * shown)
                 .stroke(
-                    AngularGradient(colors: [NonnaTheme.terracotta.opacity(0.55), NonnaTheme.terracotta],
+                    AngularGradient(colors: [tint.opacity(0.55), tint],
                                     center: .center, startAngle: .degrees(0), endAngle: .degrees(270)),
                     style: StrokeStyle(lineWidth: lineWidth, lineCap: .round)
                 )
                 .rotationEffect(.degrees(135))
-                .shadow(color: NonnaTheme.terracotta.opacity(0.3), radius: 6)
+                .shadow(color: tint.opacity(0.3), radius: 6)
             VStack(spacing: 0) {
                 Text(score.map(String.init) ?? "–")
                     .font(.system(size: size * 0.34, weight: .semibold, design: .rounded))
@@ -157,7 +158,7 @@ private struct WeekScoreBars: View {
                         .font(.system(size: 11, weight: .medium).monospacedDigit())
                         .foregroundStyle(NonnaTheme.secondaryInk)
                     RoundedRectangle(cornerRadius: 4, style: .continuous)
-                        .fill(entry.score == nil ? NonnaTheme.line : NonnaTheme.terracotta.opacity(isSelected ? 1 : 0.45))
+                        .fill(entry.score.map { FocusScore.tone(for: $0.total).color.opacity(isSelected ? 1 : 0.45) } ?? NonnaTheme.line)
                         .frame(width: 16, height: max(4, height * Double(entry.score?.total ?? 0) / 100))
                     Text(entry.day.formatted(.dateTime.weekday(.narrow)))
                         .font(.system(size: 10, weight: isSelected ? .bold : .regular))
@@ -357,6 +358,22 @@ struct RunawayTimersBanner: View {
             } message: {
                 Text("Each one keeps its planned time; the hours after that are removed. This can't be undone.")
             }
+        }
+    }
+}
+
+extension FocusScore.Tone {
+    /// Traffic-light colours, so a score reads as good, middling or low before the number
+    /// does. Apple's system greens, yellows and reds, a shade deeper on light themes so
+    /// they hold up against pale backgrounds.
+    var color: Color {
+        switch (self, NonnaTheme.isDark) {
+        case (.good, true): Color(hex: "30D158")
+        case (.good, false): Color(hex: "1E9E45")
+        case (.middling, true): Color(hex: "FFD60A")
+        case (.middling, false): Color(hex: "C99400")
+        case (.low, true): Color(hex: "FF453A")
+        case (.low, false): Color(hex: "D70015")
         }
     }
 }

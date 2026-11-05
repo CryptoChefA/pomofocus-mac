@@ -40,7 +40,8 @@ struct SettingsView: View {
     }
 
     private var timerSettings: some View {
-        SettingsCard(title: "Timer", icon: "timer") {
+        SettingsCard(title: "Timer", icon: "timer",
+                     summary: "\(model.settings.focusMinutes) min focus, \(model.settings.shortBreakMinutes) min break") {
             StepperRow(
                 title: "Focus duration",
                 value: "\(model.settings.focusMinutes) min",
@@ -73,7 +74,8 @@ struct SettingsView: View {
     }
 
     private var rhythmSettings: some View {
-        SettingsCard(title: "Rhythm", icon: "chart.line.uptrend.xyaxis") {
+        SettingsCard(title: "Rhythm", icon: "chart.line.uptrend.xyaxis",
+                     summary: "\((model.settings.dailyGoalMinutes * 60).focusDurationString) a day") {
             StepperRow(
                 title: "Daily focus goal",
                 value: (model.settings.dailyGoalMinutes * 60).focusDurationString,
@@ -227,6 +229,11 @@ struct SettingsView: View {
                 title: "Timer cues",
                 subtitle: "Gentle cues for starts, pauses, and endings",
                 binding: settingsBinding(\.playSounds)
+            )
+            ToggleRow(
+                title: "Focus reset captions",
+                subtitle: "Show what the voice says, for following along without sound",
+                binding: settingsBinding(\.resetCaptions)
             )
         }
     }
@@ -436,19 +443,60 @@ struct SettingsView: View {
     }
 }
 
+/// A Settings section that folds to its heading, so the page is a short list to scan
+/// rather than one long scroll. Each remembers whether it was left open; all start closed.
 struct SettingsCard<Content: View>: View {
     let title: String
     let icon: String
+    /// A line shown beside the heading while it's closed, such as the current value.
+    let summary: String?
     @ViewBuilder let content: Content
+    @AppStorage private var open: Bool
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    init(title: String, icon: String, summary: String? = nil, @ViewBuilder content: () -> Content) {
+        self.title = title
+        self.icon = icon
+        self.summary = summary
+        self.content = content()
+        _open = AppStorage(wrappedValue: false, "settings.open.\(title)")
+    }
 
     var body: some View {
         NonnaCard {
             VStack(alignment: .leading, spacing: 17) {
-                Label(title, systemImage: icon)
-                    .font(.system(size: 17, weight: .bold, design: .default))
-                Divider().overlay(NonnaTheme.line)
-                content
+                Button {
+                    withAnimation(reduceMotion ? nil : .spring(duration: 0.35, bounce: 0.05)) { open.toggle() }
+                } label: {
+                    HStack(spacing: 10) {
+                        Label(title, systemImage: icon)
+                            .font(.system(size: 17, weight: .bold, design: .default))
+                        Spacer(minLength: 8)
+                        if !open, let summary {
+                            Text(summary)
+                                .font(.system(size: 11))
+                                .foregroundStyle(NonnaTheme.secondaryInk)
+                                .lineLimit(1)
+                                .transition(.opacity)
+                        }
+                        Image(systemName: "chevron.down")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(NonnaTheme.secondaryInk)
+                            .rotationEffect(.degrees(open ? 0 : -90))
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .help(open ? "Collapse" : "Expand")
+                .accessibilityValue(open ? "Expanded" : "Collapsed")
+
+                if open {
+                    Divider().overlay(NonnaTheme.line)
+                    content
+                        .transition(.opacity)
+                }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 }

@@ -111,8 +111,8 @@ enum AmbientSound: String, Codable, CaseIterable, Identifiable, Sendable {
         }
     }
 
-    /// Where the recordings come from. The clock's licence asks for this credit.
-    static let credits = "Clock: \u{201C}Wall clock with weight ticking\u{201D} by Work With Sounds / Technical Museum of Slovenia, CC BY 4.0. Rain: \u{201C}Rain against the window\u{201D}, public domain. Ocean: \u{201C}Ocean Waves on a Tropical Beach\u{201D}, CC0. All via Wikimedia Commons; trimmed and looped. Brown and white noise made for Pomofocus."
+    /// Where the recordings come from. The clock's licence and ElevenLabs' terms ask for this credit.
+    static let credits = "Clock: \u{201C}Wall clock with weight ticking\u{201D} by Work With Sounds / Technical Museum of Slovenia, CC BY 4.0. Rain: \u{201C}Rain against the window\u{201D}, public domain. Ocean: \u{201C}Ocean Waves on a Tropical Beach\u{201D}, CC0. All via Wikimedia Commons; trimmed and looped. Brown and white noise made for Pomofocus. Focus reset voice by elevenlabs.io; meditation music \u{201C}Motion\u{201D} by Liborio Conti (no-copyright-music.com)."
 }
 
 struct FocusTask: Identifiable, Codable, Hashable, Sendable {
@@ -257,6 +257,10 @@ struct NonnaSettings: Codable, Equatable, Sendable {
     /// Tasks shows what's next instead of everything at once, adding a task asks only for
     /// its name, and after a few minutes of planning the app suggests starting.
     var simpleTasks = true
+    /// Focus reset shows what the voice says, for watching without sound.
+    var resetCaptions = false
+    /// The last ambience picked for a focus reset, a `ResetAmbience` raw value.
+    var resetAmbience = "rain"
     /// A `ThemeChoice` raw value.
     var themeID = ThemeChoice.obsidian.rawValue
     var customTheme = CustomThemeSpec()
@@ -271,6 +275,7 @@ struct NonnaSettings: Codable, Equatable, Sendable {
         case showCalendarEvents, hiddenCalendarIDs, overtimeAlert
         case celebrateSessions, themeID, customTheme, hasCompletedOnboarding
         case pauseWhenAway, awayMinutes, rateFocus, savedThemes, celebrationStyle, simpleTasks
+        case resetCaptions, resetAmbience
     }
 
     init() {}
@@ -307,6 +312,8 @@ struct NonnaSettings: Codable, Equatable, Sendable {
         savedThemes = try values.decodeIfPresent([SharedTheme].self, forKey: .savedThemes) ?? []
         celebrationStyle = try values.decodeIfPresent(CelebrationStyle.self, forKey: .celebrationStyle) ?? .confetti
         simpleTasks = try values.decodeIfPresent(Bool.self, forKey: .simpleTasks) ?? true
+        resetCaptions = try values.decodeIfPresent(Bool.self, forKey: .resetCaptions) ?? false
+        resetAmbience = try values.decodeIfPresent(String.self, forKey: .resetAmbience) ?? "rain"
         themeID = try values.decodeIfPresent(String.self, forKey: .themeID) ?? ThemeChoice.obsidian.rawValue
         customTheme = try values.decodeIfPresent(CustomThemeSpec.self, forKey: .customTheme) ?? CustomThemeSpec()
         hasCompletedOnboarding = try values.decodeIfPresent(Bool.self, forKey: .hasCompletedOnboarding) ?? true
@@ -322,6 +329,8 @@ struct NonnaSettings: Codable, Equatable, Sendable {
         try values.encode(savedThemes, forKey: .savedThemes)
         try values.encode(celebrationStyle, forKey: .celebrationStyle)
         try values.encode(simpleTasks, forKey: .simpleTasks)
+        try values.encode(resetCaptions, forKey: .resetCaptions)
+        try values.encode(resetAmbience, forKey: .resetAmbience)
         try values.encode(themeID, forKey: .themeID)
         try values.encode(customTheme, forKey: .customTheme)
         try values.encode(hasCompletedOnboarding, forKey: .hasCompletedOnboarding)

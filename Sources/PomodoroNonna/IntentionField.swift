@@ -82,7 +82,7 @@ struct IntentionField: View {
         .padding(.horizontal, 16)
         .frame(maxWidth: 460)
         .frame(height: 46)
-        .background(focused ? NonnaTheme.paper : NonnaTheme.raisedPaper.opacity(0.82),
+        .background(focused ? NonnaTheme.pane(NonnaTheme.paper, 0.9) : NonnaTheme.pane(NonnaTheme.raisedPaper, 0.82),
                     in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         .keyframeAnimator(initialValue: 0.0, trigger: commits) { content, glow in
             content

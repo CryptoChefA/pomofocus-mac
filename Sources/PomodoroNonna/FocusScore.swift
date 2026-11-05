@@ -27,6 +27,14 @@ struct FocusScore: Equatable, Sendable {
     /// The part with the most room to grow, for the "what to work on" line.
     var weakest: Part? { parts.min { $0.fraction < $1.fraction } }
 
+    /// Good, middling or low at a glance, on the same lines as the labels: Strong and up
+    /// is good, Building is middling, below that is low.
+    enum Tone: Equatable, Sendable { case good, middling, low }
+
+    static func tone(for score: Int) -> Tone {
+        score >= 70 ? .good : score >= 50 ? .middling : .low
+    }
+
     static func label(for score: Int) -> String {
         switch score {
         case 85...: "Locked in"

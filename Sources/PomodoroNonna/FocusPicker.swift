@@ -129,7 +129,7 @@ struct FocusPicker: View {
             .font(.system(size: 12, weight: .medium))
             .padding(.horizontal, 12)
             .frame(height: 32)
-            .background(NonnaTheme.paper, in: Capsule())
+            .background(NonnaTheme.pane(NonnaTheme.paper), in: Capsule())
             .overlay { Capsule().stroke(NonnaTheme.line, lineWidth: 0.8) }
             .contentShape(Capsule())
         }
@@ -161,7 +161,7 @@ struct FocusPicker: View {
             .font(.system(size: 12, weight: .medium))
             .padding(.horizontal, 12)
             .frame(height: 32)
-            .background(NonnaTheme.raisedPaper, in: Capsule())
+            .background(NonnaTheme.pane(NonnaTheme.raisedPaper), in: Capsule())
             .overlay { Capsule().stroke(NonnaTheme.strongLine, lineWidth: 0.8) }
             .contentShape(Capsule())
         }

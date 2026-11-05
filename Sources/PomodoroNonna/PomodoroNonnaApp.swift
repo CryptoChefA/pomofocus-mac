@@ -84,7 +84,13 @@ private struct MenuBarLabel: View {
         if model.awaitingNextPhase != nil { return "done" }
         if model.isBreathing { return "breathe" }
         if model.status == .idle { return nil }
-        return (model.isOvertime ? "+" : "") + model.displaySeconds.clockString
+        // Written the way the widget's live countdown writes it ("1:19", not "01:19"),
+        // so the two read the same side by side.
+        let seconds = max(0, model.displaySeconds)
+        let clock = seconds >= 3600
+            ? String(format: "%d:%02d:%02d", seconds / 3600, seconds % 3600 / 60, seconds % 60)
+            : String(format: "%d:%02d", seconds / 60, seconds % 60)
+        return (model.isOvertime ? "+" : "") + clock
     }
 
     var body: some View {

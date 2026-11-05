@@ -11,7 +11,7 @@ private func check(_ condition: @autoclosure () -> Bool, _ message: String) {
 func ratio(_ a: String, _ b: String) -> Double { RGB(hex: a).contrast(with: RGB(hex: b)) }
 
 let presets = ThemeChoice.allCases.compactMap { choice in choice.palette.map { (choice.title, $0) } }
-check(presets.count == 12, "twelve fixed presets")
+check(presets.count == 13, "thirteen fixed presets")
 for (name, p) in presets {
     check(ratio(p.ink, p.background) >= 12, "\(name): body text is crisp (\(ratio(p.ink, p.background)))")
     check(ratio(p.ink, p.paper) >= 10, "\(name): text on cards is crisp")

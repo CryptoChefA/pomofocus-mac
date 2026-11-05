@@ -1,0 +1,425 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>London layers</title>
+<!-- Renders the London theme's skyline layers to PNG. Run Scripts/london/render.sh; it opens
+     this page in headless Chrome and saves the images to Resources/London. -->
+<pre id="out"></pre>
+<script>
+let ts = 2;
+const VW = 1600, VH = 1000, B = 692;
+// Only the band the skyline occupies is stored: virtual y 370 to 712.
+const TOP = 370, LH = 342;           // B = street level on both banks
+const EYE = { x: 1112, y: 553, r: 108 };
+const LAMPS = [[818, B - 164], [1250, B - 140], [1352.8, B - 248]];  // aviation lights: crane tops and the Shard
+
+function rand(seed) { const x = Math.sin(seed * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); }
+function poly(g, pts) { g.beginPath(); g.moveTo(pts[0][0], pts[0][1]); for (let i = 1; i < pts.length; i++) g.lineTo(pts[i][0], pts[i][1]); g.closePath(); g.fill(); }
+function pinn(g, x, base, w, h) { poly(g, [[x - w / 2, base], [x - w / 2, base - h * .55], [x, base - h], [x + w / 2, base - h * .55], [x + w / 2, base]]); }
+function gothic(g, x, base, w, h) {
+  g.beginPath(); g.moveTo(x, base); g.lineTo(x, base - h * .62);
+  g.quadraticCurveTo(x, base - h * .92, x + w / 2, base - h); g.quadraticCurveTo(x + w, base - h * .92, x + w, base - h * .62);
+  g.lineTo(x + w, base); g.closePath(); g.fill();
+}
+function block(g, x, base, w, h, l) {
+  g.fillStyle = `hsl(205,6%,${l}%)`; g.fillRect(x, base - h, w, h);
+  g.fillStyle = `hsl(205,6%,${l - 6}%)`; g.fillRect(x + w * .64, base - h, w * .36, h);
+}
+function line(g, x0, y0, x1, y1) { g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1, y1); g.stroke(); }
+
+// ---------- far ----------
+function btTower(g, x, b) {
+  g.fillStyle = '#8b9093'; poly(g, [[x - 9.5, b], [x - 8, b - 140], [x + 8, b - 140], [x + 9.5, b]]);
+  // the open antenna galleries and the banded glazed drum above them
+  for (let i = 0; i < 10; i++) { g.fillStyle = i % 2 ? '#6f7579' : '#9ca1a4'; g.fillRect(x - 10.5, b - 140 - (i + 1) * 5.6, 21, 5.6); }
+  g.fillStyle = '#787e82'; g.fillRect(x - 7, b - 214, 14, 18);
+  g.fillStyle = '#6a7074'; g.fillRect(x - 1.3, b - 236, 2.6, 22);
+}
+function stPauls(g, x, b) {
+  const stone = '#aaa498', lead = '#7c8285', dark = '#5f6567';
+  g.fillStyle = stone; g.fillRect(x - 56, b - 34, 108, 34);
+  // the west front's twin baroque towers
+  for (const tx of [x - 60, x - 45]) {
+    g.fillStyle = stone; g.fillRect(tx - 6, b - 62, 12, 28); g.fillRect(tx - 4.5, b - 72, 9, 10);
+    poly(g, [[tx - 4.5, b - 72], [tx, b - 83], [tx + 4.5, b - 72]]);
+    g.fillRect(tx - .6, b - 88, 1.2, 5);
+    g.fillStyle = dark; g.fillRect(tx - 2, b - 58, 4, 12);
+  }
+  // drum with its ring of columns, the gallery, then the attic
+  g.fillStyle = stone; g.fillRect(x - 25, b - 58, 50, 24);
+  g.fillStyle = dark; for (let i = 0; i < 12; i++) g.fillRect(x - 23 + i * 4.1, b - 55, 1.3, 18);
+  g.fillStyle = stone; g.fillRect(x - 26, b - 60, 52, 3); g.fillRect(x - 19, b - 70, 38, 10);
+  // the dome, lead grey, with faint ribs
+  g.fillStyle = lead; g.beginPath(); g.moveTo(x - 20, b - 70);
+  g.bezierCurveTo(x - 20, b - 88, x - 9, b - 96, x, b - 97); g.bezierCurveTo(x + 9, b - 96, x + 20, b - 88, x + 20, b - 70); g.fill();
+  g.strokeStyle = 'rgba(40,44,46,.3)'; g.lineWidth = .6;
+  for (let i = -3; i <= 3; i++) { g.beginPath(); g.moveTo(x + i * 5.6, b - 70); g.quadraticCurveTo(x + i * 4.4, b - 90, x, b - 97); g.stroke(); }
+  // lantern, golden ball and cross
+  g.fillStyle = stone; g.fillRect(x - 3.5, b - 110, 7, 13); poly(g, [[x - 4.5, b - 110], [x, b - 115], [x + 4.5, b - 110]]);
+  g.fillStyle = '#b39b60'; g.beginPath(); g.arc(x, b - 117, 1.6, 0, 7); g.fill(); g.fillRect(x - .5, b - 124, 1, 6); g.fillRect(x - 2, b - 122, 4, 1);
+}
+function gherkin(g, x, b, r, h) {
+  const p = new Path2D();
+  p.moveTo(x - r * .78, b);
+  p.bezierCurveTo(x - r * 1.14, b - h * .36, x - r * 1.05, b - h * .72, x - r * .52, b - h * .94);
+  p.quadraticCurveTo(x, b - h * 1.03, x + r * .52, b - h * .94);
+  p.bezierCurveTo(x + r * 1.05, b - h * .72, x + r * 1.14, b - h * .36, x + r * .78, b);
+  p.closePath();
+  g.fillStyle = '#617079'; g.fill(p);
+  g.save(); g.clip(p);
+  g.strokeStyle = 'rgba(28,36,44,.5)'; g.lineWidth = 2.4;     // the dark spiral bands
+  for (let k = -9; k < 10; k++) line(g, x - r * 1.3, b - k * 15, x + r * 1.3, b - k * 15 - 34);
+  g.fillStyle = 'rgba(255,255,255,.09)'; g.fillRect(x - r * 1.2, b - h, r * .85, h);
+  g.restore();
+}
+function cityCluster(g, b) {
+  const glass = l => `hsl(208,8%,${l}%)`;
+  const slab = (x, w, h, l) => { g.fillStyle = glass(l); g.fillRect(x, b - h, w, h); g.fillStyle = glass(l - 7); g.fillRect(x + w * .58, b - h, w * .42, h); };
+  slab(830, 26, 136, 44);                                      // Tower 42
+  slab(860, 24, 166, 48); g.fillStyle = glass(40); g.fillRect(871, b - 192, 1.6, 27);   // Heron Tower and mast
+  slab(888, 36, 202, 51);                                      // 22 Bishopsgate, the tallest
+  gherkin(g, 942, b, 17, 128);                                 // 30 St Mary Axe
+  // the Cheesegrater: its west face slopes the whole way up
+  g.fillStyle = glass(53); poly(g, [[950, b], [968, b - 160], [985, b - 160], [987, b]]);
+  g.strokeStyle = 'rgba(60,64,68,.35)'; g.lineWidth = .7;
+  for (let y = b - 8; y > b - 156; y -= 16) line(g, 954 + (b - y) * .11, y, 986, y - 10);
+  // the Scalpel: an angled cut at the top
+  g.fillStyle = glass(47); poly(g, [[990, b], [990, b - 118], [1003, b - 138], [1014, b - 128], [1014, b]]);
+  // the Walkie-Talkie: widens as it rises, curved crown
+  g.fillStyle = glass(42); g.beginPath(); g.moveTo(1019, b); g.lineTo(1015, b - 78);
+  g.quadraticCurveTo(1011, b - 102, 1015, b - 114); g.quadraticCurveTo(1036, b - 121, 1061, b - 108);
+  g.quadraticCurveTo(1063, b - 88, 1052, b - 68); g.lineTo(1050, b); g.fill();
+}
+function crane(g, x, b, h, back, jib) {
+  g.strokeStyle = '#6c7174'; g.lineWidth = 1;
+  g.beginPath();
+  g.moveTo(x - 1.6, b); g.lineTo(x - 1.6, b - h); g.moveTo(x + 1.6, b); g.lineTo(x + 1.6, b - h);
+  for (let y = b; y > b - h; y -= 5) { g.moveTo(x - 1.6, y); g.lineTo(x + 1.6, y - 5); }
+  g.moveTo(x - back, b - h); g.lineTo(x + jib, b - h);
+  g.moveTo(x, b - h - 12); g.lineTo(x + jib * .8, b - h); g.moveTo(x, b - h - 12); g.lineTo(x - back, b - h);
+  g.moveTo(x, b - h); g.lineTo(x, b - h - 12);
+  g.stroke();
+  g.fillStyle = '#5d6264'; g.fillRect(x - back, b - h - 1, 8, 5);
+  g.lineWidth = .5; line(g, x + jib * .55, b - h, x + jib * .55, b - h * .5);
+}
+function shard(g, x, b, h, hw) {
+  const top = b - h;
+  const p = new Path2D();
+  [[x - hw, b], [x - 4.6, top + h * .1], [x - 3.3, top + 4], [x - 1.5, top + h * .09], [x + .8, top], [x + 2.4, top + h * .085],
+   [x + 4.3, top + 9], [x + 5.4, top + h * .12], [x + hw, b]].forEach(([px, py], i) => i ? p.lineTo(px, py) : p.moveTo(px, py));
+  p.closePath();
+  g.fillStyle = '#7e8a93'; g.fill(p);
+  g.save(); g.clip(p);
+  // the separate glass facets each catch the sky a little differently
+  g.fillStyle = 'rgba(255,255,255,.11)'; poly(g, [[x - hw * .4, b], [x - 1.5, top + h * .09], [x + hw * .22, b]]);
+  g.fillStyle = 'rgba(0,0,0,.13)'; poly(g, [[x + hw * .22, b], [x + 2.4, top + h * .085], [x + 6, top + h * .1], [x + hw + 2, b]]);
+  g.fillStyle = 'rgba(40,48,56,.09)'; for (let y = b - 6; y > top + h * .14; y -= 4.5) g.fillRect(x - hw, y, hw * 2, .6);
+  g.restore();
+}
+function drawFar(g) {
+  for (let i = 0; i < 150; i++) {
+    const x = rand(i * 1.7) * 1660 - 30, w = 10 + rand(i * 2.3) * 36, h = 12 + Math.pow(rand(i * 3.1), 2.4) * 58;
+    block(g, x, B + 4, w, h + 4, 44 + rand(i * 4.7) * 14);
+  }
+  btTower(g, 112, B);
+  crane(g, 818, B, 152, 26, 58);
+  stPauls(g, 772, B);
+  cityCluster(g, B);
+  crane(g, 1250, B, 128, 22, 50);
+  shard(g, 1352, B, 248, 31);
+}
+
+// ---------- back ----------
+function millbank(g, x, b) {
+  g.fillStyle = '#7f878c'; g.beginPath(); g.roundRect(x - 17, b - 150, 34, 150, 7); g.fill();
+  g.fillStyle = '#6c7378'; g.fillRect(x + 4, b - 150, 13, 150);
+  g.fillStyle = 'rgba(40,46,52,.25)'; for (let y = b - 146; y < b; y += 4.4) g.fillRect(x - 17, y, 34, .7);
+}
+function abbey(g, x, b) {
+  const st = '#8e877a', sh = '#716b60', dk = 'rgba(46,42,36,.55)';
+  g.fillStyle = sh; poly(g, [[x + 10, b], [x + 10, b - 84], [x + 22, b - 96], [x + 100, b - 90], [x + 100, b]]);   // nave roof running east
+  for (const tx of [x - 15, x + 15]) {
+    g.fillStyle = st; g.fillRect(tx - 8, b - 122, 16, 122);
+    g.fillStyle = sh; g.fillRect(tx + 2, b - 122, 6, 122);
+    g.fillStyle = dk; gothic(g, tx - 3, b - 92, 6, 22);
+    g.fillStyle = st; for (const px of [tx - 7, tx - 2.4, tx + 2.4, tx + 7]) pinn(g, px, b - 122, 2.6, 15);
+    g.fillRect(tx - 8, b - 124, 16, 2.5);
+  }
+  g.fillStyle = st; poly(g, [[x - 7, b], [x - 7, b - 88], [x, b - 98], [x + 7, b - 88], [x + 7, b]]);   // gable with the great west window
+  g.fillStyle = dk; gothic(g, x - 4, b - 50, 8, 34);
+  g.fillStyle = '#d9d4c6'; g.beginPath(); g.arc(x - 15, b - 100, 2.4, 0, 7); g.fill();                 // clock on the north tower
+}
+function portcullis(g, x0, x1, b) {
+  const w = x1 - x0;
+  g.fillStyle = '#887f70'; g.fillRect(x0, b - 58, w, 58);
+  g.fillStyle = '#5e5b56'; poly(g, [[x0, b - 58], [x0 + 6, b - 68], [x1 - 6, b - 68], [x1, b - 58]]);
+  g.fillStyle = '#6f6353';   // its tall bronze chimneys
+  for (let i = 0; i < 6; i++) { const cx = x0 + 6 + i * (w - 12) / 5; g.fillRect(cx - 2.2, b - 92, 4.4, 26); g.fillRect(cx - 2.9, b - 94, 5.8, 3); }
+  g.fillStyle = 'rgba(50,46,40,.38)'; for (let y = b - 52; y < b - 4; y += 8) for (let x = x0 + 3; x < x1 - 3; x += 5) g.fillRect(x, y, 2.5, 4);
+}
+function drawBack(g) {
+  for (let i = 0; i < 110; i++) {
+    const x = rand(i * 5.1 + 3) * 1660 - 30, w = 16 + rand(i * 6.3) * 44, h = 18 + Math.pow(rand(i * 7.9), 1.8) * 62;
+    block(g, x, B + 4, w, h, 40 + rand(i * 8.3) * 14);
+  }
+  millbank(g, 46, B);
+  abbey(g, 194, B);
+  portcullis(g, 668, 728, B);
+  block(g, 736, B + 4, 72, 72, 52);    // Ministry of Defence
+  block(g, 1030, B + 4, 34, 124, 47);  // Shell Centre
+}
+
+// ---------- mid ----------
+function trees(g, x0, x1, b, hMin, hMax, seed) {
+  // London plane trees in November: muted ochre, olive and rust
+  g.fillStyle = 'hsl(48,14%,30%)'; g.fillRect(x0, b - hMin, x1 - x0, hMin);
+  const n = (x1 - x0) / 3.2;
+  for (let i = 0; i < n; i++) {
+    const x = x0 + rand(seed + i * 1.3) * (x1 - x0), h = hMin + rand(seed + i * 2.1) * (hMax - hMin), r = 5 + rand(seed + i * 3.7) * 8;
+    g.fillStyle = `hsl(${34 + rand(seed + i * 4.1) * 40},${14 + rand(seed + i * 6.7) * 16}%,${27 + rand(seed + i * 5.9) * 12}%)`;
+    g.beginPath(); g.ellipse(x, b - h, r * 1.15, r, 0, 0, 7); g.fill();
+  }
+}
+function palaceBack(g, x0, x1, b) {
+  g.fillStyle = '#5a6061'; g.fillRect(x0, b - 80, x1 - x0, 20);                  // slate roofs behind the river front
+  for (let i = 0; i < 16; i++) {                                                    // turrets and lanterns over the courts
+    const tx = x0 + 14 + rand(i * 9.1) * (x1 - x0 - 28), th = 84 + rand(i * 5.3) * 22;
+    g.fillStyle = '#7d7461'; g.fillRect(tx - 3, b - th, 6, th - 60);
+    g.fillStyle = '#5d6262'; pinn(g, tx, b - th, 6, 11);
+  }
+  // Westminster Hall's great roof, just behind Elizabeth Tower
+  g.fillStyle = '#5b5f5e'; poly(g, [[566, b - 70], [590, b - 112], [614, b - 70]]);
+  g.fillStyle = '#7d7461'; pinn(g, 590, b - 112, 4, 12);
+}
+function centralTower(g, x, b) {
+  const st = '#988d78', sh = '#7d7461', dk = 'rgba(48,44,38,.6)';
+  g.fillStyle = st; g.fillRect(x - 15, b - 160, 30, 92);
+  g.fillStyle = sh; g.fillRect(x + 5, b - 160, 10, 92);
+  g.fillStyle = dk; for (const wx of [x - 11, x - 4.5, x + 2]) gothic(g, wx, b - 112, 4.5, 42);
+  g.fillStyle = st; for (const px of [x - 15, x - 7.5, x, x + 7.5, x + 15]) pinn(g, px, b - 160, 3, 17);
+  poly(g, [[x - 12.5, b - 160], [x, b - 240], [x + 12.5, b - 160]]);
+  g.fillStyle = sh; poly(g, [[x, b - 240], [x + 12.5, b - 160], [x + 4, b - 160]]);
+  g.fillStyle = dk; for (const [lx, ly] of [[x - 4, b - 176], [x - 2.4, b - 198], [x - 1.2, b - 218]]) gothic(g, lx, ly, 2.6, 7);
+  g.fillStyle = '#a28d5a'; g.fillRect(x - .5, b - 249, 1, 9);
+}
+function palaceFront(g, x0, x1, b) {
+  const st = '#968b76', sh = '#7b725f', win = 'rgba(50,46,40,.55)';
+  g.fillStyle = st; g.fillRect(x0, b - 62, x1 - x0, 62);
+  // the river front steps forward and rises into pavilions at intervals
+  for (const px of [x0 + 2, x0 + 74, (x0 + x1) / 2 - 16, x1 - 108, x1 - 34]) {
+    g.fillStyle = st; g.fillRect(px, b - 75, 32, 75);
+    g.fillStyle = sh; g.fillRect(px + 26, b - 75, 6, 75);
+    g.fillStyle = st; for (const q of [px + 2, px + 11, px + 21, px + 30]) pinn(g, q, b - 75, 3, 15);
+  }
+  // buttresses with pinnacles all along the parapet, and three tiers of tall windows
+  for (let x = x0 + 3; x < x1 - 2; x += 6.5) {
+    g.fillStyle = sh; g.fillRect(x, b - 62, 1.1, 62);
+    g.fillStyle = st; pinn(g, x + .55, b - 62, 2, 8);
+  }
+  g.fillStyle = win;
+  for (const [y, h] of [[b - 56, 13], [b - 37, 12], [b - 18, 10]]) for (let x = x0 + 5; x < x1 - 4; x += 6.5) gothic(g, x + 1.6, y + h, 2.8, h);
+  g.fillStyle = 'rgba(40,38,34,.35)'; g.fillRect(x0, b - 4, x1 - x0, 4);           // terrace at the water
+}
+function victoriaTower(g, x, b) {
+  const st = '#94886f', sh = '#796f5b', dk = 'rgba(48,44,38,.6)', w = 56, top = b - 232;
+  g.fillStyle = st; g.fillRect(x - w / 2, top, w, 232);
+  g.fillStyle = sh; g.fillRect(x + 6, top, w / 2 - 6, 232);
+  g.fillStyle = dk; for (const bx of [x - 21, x - 10, x + 3, x + 14]) for (let y = top + 16; y < b - 52; y += 34) gothic(g, bx, y + 24, 5, 24);
+  g.fillStyle = 'rgba(70,62,50,.5)'; for (let y = top + 10; y < b - 40; y += 34) g.fillRect(x - w / 2, y, w, 1.4);
+  g.fillStyle = dk; gothic(g, x - 12, b, 24, 46);                                    // the Sovereign's Entrance
+  g.fillStyle = st; g.fillRect(x - w / 2, top - 4, w, 4);
+  for (const tx of [x - w / 2 + 5, x + w / 2 - 5]) { g.fillStyle = st; g.fillRect(tx - 5, top - 20, 10, 20); pinn(g, tx, top - 20, 10, 20); }
+  for (const tx of [x - 13, x, x + 13]) pinn(g, tx, top - 4, 4, 13);
+  g.fillStyle = '#3e3d3b'; g.fillRect(x - .8, top - 70, 1.6, 70);
+  return [x + .8, top - 68];
+}
+function elizabethTower(g, x, b, now) {
+  const m = 2.6, y = v => b - v * m;          // 96 m tall, drawn metre by metre
+  const st = '#a39274', sh = '#86775c', iron = '#4f4d49', gilt = '#ad965e', dk = 'rgba(46,40,32,.7)';
+  const W = 31, Wc = 35;
+  g.fillStyle = st; g.fillRect(x - W / 2, y(50), W, 50 * m);
+  g.fillStyle = sh; g.fillRect(x + 3, y(50), W / 2 - 3, 50 * m);
+  g.fillStyle = 'rgba(70,60,45,.42)'; for (const px of [x - 12, x - 7, x - 2, x + 5.5, x + 10.5]) g.fillRect(px, y(48), 1.3, 43 * m);
+  g.fillStyle = 'rgba(70,60,45,.3)'; for (let k = 0; k < 7; k++) g.fillRect(x - W / 2, y(6 + k * 6.6), W, 1);
+  // clock stage: wider, with a gilt surround around the opal dial
+  g.fillStyle = st; g.fillRect(x - Wc / 2, y(63), Wc, 13 * m);
+  g.fillStyle = sh; g.fillRect(x + 4, y(63), Wc / 2 - 4, 13 * m);
+  const cy = y(56.5), cr = 9.1;
+  g.fillStyle = gilt; g.fillRect(x - cr - 3.2, cy - cr - 3.2, (cr + 3.2) * 2, (cr + 3.2) * 2);
+  g.fillStyle = '#e8e3d4'; g.beginPath(); g.arc(x, cy, cr, 0, 7); g.fill();
+  g.strokeStyle = 'rgba(40,36,30,.75)'; g.lineWidth = .7; g.beginPath(); g.arc(x, cy, cr - .5, 0, 7); g.stroke();
+  for (let i = 0; i < 12; i++) { const a = i / 12 * Math.PI * 2; line(g, x + Math.sin(a) * cr * .72, cy - Math.cos(a) * cr * .72, x + Math.sin(a) * cr * .9, cy - Math.cos(a) * cr * .9); }
+  g.strokeStyle = '#2a2621'; g.lineCap = 'round';
+  g.lineCap = 'butt';
+  g.fillStyle = st; for (const px of [x - Wc / 2 + 1.6, x + Wc / 2 - 1.6]) { g.fillRect(px - 1.6, y(66), 3.2, 3 * m); pinn(g, px, y(66), 3.2, 9); }
+  // belfry with its pointed openings
+  g.fillStyle = st; g.fillRect(x - W / 2, y(72), W, 9 * m);
+  g.fillStyle = sh; g.fillRect(x + 3, y(72), W / 2 - 3, 9 * m);
+  g.fillStyle = dk; for (const ox of [x - 11, x - 3.5, x + 4]) gothic(g, ox, y(64), 6, 19);
+  // steep cast-iron roof with gabled dormers and gilt ribs
+  g.fillStyle = iron; poly(g, [[x - W / 2 - 1, y(72)], [x - 6, y(86)], [x + 6, y(86)], [x + W / 2 + 1, y(72)]]);
+  g.strokeStyle = gilt; g.lineWidth = .6;
+  for (const k of [-1, -.5, 0, .5, 1]) line(g, x + k * (W / 2 + 1), y(72), x + k * 6, y(86));
+  g.fillStyle = iron; for (const dx of [-8, 0, 8]) poly(g, [[x + dx - 2.6, y(75)], [x + dx, y(79)], [x + dx + 2.6, y(75)]]);
+  // the Ayrton Light lantern, then the spire and finial
+  g.fillStyle = iron; g.fillRect(x - 4.5, y(89.5), 9, 3.5 * m);
+  g.fillStyle = gilt; g.fillRect(x - 4.5, y(89.5), 9, .9); g.fillRect(x - 4.5, y(86.2), 9, .9);
+  g.fillStyle = iron; poly(g, [[x - 4, y(89.5)], [x, y(95)], [x + 4, y(89.5)]]);
+  g.fillStyle = gilt; g.fillRect(x - .5, y(97.5), 1, 2.6 * m);
+}
+function westminsterBridge(g, x0, x1, b) {
+  g.fillStyle = '#3d413e'; g.fillRect(x0, b + 4, x1 - x0, 7);      // the river seen through the arches, in shadow
+  g.fillStyle = '#55625a'; g.fillRect(x0, b - 2, x1 - x0, 6);
+  const n = 7, span = (x1 - x0) / n;
+  for (let i = 0; i < n; i++) {
+    const ax = x0 + i * span;
+    g.beginPath(); g.moveTo(ax, b + 4); g.lineTo(ax, b + 11); g.quadraticCurveTo(ax + span / 2, b + 1, ax + span, b + 11); g.lineTo(ax + span, b + 4); g.fill();
+  }
+  for (let i = 0; i <= n; i++) g.fillRect(x0 + i * span - 2.5, b + 4, 5, 7);
+  g.fillStyle = '#3f4743'; for (let x = x0 + 10; x < x1; x += 21) { g.fillRect(x, b - 10, .9, 8); g.fillRect(x - 1.3, b - 11.5, 2.6, 1.6); }
+}
+function countyHall(g, x0, x1, b) {
+  const cx = (x0 + x1) / 2;
+  g.fillStyle = '#a49c8b'; g.fillRect(x0, b - 56, x1 - x0, 56);
+  g.fillStyle = '#7d5c4b'; poly(g, [[x0 + 2, b - 56], [x0 + 8, b - 70], [x1 - 8, b - 70], [x1 - 2, b - 56]]);   // red-tiled roof
+  g.fillStyle = '#8f8676'; for (let x = x0 + 10; x < x1 - 10; x += 9) g.fillRect(x, b - 66, 3, 5);
+  g.fillStyle = 'rgba(60,56,50,.45)'; for (let x = cx - 15; x < cx + 15; x += 3.2) g.fillRect(x, b - 50, 1.2, 24);   // the curved colonnade
+  for (const y of [b - 22, b - 13]) for (let x = x0 + 3; x < x1 - 3; x += 4.5) g.fillRect(x, y, 2, 4);
+}
+function eyeBase(g, hx, hy, b) {
+  g.strokeStyle = '#c4c9cb'; g.lineCap = 'round';
+  g.lineWidth = 3.4; line(g, hx, hy, hx + 22, b - 4); line(g, hx, hy, hx + 66, b - 4);       // the A-frame legs lean back towards land
+  g.lineWidth = .6; g.strokeStyle = 'rgba(205,210,212,.55)'; line(g, hx, hy, hx + 132, b - 4); line(g, hx, hy, hx + 104, b - 4);
+  g.lineCap = 'butt';
+  g.fillStyle = '#6e7376'; g.fillRect(hx - 62, b - 8, 124, 6);
+}
+function embankment(g) {
+  g.fillStyle = '#4f514e'; g.fillRect(0, B, 660, 11); g.fillRect(982, B, 620, 11);
+  g.fillStyle = '#6a6b66'; g.fillRect(0, B, 660, 1.2); g.fillRect(982, B, 620, 1.2);
+  g.fillStyle = '#3b3d3b'; for (const x0 of [8, 1190]) for (let x = x0; x < (x0 < 600 ? 248 : 1600); x += 32) { g.fillRect(x, B - 12, 1, 12); g.fillRect(x - 1.6, B - 14, 3.2, 2.4); }
+}
+let flagAt = [0, 0];
+function drawMid(g, now) {
+  g.clearRect(0, 0, VW, VH);
+  trees(g, -10, 246, B, 24, 50, 11);
+  palaceBack(g, 290, 630, B);
+  centralTower(g, 452, B);
+  palaceFront(g, 290, 630, B);
+  flagAt = victoriaTower(g, 262, B);
+  elizabethTower(g, 642, B, now);
+  westminsterBridge(g, 657, 983, B);
+  countyHall(g, 986, 1074, B);
+  eyeBase(g, EYE.x, EYE.y, B);
+  trees(g, 1176, 1612, B, 18, 40, 47);
+  embankment(g);
+}
+function drawWheel(g, R) {
+  const c = R + 10;
+  g.translate(c, c);
+  g.strokeStyle = 'rgba(222,226,228,.32)'; g.lineWidth = .45;     // 64 fine cable spokes
+  for (let i = 0; i < 64; i++) { const a = i / 64 * Math.PI * 2; line(g, Math.cos(a) * 5, Math.sin(a) * 5, Math.cos(a) * (R - 4), Math.sin(a) * (R - 4)); }
+  g.strokeStyle = '#d9dddf'; g.lineWidth = 1.7; g.beginPath(); g.arc(0, 0, R, 0, 7); g.stroke();
+  g.lineWidth = 1; g.beginPath(); g.arc(0, 0, R - 4.2, 0, 7); g.stroke();
+  g.lineWidth = .5; g.beginPath();                                   // truss between the rims
+  for (let i = 0; i < 128; i++) { const a = i / 128 * Math.PI * 2, a2 = (i + 1) / 128 * Math.PI * 2; g.moveTo(Math.cos(a) * R, Math.sin(a) * R); g.lineTo(Math.cos(a2) * (R - 4.2), Math.sin(a2) * (R - 4.2)); }
+  g.stroke();
+  g.fillStyle = '#cdd1d3'; g.beginPath(); g.arc(0, 0, 5, 0, 7); g.fill();
+  g.fillStyle = '#c3c9cc';                                           // 32 capsules
+  for (let i = 0; i < 32; i++) { const a = i / 32 * Math.PI * 2; g.beginPath(); g.ellipse(Math.cos(a) * (R + 4.4), Math.sin(a) * (R + 4.4), 3.4, 2.2, a, 0, 7); g.fill(); }
+}
+
+// ============================================================================
+// Night: each layer gets a matching light layer (floodlit stone, lit windows,
+// lamps) that the shader adds over the darkened view and spreads into a glow.
+// ============================================================================
+function lightLayer(albedo, paint, after) {
+  const c = document.createElement('canvas'); c.width = albedo.width; c.height = albedo.height;
+  const g = c.getContext('2d'); g.setTransform(ts, 0, 0, ts, 0, -TOP * ts);
+  paint(g, albedo);
+  g.globalCompositeOperation = 'destination-in'; g.drawImage(albedo, 0, TOP, VW, LH);   // light only where there's a building
+  g.globalCompositeOperation = 'source-over';
+  if (after) after(g);
+  return c;
+}
+// A building lit from below: its own detail, tinted by the floodlights.
+function floodlit(g, src, x0, y0, x1, y1, top, bottom) {
+  g.save(); g.beginPath(); g.rect(x0, y0, x1 - x0, y1 - y0); g.clip();
+  g.drawImage(src, 0, TOP, VW, LH);
+  g.globalCompositeOperation = 'multiply';
+  const gr = g.createLinearGradient(0, y0, 0, y1); gr.addColorStop(0, top); gr.addColorStop(1, bottom);
+  g.fillStyle = gr; g.fillRect(x0, y0, x1 - x0, y1 - y0);
+  g.fillStyle = 'rgb(150,150,150)'; g.fillRect(x0, y0, x1 - x0, y1 - y0);   // floodlights, not daylight
+  g.globalCompositeOperation = 'destination-in'; g.drawImage(src, 0, TOP, VW, LH);
+  g.restore();
+}
+// Scattered lit windows on a grid; warm is the share that are homes rather than offices.
+function windowLights(g, n, x0, x1, y0, y1, seed, warm) {
+  for (let i = 0; i < n; i++) {
+    const x = x0 + Math.floor(rand(seed + i * 1.37) * (x1 - x0) / 2.6) * 2.6, y = y0 + Math.floor(rand(seed + i * 2.71) * (y1 - y0) / 3.4) * 3.4;
+    const a = .3 + rand(seed + i * 7.1) * .5;
+    g.fillStyle = rand(seed + i * 3.3) < warm ? `rgba(255,${196 + rand(seed + i) * 40 | 0},${128 + rand(seed + i * 5) * 50 | 0},${a})` : `rgba(${205 + rand(seed + i) * 30 | 0},226,255,${a * .85})`;
+    g.fillRect(x, y, 1.5, 1.6);
+  }
+}
+function farLights(g, src) {
+  windowLights(g, 900, 0, 700, B - 200, B, 101, .45);
+  windowLights(g, 1100, 840, 1600, B - 210, B, 131, .3);
+  windowLights(g, 600, 828, 1066, B - 205, B, 171, .05);                                       // the City's offices, working late
+  floodlit(g, src, 98, B - 240, 128, B - 136, 'rgb(200,220,255)', 'rgb(110,130,165)');         // BT Tower's lit top
+  floodlit(g, src, 700, B - 126, 840, B - 30, 'rgb(255,240,214)', 'rgb(255,214,160)');        // St Paul's, floodlit
+  floodlit(g, src, 1318, B - 252, 1388, B - 185, 'rgb(240,246,255)', 'rgb(120,135,160)');     // the Shard's glowing crown
+}
+function backLights(g, src) {
+  windowLights(g, 450, 0, 172, B - 152, B, 303, .5);
+  windowLights(g, 1100, 302, 1600, B - 130, B, 337, .55);
+  floodlit(g, src, 172, B - 128, 302, B, 'rgb(255,214,160)', 'rgb(255,192,122)');              // Westminster Abbey
+}
+function midLights(g, src, now) {
+  // the Palace, Victoria Tower and Elizabeth Tower, lit gold from below
+  floodlit(g, src, 233, B - 312, 676, B, 'rgb(235,180,110)', 'rgb(255,208,140)');
+  floodlit(g, src, 984, B - 72, 1076, B, 'rgb(250,226,192)', 'rgb(255,214,168)');               // County Hall
+  g.fillStyle = 'rgba(255,214,150,.9)';                                                         // a few Palace windows still lit
+  for (const [y, h] of [[B - 56, 13], [B - 37, 12], [B - 18, 10]]) for (let x = 295, i = 0; x < 626; x += 6.5, i++) if (rand(i * 3.7 + y) < .32) g.fillRect(x + 1.7, y + h * .2, 2.6, h * .75);
+  // Big Ben's dials glow at night; the hands stay dark
+  const cx = 642, cy = B - 56.5 * 2.6, cr = 9.1;
+  g.fillStyle = 'rgb(255,242,205)'; g.beginPath(); g.arc(cx, cy, cr, 0, 7); g.fill();
+  g.save(); g.globalCompositeOperation = 'destination-out'; g.strokeStyle = '#000'; g.lineCap = 'round';
+  g.lineWidth = .7; g.beginPath(); g.arc(cx, cy, cr - .5, 0, 7); g.stroke();
+  g.restore();
+  g.fillStyle = 'rgb(255,236,196)'; g.fillRect(cx - 4.5, B - 89.5 * 2.6, 9, 3.5 * 2.6);         // the Ayrton Light: the House is sitting
+  g.fillStyle = 'rgb(255,226,170)';
+  for (let x = 667; x < 983; x += 21) g.fillRect(x - 1.3, B - 11.5, 2.6, 1.8);                  // Westminster Bridge lamps
+  for (const x of embankmentPosts()) g.fillRect(x - 1.6, B - 14, 3.2, 2.4);
+}
+function embankmentPosts() { const xs = []; for (let x = 8; x < 248; x += 32) xs.push(x); for (let x = 1190; x < 1600; x += 32) xs.push(x); return xs; }
+// The strings of little lights looped between the lamp posts along the Embankment.
+function necklace(g) {
+  const xs = embankmentPosts();
+  g.fillStyle = 'rgba(255,240,212,.95)';
+  for (let i = 0; i + 1 < xs.length; i++) {
+    if (xs[i + 1] - xs[i] > 40) continue;
+    for (let t = .1; t < .95; t += .12) g.fillRect(xs[i] + (xs[i + 1] - xs[i]) * t - .45, B - 13 + Math.sin(Math.PI * t) * 3.4, .9, .9);
+  }
+}
+function wheelLights(src) {
+  const c = document.createElement('canvas'); c.width = src.width; c.height = src.height;
+  const g = c.getContext('2d');
+  g.drawImage(src, 0, 0);
+  g.globalCompositeOperation = 'multiply'; g.fillStyle = 'rgb(110,140,255)'; g.fillRect(0, 0, c.width, c.height);
+  g.globalCompositeOperation = 'destination-in'; g.drawImage(src, 0, 0);
+  return c;
+}
+
+
+function layerCanvas() { const c = document.createElement('canvas'); c.width = VW * ts; c.height = LH * ts; const g = c.getContext('2d'); g.setTransform(ts, 0, 0, ts, 0, -TOP * ts); return [c, g]; }
+const [far, fg] = layerCanvas(); drawFar(fg);
+const [back, bg] = layerCanvas(); drawBack(bg);
+const [mid, mg] = layerCanvas(); drawMid(mg, new Date());
+const wheel = document.createElement('canvas'); wheel.width = wheel.height = (EYE.r + 10) * 2 * ts;
+const wg = wheel.getContext('2d'); wg.scale(ts, ts); drawWheel(wg, EYE.r);
+const out = {
+  'london-far': far, 'london-back': back, 'london-mid': mid, 'london-wheel': wheel,
+  'london-far-lights': lightLayer(far, farLights), 'london-back-lights': lightLayer(back, backLights),
+  'london-mid-lights': lightLayer(mid, (g, s) => midLights(g, s, new Date()), necklace), 'london-wheel-lights': wheelLights(wheel),
+};
+document.getElementById('out').textContent = JSON.stringify(Object.fromEntries(Object.entries(out).map(([k, c]) => [k, c.toDataURL('image/png')])));
+</script>

@@ -28,6 +28,11 @@ final class ThemeManager: @unchecked Sendable {
     private(set) var custom: CustomThemeSpec
     private(set) var saved: [SharedTheme]
     @ObservationIgnored private var appearanceObserver: NSObjectProtocol?
+    /// How see-through the cards and panels are, from 0 (solid) to 1 (glass). Here rather
+    /// than read from defaults by each view, so everything redraws together as it changes.
+    var glass: Double = UserDefaults.standard.double(forKey: NonnaGlass.key) {
+        didSet { UserDefaults.standard.set(glass, forKey: NonnaGlass.key) }
+    }
 
     private static let cacheKey = "pomofocus.theme.v1"
 
@@ -96,6 +101,10 @@ enum NonnaTheme {
     static var isDark: Bool { t.palette.isDark }
     static var colorScheme: ColorScheme { isDark ? .dark : .light }
     static var shadow: Color { Color.black.opacity(isDark ? 0.46 : 0.1) }
+    static var glass: Double { min(1, max(0, ThemeManager.shared.glass)) }
+    /// The fill for a small surface inside a card or panel (a tab bar, a chip, a button). It
+    /// thins as glass goes up, so a glass card reads as one pane rather than solid patches.
+    static func pane(_ color: Color, _ opacity: Double = 1) -> Color { color.opacity(opacity * (1 - glass * 0.75)) }
     /// Master-caution red, used only for the overtime alert.
     static let alert = Color(hex: "FF453A")
 
@@ -182,6 +191,7 @@ struct NonnaBackground: View {
             case ThemeChoice.sakura.rawValue: SakuraBlossoms()
             case ThemeChoice.autumn.rawValue: AutumnScene()
             case ThemeChoice.blackIce.rawValue: BlackIceScene()
+            case ThemeChoice.london.rawValue: LondonScene()
             case ThemeChoice.bespoke.rawValue: Pinstripe()
             default: EmptyView()
             }
@@ -330,6 +340,52 @@ enum SakuraArt {
 
 }
 
+/// How much the theme's scene shows through the cards and panels: 0 is solid paper, 1 is
+/// clear glass. Set with the Glass slider in Settings → Appearance.
+enum NonnaGlass {
+    static let key = "appearance.glass"
+}
+
+/// The surface of a card or panel. At zero glass it's the theme's paper, exactly as before.
+/// Turn glass up and the paper thins over a pane of glass, so the scene behind shows
+/// through, blurred: Apple's Liquid Glass on macOS 26 and later, a frosted material before.
+struct NonnaSurface<S: Shape>: View {
+    let shape: S
+    let tint: Color
+    var opacity: Double = 1
+    var shadowRadius: CGFloat = 0
+
+    var body: some View {
+        let amount = NonnaTheme.glass
+        if amount < 0.01 {
+            shape.fill(tint.opacity(opacity))
+                .shadow(color: shadowRadius > 0 ? NonnaTheme.shadow : .clear, radius: shadowRadius, y: shadowRadius * 0.55)
+        } else {
+            // No drop shadow on glass: Liquid Glass brings its own edge and depth, and a
+            // shadow would flatten the pane into an image it could no longer see through.
+            ZStack {
+                pane
+                // A little of the theme's colour always stays, so text keeps its contrast.
+                shape.fill(tint.opacity(opacity * (1 - amount * 0.85)))
+            }
+        }
+    }
+
+    // Clear glass, the kind Apple puts over photos and video: it shows the scene rather than
+    // frosting it over. It's told the theme's light or dark, not the Mac's, or a dark theme
+    // on a Mac in light mode gets pale grey glass.
+    @ViewBuilder private var pane: some View {
+        Group {
+            if #available(macOS 26.0, *) {
+                Color.clear.glassEffect(.clear, in: shape)
+            } else {
+                shape.fill(.ultraThinMaterial)
+            }
+        }
+        .environment(\.colorScheme, NonnaTheme.colorScheme)
+    }
+}
+
 struct NonnaCard<Content: View>: View {
     var padding: CGFloat = 22
     @ViewBuilder var content: Content
@@ -343,9 +399,8 @@ struct NonnaCard<Content: View>: View {
             // frame anything inside the card moved, which is what made the timer card stutter
             // when the phase changed. The picture is the same: the card is this shape.
             .background {
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(NonnaTheme.paper.opacity(0.94))
-                    .shadow(color: NonnaTheme.shadow, radius: 18, y: 10)
+                NonnaSurface(shape: RoundedRectangle(cornerRadius: 14, style: .continuous), tint: NonnaTheme.paper,
+                             opacity: 0.94, shadowRadius: 18)
             }
             .overlay {
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
@@ -385,7 +440,7 @@ private struct NonnaButtonBody: View {
             .frame(minHeight: 40)
             .background {
                 RoundedRectangle(cornerRadius: 9, style: .continuous)
-                    .fill(prominent ? color : NonnaTheme.raisedPaper)
+                    .fill(prominent ? color : NonnaTheme.pane(NonnaTheme.raisedPaper))
                     .overlay {
                         LinearGradient(
                             colors: [.white.opacity(isHovering ? 0.11 : 0.055), .clear, .black.opacity(0.08)],

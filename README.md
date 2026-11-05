@@ -1,6 +1,6 @@
 # Pomofocus
 
-Pomofocus is a beautiful, local-first focus timer for macOS. It brings together clear intentions, flexible intervals, breaks, reflection, and useful analytics—without accounts, subscriptions, tracking, or cloud infrastructure.
+Pomofocus is a free, open source Pomodoro timer for macOS: a beautiful, local-first focus timer that brings together clear intentions, flexible intervals, breaks, reflection, and useful analytics—without accounts, subscriptions, tracking, or cloud infrastructure.
 
 > Piano piano. One meaningful thing at a time.
 
@@ -25,9 +25,9 @@ Pomofocus is a beautiful, local-first focus timer for macOS. It brings together 
 - Native SwiftUI macOS app and menu-bar timer with a live progress ring and countdown
 - Native small, medium, and large desktop/sidebar widgets with a live timer and one restrained gold progress band
 - Obsidian Atelier interface with graphite surfaces, champagne accents, and precision typography
-- Themes: Obsidian, Ivory (light), Midnight, Forest, Ember, Sakura, Layla (Tiffany baby pink) and Écrin (jewel-box red and gold), Match system (follows macOS light/dark), or a custom theme built from a base, a background, a focus colour and a break colour; readable surfaces are derived automatically. Chosen on first launch and changeable in Settings
+- Themes: Obsidian, Ivory (light), Midnight, Forest, Ember, Sakura, Layla (Tiffany baby pink), Écrin (jewel-box red and gold), Piano, Bespoke, Black Ice and London (Westminster across the Thames on a rainy night, drawn on the graphics chip, with optional rain and storm), Match system (follows macOS light/dark), or a custom theme built from a base, a background, a focus colour and a break colour; readable surfaces are derived automatically. Chosen on first launch and changeable in Settings
 - Split focus workspace with an analog timer dial and a dark daily timeline
-- Cinema mode (⇧⌘F): a full-screen, screensaver-like scene for wide and ultrawide displays, with rolling digits, an unrolled minute tape, and a slowly drifting glow; keeps the display awake, Space pauses, → advances, Esc leaves
+- Cinema mode (⇧⌘F): a full-screen, screensaver-like scene for wide and ultrawide displays, with rolling digits, an unrolled minute tape, and a slowly drifting glow, plus your next calendar event under the clock ("Up next: … in 25 min, 3:00 PM"); keeps the display awake, Space pauses, → advances, Esc leaves
 - Seven-day navigator with focus, break, and live-session blocks
 - Break records with planned duration, actual duration, skipped status, and tracked overtime
 - Custom focus, short-break, and long-break durations
@@ -58,6 +58,7 @@ Pomofocus is a beautiful, local-first focus timer for macOS. It brings together 
 - Focus rebuild plan: eight questions build a research-based plan in four phases (Reset, Build, Extend, Sustain). Blocks climb five minutes per level once you finish 4 full blocks on 2+ days with a 70% completion rate, and step back a level if under 40% are finished. Weekly metrics (completion rate, longest unbroken stretch, pauses per block, start-time spread, active days), house rules from your distractions, a restorative break menu and an end-of-day reward; every recommendation cites peer-reviewed research, with a Sources page and an honest note on what the science doesn't say
 - Collapsible day timeline (⌥⌘T)
 - Session celebration: when you press End session, screen-wide confetti and a cinematic breakdown of the whole sitting (every pomodoro, total focus, breaks, pauses, overtime, today vs goal, streak); single pomodoros pass quietly; switchable in Settings
+- Focus reset: pick one of three short guided sessions (one minute; settle a busy mind; coming back after days away) and an ambience (rain, binaural beats, meditation music, or just the voice), then the window goes quiet in the theme's colour with a breathing flower that follows the voice's breath cues; optional captions in Settings
 - Three-cycle guided breathing ritual with animated inhale and exhale cues
 - Local notifications and a locally generated bell ding for every timer cue
 - Local focus ambience: soft ticking, layered natural rain, ocean waves, and brown noise
@@ -151,10 +152,12 @@ swiftc Sources/PomodoroNonna/Models.swift Sources/PomodoroNonna/TodoModels.swift
 - `FocusPlanView.swift`: the Plan section and its questionnaire
 - `ThemePalette.swift`: theme palettes, presets and custom-theme colour derivation
 - `ThemePickerView.swift`: the theme picker, custom theme editor and first-launch welcome
+- `LondonScene.swift`: the London theme's Metal scene; its skyline layers are drawn by `Scripts/london/layers.html` and rendered to `Resources/London` with `Scripts/london/render.sh`
 - `DashboardView.swift`: local charts, lifetime task totals, streaks, and usage days
 - `FocusScore.swift`: the daily focus score and runaway-timer trimming (pure, tested); `FocusScoreViews.swift` draws them
 - `HistoryView.swift`: searchable session ledger and CSV export
 - `TasksView.swift`: Tasks (board, smart views, New task form, Paste a list) and the timer's task link
+- `FocusReset.swift`: the Focus reset section, its recordings, player and breath cues
 - `SimpleTasks.swift`: the Keep tasks simple Today view (Up next, planning nudge)
 - `WorkImport.swift`: picks past work to offer as tasks after updating (pure, tested); `WorkImportSheet.swift` shows the offer
 - `SettingsView.swift`: timer, rhythm, sound, and privacy controls
@@ -201,6 +204,9 @@ The focus sounds in `Resources/Sounds` come from Wikimedia Commons, trimmed into
 - `rain.m4a`: "Rain against the window", public domain ([source](https://commons.wikimedia.org/wiki/File:Rain_against_the_window.ogg)).
 - `ocean.m4a`: "Ocean Waves on a Tropical Beach", CC0 ([source](https://commons.wikimedia.org/wiki/File:Ocean_Waves_on_a_Tropical_Beach.ogg)).
 - `brown.m4a` and `white.m4a` are generated noise, made for Pomofocus.
+- `ambience-binaural.m4a`: a 6 Hz binaural beat (200 Hz left, 206 Hz right), generated for Pomofocus.
+- Meditation music in the released app: "Motion" by Liborio Conti ([no-copyright-music.com](https://no-copyright-music.com)), looped. The composer asks that his music isn't given away as files, so it isn't in this repo; `Scripts/build-app.sh` adds it from `Resources/Licensed/` when present, and builds without it simply don't offer that option.
+- `reset-one-minute.m4a`, `reset-settle.m4a` and `reset-coming-back.m4a` (Focus reset): written for Pomofocus, voice generated with [elevenlabs.io](https://elevenlabs.io) on a free plan, which allows non-commercial use with this credit. These recordings are not covered by the MIT license; don't reuse them commercially.
 
 ## License
 

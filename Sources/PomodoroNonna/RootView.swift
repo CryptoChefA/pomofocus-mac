@@ -3,6 +3,7 @@ import SwiftUI
 enum AppSection: String, CaseIterable, Identifiable {
     case focus = "Focus"
     case plan = "Plan"
+    case reset = "Focus reset"
     case dashboard = "Dashboard"
     case history = "History"
     case tasks = "Tasks"
@@ -13,6 +14,7 @@ enum AppSection: String, CaseIterable, Identifiable {
         switch self {
         case .focus: "timer"
         case .plan: "figure.stairs"
+        case .reset: "wind"
         case .dashboard: "chart.bar.xaxis"
         case .history: "clock.arrow.circlepath"
         case .tasks: "checklist"
@@ -30,13 +32,18 @@ struct RootView: View {
     var body: some View {
         ZStack {
             NonnaBackground()
+            // A focus reset replaces the whole window, sidebar included, rather than sitting
+            // on top of it: when it ends, the app comes straight back with nothing left over.
+            if let session = model.activeReset {
+                FocusResetSessionView(session: session)
+            } else {
             HStack(spacing: 0) {
                 Sidebar(selection: $selection)
                     .frame(width: 82)
                     .frame(maxHeight: .infinity)
-                    // The whole column, edge to edge and under the title bar, so no theme
-                    // scenery shows through beside the icons.
-                    .background(NonnaTheme.sunken.ignoresSafeArea())
+                    // The whole column, edge to edge and under the title bar. Solid unless
+                    // glass is turned up in Settings, so scenery doesn't show beside the icons.
+                    .background(NonnaSurface(shape: Rectangle(), tint: NonnaTheme.sunken).ignoresSafeArea())
                 Divider().overlay(NonnaTheme.line)
                 GeometryReader { proxy in
                 ZStack {
@@ -47,6 +54,7 @@ struct RootView: View {
                             withAnimation(reduceMotion ? nil : NonnaMotion.page) { selection = .focus }
                             if model.status == .idle, !model.isBreathing, model.awaitingNextPhase == nil { model.startFocus() }
                         }
+                        case .reset: FocusResetView()
                         case .dashboard: DashboardView()
                         case .history: HistoryView()
                         case .tasks: TasksView()
@@ -62,11 +70,15 @@ struct RootView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .animation(reduceMotion ? nil : NonnaMotion.page, value: selection)
             }
+            }
         }
         .foregroundStyle(NonnaTheme.ink)
         .tint(NonnaTheme.terracotta)
         .onChange(of: model.focusScreenRequest) { _, _ in
             withAnimation(reduceMotion ? nil : NonnaMotion.page) { selection = .focus }
+        }
+        .onChange(of: model.resetScreenRequest) { _, _ in
+            withAnimation(reduceMotion ? nil : NonnaMotion.page) { selection = .reset }
         }
         .onOpenURL { url in
             // pomofocus://focus, from a click on the desktop widget.
@@ -254,8 +266,7 @@ private struct Sidebar: View {
         .padding(.top, 24)
         .padding(.horizontal, 15)
         .padding(.bottom, 18)
-        // Solid, so theme scenery (frost, petals) never shows through the sidebar.
-        .background(NonnaTheme.sunken)
+        // The column's surface (solid, or glass) is drawn by RootView behind the whole sidebar.
         // A drop anywhere else in the sidebar just ends the drag.
         .onDrop(of: [.text], isTargeted: nil) { _ in
             dragging = nil

@@ -153,7 +153,7 @@ struct FocusView: View {
 
     private var isFocusing: Bool { model.status != .idle && model.phase == .focus }
 
-    /// The timeline stays open through a block, so its forecast stays in view. Versions
+    /// The timeline stays open through a block, so its shaded run-out stays in view. Versions
     /// 0.22.3 to 0.22.6 folded it away during focus; bring back one they left folded.
     private func unfoldPlannerFoldedByApp() {
         guard !compact, timelineAutoCollapsed else { return }
@@ -206,7 +206,7 @@ struct FocusView: View {
                             ZStack {
                                 if model.phase == phase {
                                     RoundedRectangle(cornerRadius: 9, style: .continuous)
-                                        .fill(NonnaTheme.raisedPaper)
+                                        .fill(NonnaTheme.pane(NonnaTheme.raisedPaper))
                                         .matchedGeometryEffect(id: "phase-surface", in: phaseSelection)
                                         .padding(4)
                                 }
@@ -229,7 +229,7 @@ struct FocusView: View {
                         .buttonStyle(.plain)
                     }
                 }
-                .background(NonnaTheme.sunken.opacity(0.72))
+                .background(NonnaTheme.pane(NonnaTheme.sunken, 0.72))
                 .overlay(alignment: .bottom) { Rectangle().fill(NonnaTheme.line).frame(height: 0.8) }
 
                 VStack(spacing: 22) {
@@ -307,7 +307,7 @@ struct FocusView: View {
                                 .foregroundStyle(NonnaTheme.secondaryInk)
                                 .padding(.horizontal, 10)
                                 .frame(height: 24)
-                                .background(NonnaTheme.raisedPaper)
+                                .background(NonnaTheme.pane(NonnaTheme.raisedPaper))
                                 .clipShape(Capsule())
                                 .overlay { Capsule().stroke(NonnaTheme.line, lineWidth: 0.8) }
                         }
@@ -438,6 +438,14 @@ struct FocusView: View {
                     Label(model.phase == .focus ? "Begin focus" : "Begin rest", systemImage: "play.fill")
                 }
                 .buttonStyle(NonnaButtonStyle(color: accent))
+
+                Button {
+                    model.resetScreenRequest += 1
+                } label: {
+                    Label("Focus reset", systemImage: "wind")
+                }
+                .buttonStyle(NonnaButtonStyle(prominent: false))
+                .help("A short guided reset before you start")
             } else {
                 Button {
                     model.togglePause()
@@ -462,6 +470,9 @@ struct FocusView: View {
                         Button("Finish and take a break") {
                             model.skipToNextPhase()
                         }
+                        Divider()
+                    } else {
+                        Button("Focus reset") { model.resetScreenRequest += 1 }
                         Divider()
                     }
                     Button("Abandon timer…", role: .destructive) { confirmsAbandon = true }
@@ -656,49 +667,15 @@ private struct PieSlice: Shape {
 /// values, so it costs next to nothing to draw.
 private struct BreathingRitualView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @Environment(\.colorScheme) private var colorScheme
     let stage: BreathingStage
     let cycle: Int
     let accent: Color
     @State private var expanded = false
 
-    private static let petals = 6
-
-    private var colors: [Color] {
-        // Only the theme's accent and its lighter shade, so the flower always matches the look.
-        let palette = [accent, NonnaTheme.darkTerracotta]
-        return (0..<Self.petals).map { palette[$0 % palette.count] }
-    }
-
     var body: some View {
         VStack(spacing: 22) {
-            GeometryReader { proxy in
-                let size = min(proxy.size.width, proxy.size.height)
-                let petal = size * 0.5
-                ZStack {
-                    ForEach(0..<Self.petals, id: \.self) { index in
-                        Circle()
-                            .fill(
-                                LinearGradient(
-                                    colors: [colors[index].opacity(0.95), colors[index].opacity(0.55)],
-                                    startPoint: .top,
-                                    endPoint: .bottom
-                                )
-                            )
-                            .frame(width: petal, height: petal)
-                            .offset(y: expanded ? -petal * 0.5 : 0)
-                            .rotationEffect(.degrees(Double(index) / Double(Self.petals) * 360))
-                            .opacity(colorScheme == .dark ? 0.6 : 0.5)
-                            .blendMode(colorScheme == .dark ? .screen : .multiply)
-                    }
-                }
-                .compositingGroup()
-                .scaleEffect(expanded ? 1 : 0.38)
-                .rotationEffect(.degrees(expanded ? 0 : -90))
-                .shadow(color: accent.opacity(expanded ? 0.3 : 0.12), radius: expanded ? 24 : 10)
-                .frame(width: proxy.size.width, height: proxy.size.height)
-            }
-            .frame(height: 230)
+            BreathingFlower(expanded: expanded, accent: accent)
+                .frame(height: 230)
 
             VStack(spacing: 8) {
                 Text(stage.prompt)
@@ -728,6 +705,51 @@ private struct BreathingRitualView: View {
             : Double(AppModel.breathingExhaleSeconds)
         withAnimation(reduceMotion ? nil : .easeInOut(duration: duration)) {
             expanded = nextStage == .inhale
+        }
+    }
+}
+
+/// Six overlapping petals that open on a breath in and close on a breath out. The caller
+/// animates `expanded` over the length of the breath.
+struct BreathingFlower: View {
+    @Environment(\.colorScheme) private var colorScheme
+    let expanded: Bool
+    let accent: Color
+
+    private static let petals = 6
+
+    private var colors: [Color] {
+        // Only the theme's accent and its lighter shade, so the flower always matches the look.
+        let palette = [accent, NonnaTheme.darkTerracotta]
+        return (0..<Self.petals).map { palette[$0 % palette.count] }
+    }
+
+    var body: some View {
+        GeometryReader { proxy in
+            let size = min(proxy.size.width, proxy.size.height)
+            let petal = size * 0.5
+            ZStack {
+                ForEach(0..<Self.petals, id: \.self) { index in
+                    Circle()
+                        .fill(
+                            LinearGradient(
+                                colors: [colors[index].opacity(0.95), colors[index].opacity(0.55)],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                        )
+                        .frame(width: petal, height: petal)
+                        .offset(y: expanded ? -petal * 0.5 : 0)
+                        .rotationEffect(.degrees(Double(index) / Double(Self.petals) * 360))
+                        .opacity(colorScheme == .dark ? 0.6 : 0.5)
+                        .blendMode(colorScheme == .dark ? .screen : .multiply)
+                }
+            }
+            .compositingGroup()
+            .scaleEffect(expanded ? 1 : 0.38)
+            .rotationEffect(.degrees(expanded ? 0 : -90))
+            .shadow(color: accent.opacity(expanded ? 0.3 : 0.12), radius: expanded ? 24 : 10)
+            .frame(width: proxy.size.width, height: proxy.size.height)
         }
     }
 }
@@ -894,7 +916,7 @@ private struct TimelineRail: View {
             .padding(.top, 18)
             .frame(width: 52)
             .frame(maxHeight: .infinity)
-            .background(NonnaTheme.sunken.opacity(hovering ? 0.95 : 0.72).ignoresSafeArea())
+            .background(NonnaSurface(shape: Rectangle(), tint: NonnaTheme.sunken, opacity: hovering ? 0.95 : 0.72).ignoresSafeArea())
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

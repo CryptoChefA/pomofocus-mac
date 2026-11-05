@@ -76,7 +76,7 @@ struct SharedTheme: Codable, Identifiable, Equatable, Sendable {
 
 /// The ready-made looks, plus "match system" and "custom".
 enum ThemeChoice: String, CaseIterable, Identifiable, Sendable {
-    case system, obsidian, ivory, midnight, forest, ember, sakura, layla, ecrin, piano, bespoke, autumn, blackIce, custom
+    case system, obsidian, ivory, midnight, forest, ember, sakura, layla, ecrin, piano, bespoke, autumn, blackIce, london, custom
 
     var id: String { rawValue }
 
@@ -95,6 +95,7 @@ enum ThemeChoice: String, CaseIterable, Identifiable, Sendable {
         case .bespoke: "Bespoke"
         case .autumn: "Autumn"
         case .blackIce: "Black Ice"
+        case .london: "London"
         case .custom: "Custom"
         }
     }
@@ -114,6 +115,7 @@ enum ThemeChoice: String, CaseIterable, Identifiable, Sendable {
         case .bespoke: "Black, graphite and white, tailored"
         case .autumn: "Limited edition: falling leaves"
         case .blackIce: "Black and ice blue, frost and snow"
+        case .london: "Westminster at night, rain on the Thames"
         case .custom: "Build your own"
         }
     }
@@ -142,6 +144,7 @@ enum ThemeChoice: String, CaseIterable, Identifiable, Sendable {
         case .bespoke: .bespoke
         case .autumn: .autumn
         case .blackIce: .blackIce
+        case .london: .london
         case .system, .custom: nil
         }
     }
@@ -216,6 +219,14 @@ extension ThemePalette {
         isDark: true, background: "000000", paper: "050A11", raised: "0B141F", sunken: "000000",
         ink: "E9F6FF", secondaryInk: "7F97AD", line: "152435", strongLine: "1F3449",
         accent: "8FDDFF", accentHighlight: "C9F0FF", onAccent: "03060A", rest: "4FB6D6", longRest: "5D86E0")
+
+    /// London: Westminster across the river on a rainy night. Soot black, the warm gold of
+    /// the floodlit Palace for focus, the London Eye's blue for breaks and the dusky rose of
+    /// the cloud over the city for long breaks.
+    static let london = ThemePalette(
+        isDark: true, background: "07080B", paper: "0E1015", raised: "161920", sunken: "050609",
+        ink: "F3EEE6", secondaryInk: "9C958C", line: "23262D", strongLine: "343841",
+        accent: "E8B872", accentHighlight: "F6D7A6", onAccent: "0B0906", rest: "8FA7E8", longRest: "C9927A")
 
     /// Piano, after a dress watch: an ivory dial, black Roman numerals and a railway minute
     /// track, with hands in blued steel; black-key graphite for breaks.

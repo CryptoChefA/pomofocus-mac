@@ -24,3 +24,6 @@ work/
 *.pem
 *.key
 *.mobileprovision
+
+# Licensed audio that may ship inside the app but must not be redistributed as files
+Resources/Licensed/

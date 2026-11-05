@@ -40,7 +40,7 @@ struct DayTimelineView: View {
                 }
             }
         }
-        .background(NonnaTheme.sunken.opacity(0.72).ignoresSafeArea())
+        .background(NonnaSurface(shape: Rectangle(), tint: NonnaTheme.sunken, opacity: 0.72).ignoresSafeArea())
     }
 
     private var timelineHeader: some View {
@@ -244,7 +244,6 @@ struct DayTimelineView: View {
             ForEach(entries) { entry in
                 let position = blockPosition(for: entry, in: range)
                 TimelineEntryBlock(entry: entry)
-                    .opacity(entry.isForecast ? 0.55 : 1)
                     .frame(maxWidth: .infinity)
                     .frame(height: position.height)
                     .padding(.leading, 68 + sessionInset)
@@ -490,40 +489,6 @@ struct DayTimelineView: View {
             }
         }
 
-        // Forecast the rest of the sitting after the block on the dial: its break and the
-        // next block, so you can see where the time is going.
-        if calendar.isDateInToday(selectedDay), !model.isBreathing {
-            var cursor: Date
-            if model.awaitingNextPhase != nil || model.isOvertime {
-                cursor = now
-            } else if model.status == .idle {
-                cursor = now.addingTimeInterval(TimeInterval(model.plannedSeconds))
-            } else {
-                let elapsed = model.activityIntervals.reduce(0.0) { $0 + $1.duration(through: now) }
-                cursor = now.addingTimeInterval(max(0, TimeInterval(model.plannedSeconds) - elapsed))
-            }
-            for (index, next) in model.upcomingPhases.enumerated() {
-                let end = cursor.addingTimeInterval(TimeInterval(next.seconds))
-                result.append(
-                    TimelineEntry(
-                        id: "forecast-\(index)",
-                        title: next.phase == .focus ? "Next block" : (next.phase == .longBreak ? "Long break" : "Break"),
-                        subtitle: "Up next",
-                        startedAt: cursor,
-                        endedAt: end,
-                        color: NonnaTheme.accent(for: next.phase),
-                        overtimeSeconds: 0,
-                        totalSeconds: next.seconds,
-                        projectionProgress: 0,
-                        isBreak: next.phase != .focus,
-                        isActive: false,
-                        isForecast: true
-                    )
-                )
-                cursor = end
-            }
-        }
-
         return result.sorted { $0.startedAt < $1.startedAt }
     }
 
@@ -639,7 +604,7 @@ struct DayTimelineView: View {
                 Spacer()
                 if dueCount > 0 {
                     Button {
-                        let busy = timedEvents.map { DayPlanner.Slot(start: $0.startedAt, end: $0.endedAt) }
+                        let busy = dayCalendarEvents.filter(\.blocksPlanning).map { DayPlanner.Slot(start: $0.startedAt, end: $0.endedAt) }
                         withAnimation(reduceMotion ? nil : .spring(duration: 0.45, bounce: 0.1)) {
                             model.planDay(selectedDay, busy: busy)
                         }
@@ -801,8 +766,6 @@ private struct TimelineEntry: Identifiable {
     let projectionProgress: Double?
     let isBreak: Bool
     let isActive: Bool
-    /// A break or block still to come in this sitting, drawn fainter than the one on the dial.
-    var isForecast = false
 }
 
 private struct TimelineEntryBlock: View {
@@ -876,7 +839,7 @@ private struct TimelineEntryBlock: View {
     }
 
     private var isPreview: Bool {
-        entry.projectionProgress == 0 && !entry.isActive && !entry.isForecast
+        entry.projectionProgress == 0 && !entry.isActive
     }
 
     private var baseOpacity: Color {

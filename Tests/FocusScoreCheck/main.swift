@@ -96,4 +96,9 @@ check(RunawayTimers.isRunaway(longBreak), "10h break is a runaway")
 let fixedBreak = RunawayTimers.trimmed(longBreak)
 check(fixedBreak.restedSeconds == 300 && fixedBreak.overtimeSeconds == 0, "break trimmed")
 
+// The traffic-light bands follow the labels.
+check(FocusScore.tone(for: 85) == .good && FocusScore.tone(for: 70) == .good, "Strong and up is good")
+check(FocusScore.tone(for: 69) == .middling && FocusScore.tone(for: 50) == .middling, "Building is middling")
+check(FocusScore.tone(for: 49) == .low && FocusScore.tone(for: 0) == .low, "below Building is low")
+
 print("Focus score checks passed")

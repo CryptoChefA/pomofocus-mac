@@ -394,19 +394,76 @@ extension Color {
 
 struct AppearanceSettingsCard: View {
     var body: some View {
-        NonnaCard {
-            VStack(alignment: .leading, spacing: 17) {
-                HStack(alignment: .firstTextBaseline) {
-                    Label("Appearance", systemImage: "paintpalette")
-                        .font(.system(size: 17, weight: .bold))
-                    Spacer()
-                    Text("Changes apply instantly, everywhere: windows, menu bar panel, Cinema and celebrations.")
-                        .font(.system(size: 10))
-                        .foregroundStyle(NonnaTheme.secondaryInk)
-                }
-                Divider().overlay(NonnaTheme.line)
-                ThemePicker()
+        SettingsCard(title: "Appearance", icon: "paintpalette",
+                     summary: ThemeChoice(rawValue: ThemeManager.shared.themeID)?.title ?? "Your own theme") {
+            Text("Changes apply instantly, everywhere: windows, menu bar panel, Cinema and celebrations.")
+                .font(.system(size: 11))
+                .foregroundStyle(NonnaTheme.secondaryInk)
+            ThemePicker()
+            GlassSetting()
+            if ThemeManager.shared.themeID == ThemeChoice.london.rawValue {
+                LondonWeatherSettings()
+                    .transition(.opacity)
             }
+        }
+    }
+}
+
+/// The Glass slider: from solid paper to clear glass, for the timer, cards and panels.
+private struct GlassSetting: View {
+    private var glass: Double { ThemeManager.shared.glass }
+
+    var body: some View {
+        HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Glass").font(.system(size: 12, weight: .medium))
+                Text("Let the theme show through the timer, cards and panels.")
+                    .font(.system(size: 10))
+                    .foregroundStyle(NonnaTheme.secondaryInk)
+            }
+            Spacer(minLength: 12)
+            Text("Solid").font(.system(size: 10)).foregroundStyle(NonnaTheme.secondaryInk)
+            Slider(value: Binding(get: { ThemeManager.shared.glass }, set: { ThemeManager.shared.glass = $0 }), in: 0...1)
+                .frame(width: 180)
+                .tint(NonnaTheme.terracotta)
+                .accessibilityLabel("Glass")
+                .accessibilityValue(glass < 0.01 ? "Solid" : "\(Int((glass * 100).rounded())) percent")
+            Text("Glass").font(.system(size: 10)).foregroundStyle(NonnaTheme.secondaryInk)
+        }
+        .frame(maxWidth: 520, alignment: .leading)
+    }
+}
+
+/// The London theme's weather: rain on or off, and a storm on top of it.
+private struct LondonWeatherSettings: View {
+    @AppStorage(LondonWeather.rainKey) private var rain = true
+    @AppStorage(LondonWeather.stormKey) private var storm = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("London weather")
+                .font(.system(size: 13, weight: .semibold))
+            row("Rain", "Rain falling over the river, rings on the water.", $rain)
+            row("Storm", rain ? "Heavier, windier rain, with lightning in the clouds." : "Needs rain on.", $storm)
+                .disabled(!rain)
+                .opacity(rain ? 1 : 0.5)
+        }
+        .padding(16)
+        .background(NonnaTheme.sunken.opacity(0.7), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay { RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(NonnaTheme.line, lineWidth: 0.8) }
+        .frame(maxWidth: 520, alignment: .leading)
+    }
+
+    private func row(_ title: String, _ subtitle: String, _ binding: Binding<Bool>) -> some View {
+        HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title).font(.system(size: 12, weight: .medium))
+                Text(subtitle).font(.system(size: 10)).foregroundStyle(NonnaTheme.secondaryInk)
+            }
+            Spacer(minLength: 12)
+            Toggle(title, isOn: binding)
+                .toggleStyle(.switch)
+                .labelsHidden()
         }
     }
 }

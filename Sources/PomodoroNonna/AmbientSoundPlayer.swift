@@ -8,7 +8,8 @@ import Foundation
 final class AmbientSoundPlayer {
     private let engine = AVAudioEngine()
     private let node = AVAudioPlayerNode()
-    private var activeSound: AmbientSound = .off
+    /// The bundled loop playing, by file name.
+    private var activeName: String?
     private var isAttached = false
     private var isPaused = false
     private var configurationObserver: NSObjectProtocol?
@@ -23,30 +24,33 @@ final class AmbientSoundPlayer {
     }
 
     private func restartAfterRouteChange() {
-        guard activeSound != .off else { return }
-        let sound = activeSound
+        guard let name = activeName else { return }
         let volume = Double(node.volume)
         let wasPaused = isPaused
-        activeSound = .off
-        start(sound, volume: volume)
+        activeName = nil
+        start(loopNamed: name, volume: volume)
         if wasPaused { pause() }
     }
 
     func start(_ sound: AmbientSound, volume: Double) {
-        guard sound != .off else {
+        guard let name = sound.fileName else {
             stop()
             return
         }
+        start(loopNamed: name, volume: volume)
+    }
 
+    /// Loops any bundled `.m4a` by name, such as a focus reset's ambience.
+    func start(loopNamed name: String, volume: Double) {
         isPaused = false
-        if activeSound == sound {
+        if activeName == name {
             node.volume = Float(volume)
             if !engine.isRunning { try? engine.start() }
             node.play()
             return
         }
 
-        guard let buffer = Self.loop(for: sound) else {
+        guard let buffer = Self.loop(named: name) else {
             stop()
             return
         }
@@ -66,7 +70,7 @@ final class AmbientSoundPlayer {
             return
         }
         node.play()
-        activeSound = sound
+        activeName = name
     }
 
     func pause() {
@@ -82,12 +86,11 @@ final class AmbientSoundPlayer {
     func stop() {
         node.stop()
         engine.stop()
-        activeSound = .off
+        activeName = nil
     }
 
-    private static func loop(for sound: AmbientSound) -> AVAudioPCMBuffer? {
-        guard let name = sound.fileName,
-              let url = Bundle.main.url(forResource: name, withExtension: "m4a"),
+    private static func loop(named name: String) -> AVAudioPCMBuffer? {
+        guard let url = Bundle.main.url(forResource: name, withExtension: "m4a"),
               let file = try? AVAudioFile(forReading: url),
               let buffer = AVAudioPCMBuffer(pcmFormat: file.processingFormat, frameCapacity: AVAudioFrameCount(file.length))
         else { return nil }

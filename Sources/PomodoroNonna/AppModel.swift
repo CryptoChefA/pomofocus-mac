@@ -809,6 +809,10 @@ final class AppModel {
 
     /// Bumped to ask the window to show the timer, e.g. after starting a task from Tasks.
     var focusScreenRequest = 0
+    /// Bumped to show the Focus reset section, from the button beside Begin focus.
+    var resetScreenRequest = 0
+    /// The focus reset filling the window, while one is under way.
+    var activeReset: FocusResetSession?
 
     func unlinkTodo() {
         selectedTodoID = nil
@@ -1507,16 +1511,6 @@ final class AppModel {
     private func nextBreakPhase() -> TimerPhase {
         let interval = max(1, settings.longBreakEvery)
         return completedFocusCycleCount > 0 && completedFocusCycleCount % interval == 0 ? .longBreak : .shortBreak
-    }
-
-    /// What follows the block on the dial, for the timeline's forecast: a focus block's
-    /// break and the block after it, or after a break, the next block. Lengths follow the
-    /// plan, so a warm-up or a longer break shows as it will run.
-    var upcomingPhases: [(phase: TimerPhase, seconds: Int)] {
-        let first = awaitingNextPhase ?? (phase == .focus ? upcomingBreakPhase() : .focus)
-        return first == .focus
-            ? [(.focus, duration(for: .focus))]
-            : [(first, duration(for: first)), (.focus, duration(for: .focus))]
     }
 
     private func upcomingBreakPhase() -> TimerPhase {

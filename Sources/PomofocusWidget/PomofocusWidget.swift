@@ -258,7 +258,12 @@ private struct ProgressBand: View {
             if snapshot.status == .running,
                let endDate = snapshot.endDate {
                 let startDate = endDate.addingTimeInterval(TimeInterval(-snapshot.plannedSeconds))
-                ProgressView(timerInterval: startDate...endDate, countsDown: true)
+                // Without empty labels macOS prints the countdown a second time under the bar.
+                ProgressView(timerInterval: startDate...endDate, countsDown: true) {
+                    EmptyView()
+                } currentValueLabel: {
+                    EmptyView()
+                }
             } else {
                 ProgressView(value: max(0, min(1, 1 - snapshot.progress)))
             }

@@ -48,6 +48,7 @@ final class CinematicController {
         window.contentView = NSHostingView(
             rootView: CinematicView(onExit: { [weak self] in self?.exit() })
                 .environment(model)
+                .environment(\.calendarStore, CalendarStore.current)
         )
         window.onKey = { [weak self, weak model] key in
             guard let self, let model else { return false }
@@ -148,13 +149,17 @@ final class CinematicController {
         case .end:
             guard model.canEndSession else { return false }
             model.endSession()
+        case .skyline:
+            guard NonnaTheme.isDark else { return false }
+            let defaults = UserDefaults.standard
+            defaults.set(!defaults.bool(forKey: CinematicView.skylineKey), forKey: CinematicView.skylineKey)
         }
         return true
     }
 }
 
 final class CinematicWindow: NSWindow {
-    enum Key { case escape, space, next, end }
+    enum Key { case escape, space, next, end, skyline }
 
     var onKey: ((Key) -> Bool)?
 
@@ -167,6 +172,7 @@ final class CinematicWindow: NSWindow {
         case 49: .space         // space
         case 124, 36: .next     // → or return
         case 14: .end           // e
+        case 1: .skyline        // s
         default: nil
         }
         if let key, onKey?(key) == true { return }
@@ -183,12 +189,19 @@ final class CinematicWindow: NSWindow {
 struct CinematicView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.calendarStore) private var calendarStore
     let onExit: () -> Void
 
     @State private var appeared = false
     @State private var controlsVisible = true
     @State private var hideControls: Task<Void, Never>?
     @State private var drift: CGSize = .zero
+    @AppStorage(CinematicView.skylineKey) private var skylineChosen = false
+
+    static let skylineKey = "cinema.skyline"
+    /// The London skyline behind the clock. Its night scene needs light text, so it's
+    /// offered with dark themes only.
+    private var skyline: Bool { skylineChosen && NonnaTheme.isDark }
 
     private var isAlerting: Bool { model.isOvertime && model.settings.overtimeAlert }
     private var isFlashing: Bool { isAlerting && model.status == .overtime }
@@ -207,13 +220,26 @@ struct CinematicView: View {
             let sideMargin = max(unit * 0.09, proxy.size.width * 0.055)
 
             ZStack {
-                CinematicBackdrop(accent: NSColor(accent), dark: NonnaTheme.isDark, animates: !reduceMotion)
+                if skyline {
+                    // Westminster at night along the bottom, with the open sky above it for
+                    // the clock. A soft shade under the tape keeps the captions readable over
+                    // the reflections.
+                    LondonScene(framing: .cinema)
+                        .transition(.opacity)
+                    LinearGradient(colors: [.clear, .black.opacity(0.55)], startPoint: .init(x: 0.5, y: 0.72), endPoint: .bottom)
+                        .allowsHitTesting(false)
+                } else {
+                    CinematicBackdrop(accent: NSColor(accent), dark: NonnaTheme.isDark, animates: !reduceMotion)
+                        .transition(.opacity)
+                }
 
                 VStack(spacing: 0) {
                     topBar(unit: unit)
                         .reveal(appeared, delay: 0.35, reduceMotion: reduceMotion)
                     Spacer(minLength: 0)
                     centerpiece(unit: unit)
+                        // With the skyline, the clock rises into the sky, clear of the towers.
+                        .padding(.bottom, skyline ? proxy.size.height * 0.26 : 0)
                         .reveal(appeared, delay: 0.1, reduceMotion: reduceMotion)
                     Spacer(minLength: 0)
                     horizon(unit: unit)
@@ -231,6 +257,7 @@ struct CinematicView: View {
                     .animation(reduceMotion ? nil : .easeInOut(duration: 0.45), value: controlsVisible)
             }
             .frame(width: proxy.size.width, height: proxy.size.height)
+            .animation(reduceMotion ? nil : .easeInOut(duration: 1.2), value: skyline)
         }
         .ignoresSafeArea()
         .background(NonnaTheme.cream)
@@ -271,11 +298,16 @@ struct CinematicView: View {
             Spacer()
 
             TimelineView(.everyMinute) { context in
-                HStack(spacing: unit * 0.012) {
-                    Text(context.date.formatted(.dateTime.weekday(.wide).month(.abbreviated).day()))
-                        .foregroundStyle(NonnaTheme.secondaryInk)
-                    Text(context.date.formatted(date: .omitted, time: .shortened))
-                        .foregroundStyle(NonnaTheme.ink.opacity(0.82))
+                VStack(alignment: .trailing, spacing: unit * 0.008) {
+                    HStack(spacing: unit * 0.012) {
+                        Text(context.date.formatted(.dateTime.weekday(.wide).month(.abbreviated).day()))
+                            .foregroundStyle(NonnaTheme.secondaryInk)
+                        Text(context.date.formatted(date: .omitted, time: .shortened))
+                            .foregroundStyle(NonnaTheme.ink.opacity(0.82))
+                    }
+                    if let calendarStore {
+                        UpNextLine(store: calendarStore, now: context.date, unit: unit)
+                    }
                 }
                 .font(.system(size: max(10, unit * 0.0115), weight: .medium).monospacedDigit())
             }
@@ -442,13 +474,24 @@ struct CinematicView: View {
                     .buttonStyle(NonnaButtonStyle(prominent: false))
                 }
 
+                if NonnaTheme.isDark {
+                    Button {
+                        skylineChosen.toggle()
+                    } label: {
+                        Label("Skyline", systemImage: skylineChosen ? "building.columns.fill" : "building.columns")
+                    }
+                    .buttonStyle(NonnaButtonStyle(prominent: false))
+                    .help(skylineChosen ? "Hide the London skyline" : "Show the London skyline behind the clock")
+                    .accessibilityValue(skylineChosen ? "On" : "Off")
+                }
+
                 Button(action: onExit) {
                     Label("Leave cinema", systemImage: "arrow.down.right.and.arrow.up.left")
                 }
                 .buttonStyle(NonnaButtonStyle(prominent: false))
             }
 
-            Text("Space to \(model.status == .idle ? "begin" : "pause"), → for next, E to end the session, Esc to leave")
+            Text("Space to \(model.status == .idle ? "begin" : "pause"), → for next, E to end the session\(NonnaTheme.isDark ? ", S for the skyline" : ""), Esc to leave")
                 .font(.system(size: 11, weight: .medium).monospacedDigit())
                 .foregroundStyle(NonnaTheme.secondaryInk.opacity(0.7))
         }
@@ -900,5 +943,61 @@ final class HorizonTapeView: NSView {
         minorTicks.path = minor
         majorTicks.path = major
         CATransaction.commit()
+    }
+}
+
+/// Under the clock in Cinema: the next event from your calendars, how soon it starts and
+/// when, e.g. "Up next: Calc lecture in 25 min, 3:00 PM". Hidden when calendar events are
+/// off in Settings or nothing is coming up in the next 12 hours.
+private struct UpNextLine: View {
+    @Environment(AppModel.self) private var model
+    @ObservedObject var store: CalendarStore
+    let now: Date
+    let unit: CGFloat
+
+    var body: some View {
+        // Reading the revision redraws this when the calendar changes.
+        let _ = store.revision
+        if model.settings.showCalendarEvents,
+           let event = store.nextEvent(after: now, hiddenIDs: model.settings.hiddenCalendarIDs) {
+            let minutes = Int((event.startedAt.timeIntervalSince(now) / 60).rounded(.up))
+            let soon = minutes <= 10
+            HStack(spacing: unit * 0.006) {
+                Circle()
+                    .fill(event.color)
+                    .frame(width: max(5, unit * 0.005), height: max(5, unit * 0.005))
+                Text("Up next:")
+                    .foregroundStyle(NonnaTheme.secondaryInk)
+                Text(event.title)
+                    .foregroundStyle(NonnaTheme.ink.opacity(0.82))
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    .frame(maxWidth: unit * 0.28, alignment: .trailing)
+                    .fixedSize(horizontal: true, vertical: false)
+                Text("\(Self.until(minutes)), \(event.startedAt.formatted(date: .omitted, time: .shortened))")
+                    .foregroundStyle(soon ? NonnaTheme.terracotta : NonnaTheme.secondaryInk)
+            }
+            .accessibilityElement(children: .combine)
+            .transition(.opacity)
+        }
+    }
+
+    private static func until(_ minutes: Int) -> String {
+        if minutes <= 1 { return "starting now" }
+        if minutes < 60 { return "in \(minutes) min" }
+        let hours = minutes / 60, rest = minutes % 60
+        return rest == 0 ? "in \(hours)h" : "in \(hours)h \(rest)m"
+    }
+}
+
+private struct CalendarStoreKey: EnvironmentKey {
+    static let defaultValue: CalendarStore? = nil
+}
+
+extension EnvironmentValues {
+    /// The calendar store, for windows that aren't part of the main scene.
+    var calendarStore: CalendarStore? {
+        get { self[CalendarStoreKey.self] }
+        set { self[CalendarStoreKey.self] = newValue }
     }
 }

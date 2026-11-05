@@ -205,10 +205,20 @@ struct TasksView: View {
     private func planDay() {
         let today = Date()
         let busy = calendarStore.events(on: today, hiddenIDs: model.settings.hiddenCalendarIDs)
-            .filter { !$0.isAllDay }
+            .filter(\.blocksPlanning)
             .map { DayPlanner.Slot(start: $0.startedAt, end: $0.endedAt) }
+        let dayStart = Calendar.current.startOfDay(for: today)
+        let due = model.planCandidates(for: today).filter { ($0.due.map { $0 <= dayStart }) ?? false }
         let placed = model.planDay(today, busy: busy)
-        planMessage = placed == 0 ? "Nothing due today needs a time, or the day is full." : "Planned \(placed) \(placed == 1 ? "task" : "tasks") into today's free time. See the timeline."
+        if placed == 0 {
+            planMessage = due.isEmpty
+                ? "Nothing due today is waiting for a time. Give a task today's date, or drag one onto the timeline."
+                : "Couldn't find a free stretch long enough today. Try a shorter length, or drag it onto the timeline."
+            return
+        }
+        planMessage = "Planned \(placed) \(placed == 1 ? "task" : "tasks") into today's free time."
+        // Show where they went: the timeline sits beside the timer.
+        model.focusScreenRequest += 1
     }
 
     /// The planning tools, tucked into one menu while tasks are kept simple.

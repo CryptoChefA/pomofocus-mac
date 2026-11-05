@@ -33,6 +33,13 @@ cp "$PROJECT_DIR/Resources/Info.plist" "$TEMP_APP_DIR/Contents/Info.plist"
 cp "$PROJECT_DIR/Resources/WidgetInfo.plist" "$WIDGET_DIR/Contents/Info.plist"
 cp "$PROJECT_DIR/Resources/AppIcon.icns" "$TEMP_APP_DIR/Contents/Resources/AppIcon.icns"
 cp "$PROJECT_DIR"/Resources/Sounds/*.m4a "$TEMP_APP_DIR/Contents/Resources/"
+# The London theme's skyline layers (made by Scripts/london/render.sh).
+cp "$PROJECT_DIR"/Resources/London/*.png "$TEMP_APP_DIR/Contents/Resources/"
+# Licensed audio (the focus reset's meditation music) ships inside the app but isn't in
+# the public repo. Builds without it just don't offer that option.
+for licensed in "$PROJECT_DIR"/Resources/Licensed/*.m4a(N); do
+  cp "$licensed" "$TEMP_APP_DIR/Contents/Resources/"
+done
 chmod 755 "$TEMP_APP_DIR/Contents/MacOS/Pomofocus"
 chmod 755 "$WIDGET_DIR/Contents/MacOS/PomofocusWidgetExtension"
 # Drop local and debug symbols from the shipped binaries: smaller on disk and fewer

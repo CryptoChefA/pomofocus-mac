@@ -3,18 +3,167 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Pomofocus — Focus, beautifully.</title>
-<meta name="description" content="Pomofocus is a beautiful, local-first focus timer for macOS: a menu-bar timer, desktop widgets, twelve themes, recorded ambient sound, a day timeline, a cinematic full-screen mode, end-of-session celebrations and private analytics. It updates itself. Free and open source.">
+<title>Pomofocus: a free Pomodoro timer for Mac</title>
+<meta name="description" content="Pomofocus is a free, open source Pomodoro timer for Mac: a native menu bar timer with tasks, twelve themes, real ambient sound, widgets and one-click updates.">
+<meta name="robots" content="index, follow, max-image-preview:large">
+<link rel="canonical" href="https://cryptochefa.github.io/pomofocus-mac/">
 <meta name="theme-color" content="#000000">
 <meta name="color-scheme" content="dark">
-<link rel="icon" type="image/png" href="assets/favicon.png">
-<link rel="apple-touch-icon" href="assets/app-icon.png">
+<link rel="icon" type="image/png" sizes="64x64" href="assets/favicon.png">
+<link rel="apple-touch-icon" sizes="360x360" href="assets/app-icon.png">
 <meta property="og:type" content="website">
-<meta property="og:title" content="Pomofocus — Focus, beautifully.">
-<meta property="og:description" content="A beautiful, local-first focus timer for macOS. Free and open source.">
-<meta property="og:image" content="https://cryptochefa.github.io/pomofocus-mac/assets/cinema.jpg">
+<meta property="og:site_name" content="Pomofocus">
+<meta property="og:locale" content="en_US">
+<meta property="og:title" content="Pomofocus: a free Pomodoro timer for Mac">
+<meta property="og:description" content="A free, open source Pomodoro timer for macOS. Menu bar timer, tasks, twelve themes, recorded ambient sound, desktop widgets and one-click updates. No account, no tracking.">
 <meta property="og:url" content="https://cryptochefa.github.io/pomofocus-mac/">
+<meta property="og:image" content="https://cryptochefa.github.io/pomofocus-mac/assets/og.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="The Pomofocus focus screen on a Mac: an analog dial counting down 25 minutes beside a timeline of today’s focus blocks">
 <meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Pomofocus: a free Pomodoro timer for Mac">
+<meta name="twitter:description" content="A free, open source Pomodoro timer for macOS. Menu bar timer, tasks, twelve themes, recorded ambient sound, desktop widgets and one-click updates. No account, no tracking.">
+<meta name="twitter:image" content="https://cryptochefa.github.io/pomofocus-mac/assets/og.jpg">
+<meta name="twitter:image:alt" content="The Pomofocus focus screen on a Mac: an analog dial counting down 25 minutes beside a timeline of today’s focus blocks">
+<script type="application/ld+json">
+{
+ "@context": "https://schema.org",
+ "@graph": [
+  {
+   "@type": "SoftwareApplication",
+   "@id": "https://cryptochefa.github.io/pomofocus-mac/#app",
+   "name": "Pomofocus",
+   "alternateName": "Pomofocus for Mac",
+   "url": "https://cryptochefa.github.io/pomofocus-mac/",
+   "description": "A free, open source Pomodoro timer for macOS with a menu bar timer, tasks and a day timeline, twelve themes, recorded ambient sound, desktop widgets, a full-screen Cinema mode, local analytics and one-click updates. No account and no telemetry.",
+   "applicationCategory": "ProductivityApplication",
+   "applicationSubCategory": "Pomodoro timer",
+   "operatingSystem": "macOS 14 or later",
+   "processorRequirements": "Apple silicon",
+   "softwareVersion": "0.22.7",
+   "dateModified": "2026-10-29",
+   "downloadUrl": "https://github.com/CryptoChefA/pomofocus-mac/releases/latest/download/Pomofocus.zip",
+   "installUrl": "https://github.com/CryptoChefA/pomofocus-mac/releases/latest/download/Pomofocus.zip",
+   "fileFormat": "application/zip",
+   "isAccessibleForFree": true,
+   "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD",
+    "availability": "https://schema.org/InStock",
+    "url": "https://github.com/CryptoChefA/pomofocus-mac/releases/latest/download/Pomofocus.zip"
+   },
+   "license": "https://github.com/CryptoChefA/pomofocus-mac/blob/main/LICENSE",
+   "image": "https://cryptochefa.github.io/pomofocus-mac/assets/og.jpg",
+   "screenshot": [
+    "https://cryptochefa.github.io/pomofocus-mac/assets/focus.jpg",
+    "https://cryptochefa.github.io/pomofocus-mac/assets/cinema.jpg",
+    "https://cryptochefa.github.io/pomofocus-mac/assets/dashboard.jpg",
+    "https://cryptochefa.github.io/pomofocus-mac/assets/widgets.jpg"
+   ],
+   "featureList": [
+    "Menu bar timer",
+    "Tasks and a day timeline",
+    "Twelve themes and custom theme codes",
+    "Recorded ambient sound",
+    "Desktop widgets",
+    "Cinema full-screen mode",
+    "Local analytics and focus score",
+    "One-click in-app updates",
+    "No account or telemetry"
+   ],
+   "author": {
+    "@type": "Person",
+    "name": "CryptoChefA",
+    "url": "https://github.com/CryptoChefA"
+   },
+   "sameAs": [
+    "https://github.com/CryptoChefA/pomofocus-mac"
+   ],
+   "inLanguage": "en"
+  },
+  {
+   "@type": "FAQPage",
+   "@id": "https://cryptochefa.github.io/pomofocus-mac/#faq",
+   "mainEntity": [
+    {
+     "@type": "Question",
+     "name": "Is Pomofocus free?",
+     "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "Yes. Pomofocus is free and open source under the MIT license. There is no trial, no paid tier, no subscription and no account. Download it from GitHub, or build it yourself from the source."
+     }
+    },
+    {
+     "@type": "Question",
+     "name": "Does it work on Apple silicon?",
+     "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "Yes. Pomofocus is built for Apple silicon (M1 and later) and needs macOS 14 Sonoma or newer. There is no Intel build."
+     }
+    },
+    {
+     "@type": "Question",
+     "name": "What is the Pomodoro technique?",
+     "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "A way of working in short, timed blocks: 25 minutes of focus, a 5-minute break, and a longer break after four blocks. Pomofocus starts with those lengths (25, 5, and 20 minutes after four) and lets you change each one in Settings."
+     }
+    },
+    {
+     "@type": "Question",
+     "name": "Is it in the Mac App Store?",
+     "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "No. You download it from GitHub. The build isn't notarized by Apple, so macOS asks you to allow it once under Privacy & Security. After that it opens like any other app and updates itself."
+     }
+    },
+    {
+     "@type": "Question",
+     "name": "Does it have a menu bar timer?",
+     "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "Yes. The countdown and a small progress tank sit in the menu bar, so you can close the window and keep working. There are also desktop widgets in three sizes with a live countdown."
+     }
+    },
+    {
+     "@type": "Question",
+     "name": "Where is my data kept?",
+     "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "On your Mac, in one human-readable JSON file in Application Support. Pomofocus has no account, no telemetry and no cloud sync. The only thing it asks the internet is whether a newer version is out, and you can switch that off."
+     }
+    },
+    {
+     "@type": "Question",
+     "name": "Does it sync between Macs or with iPhone?",
+     "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "No. Pomofocus is a Mac app and keeps everything local. To move your history to another Mac, copy the JSON file across before you open the app there."
+     }
+    },
+    {
+     "@type": "Question",
+     "name": "Can I change the focus and break lengths?",
+     "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "Yes. Focus, short break and long break each have their own stepper in Settings, and the focus plan can raise them for you a few minutes at a time as your focus grows."
+     }
+    },
+    {
+     "@type": "Question",
+     "name": "How do updates work?",
+     "acceptedAnswer": {
+      "@type": "Answer",
+      "text": "From version 0.22.1 on, Pomofocus checks GitHub for a new release and shows Update now. One click downloads it, reopens the app and keeps every session, task and setting. Older versions are updated once by hand."
+     }
+    }
+   ]
+  }
+ ]
+}
+</script>
 <style>
 :root {
   --black: #000;
@@ -107,7 +256,8 @@ a { color: inherit; text-decoration: none; }
   transform: translateY(calc(var(--p) * -9vh)) scale(calc(1 - var(--p) * .08));
   will-change: transform, opacity;
 }
-.hero h1 {
+.hero h1.eyebrow { margin: 0 0 14px; }
+.hero .display {
   margin: 0; font-family: var(--display); font-weight: 700; letter-spacing: -.045em; line-height: .96;
   font-size: clamp(58px, 10vw, 148px);
 }
@@ -337,9 +487,19 @@ kbd {
 .news { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
 @media (max-width: 900px) { .news { grid-template-columns: 1fr; } }
 .news article { padding: 32px; border-radius: 26px; background: var(--tile); box-shadow: 0 0 0 1px rgba(255,255,255,.07) inset; }
-.news h4 { margin: 0 0 8px; font-family: var(--display); font-size: 22px; letter-spacing: -.025em; }
+.news h3 { margin: 0 0 8px; font-family: var(--display); font-size: 22px; letter-spacing: -.025em; }
 .news p { margin: 0; color: var(--ink-2); font-size: 15px; }
 .news .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #e5534b; margin-left: 6px; vertical-align: 3px; }
+
+/* ───────── Plain words and questions ───────── */
+.facts, .faq { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
+.faq { grid-template-columns: repeat(3, 1fr); }
+@media (max-width: 1000px) { .facts, .faq { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 620px) { .facts, .faq { grid-template-columns: 1fr; } }
+.facts article, .faq article { padding: 30px; border-radius: 26px; background: var(--tile); box-shadow: 0 0 0 1px rgba(255,255,255,.07) inset; }
+.facts h3, .faq h3 { margin: 0 0 8px; font-family: var(--display); font-size: 21px; letter-spacing: -.02em; }
+.facts p, .faq p { margin: 0; color: var(--ink-2); font-size: 15px; }
+.faq h3 { color: var(--gold-2); font-size: 19px; }
 
 /* ───────── Celebration ───────── */
 .celebrate { position: relative; padding: 200px 22px 40px; text-align: center; }
@@ -386,14 +546,15 @@ kbd {
 @media (max-width: 1000px) { .update-grid { grid-template-columns: 1fr; } }
 .install .step, .update-grid .step { min-width: 0; padding: 30px; border-radius: 24px; background: var(--tile); box-shadow: 0 0 0 1px rgba(255,255,255,.07) inset; }
 .install .n, .update-grid .n { font: 600 13px/1 var(--display); color: var(--gold-2); margin-bottom: 14px; }
-.install h4, .update-grid h4 { margin: 0 0 8px; font-family: var(--display); font-size: 21px; letter-spacing: -.02em; }
+.install h3, .update-grid h4 { margin: 0 0 8px; font-family: var(--display); font-size: 21px; letter-spacing: -.02em; }
 .install p, .update-grid p { margin: 0; color: var(--ink-2); font-size: 15px; }
 .install code { display: block; margin-top: 14px; padding: 12px 14px; border-radius: 12px; background: #000; box-shadow: 0 0 0 1px rgba(255,255,255,.1) inset; font: 12px/1.6 var(--mono); color: var(--gold-2); overflow-x: auto; white-space: pre; cursor: copy; }
 .install code:hover { box-shadow: 0 0 0 1px rgba(201,176,122,.5) inset; }
 
-footer { border-top: 1px solid rgba(255,255,255,.08); padding: 26px 22px 40px; color: var(--ink-3); font-size: 12px; }
+footer { border-top: 1px solid rgba(255,255,255,.08); padding: 26px 22px 40px; color: var(--ink-2); font-size: 12px; }
 footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 14px; }
-footer a { color: var(--ink-2); }
+footer a { color: var(--ink); }
+footer .credits a { text-decoration: underline; text-underline-offset: 2px; }
 footer .links { display: flex; flex-wrap: wrap; gap: 18px; }
 footer .credits { flex-basis: 100%; }
 footer a:hover { color: var(--ink); text-decoration: underline; }
@@ -425,7 +586,7 @@ footer a:hover { color: var(--ink); text-decoration: underline; }
 
 <nav class="nav" aria-label="Pomofocus">
   <div class="nav-inner">
-    <a class="nav-brand" href="#top"><img src="assets/app-icon.png" alt="">Pomofocus</a>
+    <a class="nav-brand" href="#top"><img src="assets/favicon.png" alt="" width="22" height="22">Pomofocus</a>
     <div class="nav-links">
       <a href="#cinema">Cinema</a>
       <a href="#features">Features</a>
@@ -433,6 +594,7 @@ footer a:hover { color: var(--ink); text-decoration: underline; }
       <a href="#new">What's new</a>
       <a href="#celebrate">Celebrate</a>
       <a href="#privacy">Privacy</a>
+      <a href="#faq">FAQ</a>
       <a href="https://github.com/CryptoChefA/pomofocus-mac">GitHub</a>
     </div>
     <a class="pill" href="#download">Download</a>
@@ -444,9 +606,9 @@ footer a:hover { color: var(--ink); text-decoration: underline; }
   <div class="sticky">
     <div class="hero-glow" aria-hidden="true"></div>
     <div class="hero-copy">
-      <div class="eyebrow">Pomofocus for Mac</div>
-      <h1>Focus,<br><span class="gold-text shimmer">beautifully.</span></h1>
-      <p class="hero-sub">A focus timer so calm and so considered, you'll actually want to start the next twenty-five minutes.</p>
+      <h1 class="eyebrow">Pomofocus, a free Pomodoro timer for Mac</h1>
+      <p class="display">Focus,<br><span class="gold-text shimmer">beautifully.</span></p>
+      <p class="hero-sub">A native macOS focus timer so calm and so considered, you'll actually want to start the next twenty-five minutes.</p>
       <div class="hero-ctas">
         <a class="btn btn-gold" href="https://github.com/CryptoChefA/pomofocus-mac/releases/latest/download/Pomofocus.zip">
           <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16.37 12.57c-.02-2.2 1.8-3.26 1.88-3.31-1.03-1.5-2.62-1.71-3.18-1.73-1.35-.14-2.65.8-3.33.8-.69 0-1.75-.78-2.88-.76-1.48.02-2.85.86-3.61 2.19-1.54 2.67-.39 6.62 1.11 8.79.73 1.06 1.6 2.25 2.75 2.21 1.1-.05 1.52-.71 2.85-.71 1.33 0 1.71.71 2.87.69 1.19-.02 1.94-1.08 2.66-2.15.84-1.23 1.19-2.42 1.21-2.48-.03-.01-2.32-.89-2.33-3.54zM14.18 6.1c.6-.73 1.01-1.75.9-2.76-.87.04-1.92.58-2.54 1.31-.56.65-1.05 1.68-.92 2.67.97.08 1.96-.49 2.56-1.22z"/></svg>
@@ -476,7 +638,7 @@ footer a:hover { color: var(--ink); text-decoration: underline; }
   <div class="sticky">
     <div class="cine-title">
       <div class="eyebrow">Introducing</div>
-      <div class="big">Cinema<span class="gold-text">.</span></div>
+      <h2 class="big">Cinema<span class="gold-text">.</span></h2>
       <p>Your timer, as a screensaver.</p>
     </div>
     <div class="cine-stage">
@@ -592,8 +754,29 @@ footer a:hover { color: var(--ink); text-decoration: underline; }
           <h3>Nothing leaves your Mac.</h3>
           <p>No account and no telemetry. Your history is one human-readable JSON file you can open, back up or delete. The only thing Pomofocus ever asks the internet is whether a newer version is out, and you can switch that off.</p>
         </div>
-        <div class="path" aria-label="Where your data lives"><span>Everything lives here</span>~/Library/Application Support/<br>Pomofocus/pomofocus-data.json</div>
+        <div class="path" role="note" aria-label="Where your data lives"><span>Everything lives here</span>~/Library/Application Support/<br>Pomofocus/pomofocus-data.json</div>
       </article>
+    </div>
+  </div>
+</section>
+
+<!-- ───────── In plain words ───────── -->
+<section class="section" id="about">
+  <div class="wrap">
+    <div class="head rv">
+      <div class="eyebrow">In plain words</div>
+      <h2>A Pomodoro timer<br>made for the <span class="gold-text">Mac.</span></h2>
+      <p>Pomofocus is a free Pomodoro app for macOS: twenty-five minutes of focus, a short break, a longer one after four, and nothing to sign up for.</p>
+    </div>
+    <div class="facts">
+      <article class="rv"><h3>Native macOS app</h3><p>Written in SwiftUI for macOS 14 and later on Apple silicon. It can follow light and dark mode, respects Reduce Motion, and sits in the Dock like any other Mac app.</p></article>
+      <article class="rv d1"><h3>Menu bar timer</h3><p>The countdown lives in your menu bar as a small tank that drains while you work, turns green on a break and blinks red in overtime. Click it to pause, skip the break or end the session without opening the window.</p></article>
+      <article class="rv d2"><h3>Tasks and a day timeline</h3><p>Keep lists for a class or a project, start a block from any task, and its focus time counts toward that task. Drag tasks onto today's timeline, or let Plan my day fit them around your calendar.</p></article>
+      <article class="rv"><h3>Twelve themes</h3><p>Obsidian, Ivory, Sakura, Black Ice and eight more, each with its own dial, menu bar and widgets. Build your own from a few colours and share it as a code.</p></article>
+      <article class="rv d1"><h3>Recorded sound</h3><p>Rain, ocean waves and a ticking wall clock, recorded for real, plus brown and white noise, all looped without a seam. A small bell marks the end of each block.</p></article>
+      <article class="rv d2"><h3>Desktop widgets</h3><p>Small, medium and large macOS widgets with a live countdown and one gold progress band, so the time left is there when the app is hidden.</p></article>
+      <article class="rv"><h3>Updates itself</h3><p>When a new version is out, Settings shows Update now. One click downloads it, reopens the app and keeps every session, task and setting. The check can be switched off.</p></article>
+      <article class="rv d1"><h3>Free and private</h3><p>Open source under the MIT license, with no account, subscription, ads or telemetry. Your whole history is one JSON file on your Mac that you can open, back up or delete.</p></article>
     </div>
   </div>
 </section>
@@ -607,19 +790,19 @@ footer a:hover { color: var(--ink); text-decoration: underline; }
       <p>Petals fall in Sakura, frost creeps in and thaws in Black Ice, and the dial, the menu bar and the widgets all follow along.</p>
     </div>
     <div class="themes">
-      <figure class="rv"><div class="frame"><img src="assets/theme-ivory.jpg" alt="The Ivory theme: warm paper with a quiet gold dial" width="1000" height="978" loading="lazy"></div><figcaption><b>Ivory</b>Warm paper, quiet gold.</figcaption></figure>
-      <figure class="rv d1"><div class="frame"><img src="assets/theme-sakura.jpg" alt="The Sakura theme: blossom pink with cherry branches and falling petals" width="1000" height="978" loading="lazy"></div><figcaption><b>Sakura</b>Blossom pink, with petals drifting down.</figcaption></figure>
-      <figure class="rv d2"><div class="frame"><img src="assets/theme-blackice.jpg" alt="The Black Ice theme: a black-to-blue gradient with frost in the corners and an icy greeting" width="1000" height="978" loading="lazy"></div><figcaption><b>Black Ice</b>Black fading to ice blue. Frost grows, melts and grows back.</figcaption></figure>
-      <figure class="rv"><div class="frame"><img src="assets/theme-piano.jpg" alt="The Piano theme: an ivory dial with Roman numerals and blued hands" width="1000" height="978" loading="lazy"></div><figcaption><b>Piano</b>An ivory dial, Roman numerals and blued hands.</figcaption></figure>
-      <figure class="rv d1"><div class="frame"><img src="assets/theme-bespoke.jpg" alt="The Bespoke theme: black and graphite with a handwritten greeting" width="1000" height="978" loading="lazy"></div><figcaption><b>Bespoke</b>Black and graphite, tailored, with a handwritten hello.</figcaption></figure>
-      <figure class="rv d2"><div class="frame"><img src="assets/theme-autumn.jpg" alt="The Autumn theme: cream and rust with falling leaves" width="1000" height="978" loading="lazy"><span class="badge">Limited</span></div><figcaption><b>Autumn</b>Falling leaves, here from September to November only.</figcaption></figure>
+      <figure class="rv"><div class="frame"><img src="assets/theme-ivory.jpg" alt="The Ivory theme: warm paper with a quiet gold dial" width="1000" height="978" loading="lazy" decoding="async"></div><figcaption><b>Ivory</b>Warm paper, quiet gold.</figcaption></figure>
+      <figure class="rv d1"><div class="frame"><img src="assets/theme-sakura.jpg" alt="The Sakura theme: blossom pink with cherry branches and falling petals" width="1000" height="978" loading="lazy" decoding="async"></div><figcaption><b>Sakura</b>Blossom pink, with petals drifting down.</figcaption></figure>
+      <figure class="rv d2"><div class="frame"><img src="assets/theme-blackice.jpg" alt="The Black Ice theme: a black-to-blue gradient with frost in the corners and an icy greeting" width="1000" height="978" loading="lazy" decoding="async"></div><figcaption><b>Black Ice</b>Black fading to ice blue. Frost grows, melts and grows back.</figcaption></figure>
+      <figure class="rv"><div class="frame"><img src="assets/theme-piano.jpg" alt="The Piano theme: an ivory dial with Roman numerals and blued hands" width="1000" height="978" loading="lazy" decoding="async"></div><figcaption><b>Piano</b>An ivory dial, Roman numerals and blued hands.</figcaption></figure>
+      <figure class="rv d1"><div class="frame"><img src="assets/theme-bespoke.jpg" alt="The Bespoke theme: black and graphite with a handwritten greeting" width="1000" height="978" loading="lazy" decoding="async"></div><figcaption><b>Bespoke</b>Black and graphite, tailored, with a handwritten hello.</figcaption></figure>
+      <figure class="rv d2"><div class="frame"><img src="assets/theme-autumn.jpg" alt="The Autumn theme: cream and rust with falling leaves" width="1000" height="978" loading="lazy" decoding="async"><span class="badge">Limited</span></div><figcaption><b>Autumn</b>Falling leaves, here from September to November only.</figcaption></figure>
     </div>
     <div class="codes rv">
       <div>
         <h3>Share a theme with a code.</h3>
         <p>Make your own colours, copy its code and send it to a friend. They paste it into Settings and it's theirs. Every so often a rare theme code goes out, and only those ones carry the rare mark.</p>
       </div>
-      <div class="code" aria-label="An example theme code">PF-THEME-1.eyJhY2NlbnQiOiJDOUIwN0Ei…</div>
+      <div class="code" role="note" aria-label="An example theme code">PF-THEME-1.eyJhY2NlbnQiOiJDOUIwN0Ei…</div>
     </div>
   </div>
 </section>
@@ -632,15 +815,15 @@ footer a:hover { color: var(--ink); text-decoration: underline; }
       <h2>Plan the day.<br>Then <span class="gold-text">do it.</span></h2>
     </div>
     <div class="news">
-      <article class="rv"><h4>Updates itself</h4><p>When a new version is out, Settings gets a red dot<span class="dot" aria-hidden="true"></span> and an <b>Update now</b> button. One click and it reopens on the new version, with everything kept.</p></article>
-      <article class="rv d1"><h4>A day you can see</h4><p>Drag tasks into the free time on today's timeline, or let <b>Plan my day</b> fit them around your calendar. Break big tasks into steps, and wrap the day up in one go.</p></article>
-      <article class="rv d2"><h4>Sounds worth keeping on</h4><p>Recorded rain, ocean waves and a ticking wall clock, plus soft brown and white noise, all looped so you never hear the seam.</p></article>
-      <article class="rv"><h4>Your kind of celebration</h4><p>Confetti, fireworks or balloons when you finish a sitting, or a surprise each time.</p></article>
-      <article class="rv d1"><h4>Rate the session</h4><p>One click at the end of a sitting: <b>Scattered</b>, <b>Restless</b>, <b>Steady</b>, <b>Focused</b> or <b>Flow</b>. No typing. Each rating sits beside its session in History and feeds your insights.</p></article>
-      <article class="rv d2"><h4>Split blocks</h4><p>Switch lists halfway through a block and both halves are counted where they belong, as one block.</p></article>
-      <article class="rv"><h4>Tasks, kept simple</h4><p>Tasks opens on one thing to do now, with <b>Start focusing</b> beside it. Adding a task is just its name, and the planner folds away while a block runs.</p></article>
-      <article class="rv d1"><h4>Your work, already there</h4><p>After updating, Pomofocus offers once to turn what you've been focusing on, and your lists, into tasks. Nothing is added unless you tick it.</p></article>
-      <article class="rv d2"><h4>Update mid-pomodoro</h4><p>Your timer keeps counting through an update, and anything new waits until your block ends.</p></article>
+      <article class="rv"><h3>Updates itself</h3><p>When a new version is out, Settings gets a red dot<span class="dot" aria-hidden="true"></span> and an <b>Update now</b> button. One click and it reopens on the new version, with everything kept.</p></article>
+      <article class="rv d1"><h3>A day you can see</h3><p>Drag tasks into the free time on today's timeline, or let <b>Plan my day</b> fit them around your calendar. Break big tasks into steps, and wrap the day up in one go.</p></article>
+      <article class="rv d2"><h3>Sounds worth keeping on</h3><p>Recorded rain, ocean waves and a ticking wall clock, plus soft brown and white noise, all looped so you never hear the seam.</p></article>
+      <article class="rv"><h3>Your kind of celebration</h3><p>Confetti, fireworks or balloons when you finish a sitting, or a surprise each time.</p></article>
+      <article class="rv d1"><h3>Rate the session</h3><p>One click at the end of a sitting: <b>Scattered</b>, <b>Restless</b>, <b>Steady</b>, <b>Focused</b> or <b>Flow</b>. No typing. Each rating sits beside its session in History and feeds your insights.</p></article>
+      <article class="rv d2"><h3>Split blocks</h3><p>Switch lists halfway through a block and both halves are counted where they belong, as one block.</p></article>
+      <article class="rv"><h3>Tasks, kept simple</h3><p>Tasks opens on one thing to do now, with <b>Start focusing</b> beside it. Adding a task is just its name, and the planner folds away while a block runs.</p></article>
+      <article class="rv d1"><h3>Your work, already there</h3><p>After updating, Pomofocus offers once to turn what you've been focusing on, and your lists, into tasks. Nothing is added unless you tick it.</p></article>
+      <article class="rv d2"><h3>Update mid-pomodoro</h3><p>Your timer keeps counting through an update, and anything new waits until your block ends.</p></article>
     </div>
   </div>
 </section>
@@ -651,7 +834,7 @@ footer a:hover { color: var(--ink); text-decoration: underline; }
   <h2 class="brava rv d1"><span class="gold-text shimmer">Brava.</span></h2>
   <p class="lead rv d2">Single pomodoros pass quietly. When you end the whole sitting, confetti, fireworks or balloons fill your screen, and every block you finished is laid out in front of you.</p>
   <div class="celebrate-card rv d2" id="celebrate-card" title="Click for another round">
-    <img src="assets/celebration.png" alt="The end-of-session breakdown: 'Brava.', 1:43:28 focused across four pomodoros, with breaks, pauses, overtime, today's total and streak" width="1600" height="1040" loading="lazy">
+    <img src="assets/celebration.jpg" alt="The end-of-session breakdown: 'Brava.', 1:43:28 focused across four pomodoros, with breaks, pauses, overtime, today's total and streak" width="1600" height="1040" loading="lazy" decoding="async">
   </div>
 </section>
 <canvas id="confetti" aria-hidden="true"></canvas>
@@ -670,21 +853,46 @@ footer a:hover { color: var(--ink); text-decoration: underline; }
 </section>
 
 <!-- ───────── Gallery ───────── -->
-<section class="section">
+<section class="section" id="gallery">
   <div class="wrap">
+    <div class="head rv">
+      <div class="eyebrow">Around the app</div>
+      <h2>Dashboard, history,<br>plan and <span class="gold-text">settings.</span></h2>
+    </div>
     <div class="gallery">
-      <figure class="rv"><div class="frame"><img src="assets/dashboard.jpg" alt="The dashboard: a focus score of 67, totals with green and red trend lines, the current rhythm and time by list" width="2400" height="1467" loading="lazy"></div><figcaption><b>Dashboard.</b> A daily focus score, and trends that say which way you're heading.</figcaption></figure>
-      <figure class="rv d1"><div class="frame"><img src="assets/history.jpg" alt="The session history grouped by day, with ratings for each session" width="2400" height="1467" loading="lazy"></div><figcaption><b>History.</b> Every session, searchable, renameable and exportable.</figcaption></figure>
-      <figure class="rv"><div class="frame"><img src="assets/plan.jpg" alt="The focus rebuild plan: start where you are, earn every minute, rest that restores" width="2400" height="1467" loading="lazy"></div><figcaption><b>Focus plan.</b> Eight questions, then a plan that grows your focus five minutes at a time.</figcaption></figure>
-      <figure class="rv d1"><div class="frame"><img src="assets/settings.jpg" alt="Settings with an update banner reading Pomofocus is ready, an Update now button, and the theme picker" width="2200" height="1424" loading="lazy"></div><figcaption><b>Settings.</b> When a new version is out, a red dot and one button.</figcaption></figure>
+      <figure class="rv"><div class="frame"><img src="assets/dashboard.jpg" alt="The dashboard: a focus score of 67, totals with green and red trend lines, the current rhythm and time by list" width="2400" height="1467" loading="lazy" decoding="async"></div><figcaption><b>Dashboard.</b> A daily focus score, and trends that say which way you're heading.</figcaption></figure>
+      <figure class="rv d1"><div class="frame"><img src="assets/history.jpg" alt="The session history grouped by day, with ratings for each session" width="2400" height="1467" loading="lazy" decoding="async"></div><figcaption><b>History.</b> Every session, searchable, renameable and exportable.</figcaption></figure>
+      <figure class="rv"><div class="frame"><img src="assets/plan.jpg" alt="The focus rebuild plan: start where you are, earn every minute, rest that restores" width="2400" height="1467" loading="lazy" decoding="async"></div><figcaption><b>Focus plan.</b> Eight questions, then a plan that grows your focus five minutes at a time.</figcaption></figure>
+      <figure class="rv d1"><div class="frame"><img src="assets/settings.jpg" alt="Settings with an update banner reading Pomofocus is ready, an Update now button, and the theme picker" width="2200" height="1424" loading="lazy" decoding="async"></div><figcaption><b>Settings.</b> When a new version is out, a red dot and one button.</figcaption></figure>
+    </div>
+  </div>
+</section>
+
+<!-- ───────── Questions ───────── -->
+<section class="section" id="faq">
+  <div class="wrap">
+    <div class="head rv">
+      <div class="eyebrow">Questions</div>
+      <h2>Before you <span class="gold-text">download.</span></h2>
+    </div>
+    <div class="faq">
+      <article class="rv"><h3>Is Pomofocus free?</h3><p>Yes. Pomofocus is free and open source under the MIT license. There is no trial, no paid tier, no subscription and no account. Download it from GitHub, or build it yourself from the source.</p></article>
+      <article class="rv d1"><h3>Does it work on Apple silicon?</h3><p>Yes. Pomofocus is built for Apple silicon (M1 and later) and needs macOS 14 Sonoma or newer. There is no Intel build.</p></article>
+      <article class="rv d2"><h3>What is the Pomodoro technique?</h3><p>A way of working in short, timed blocks: 25 minutes of focus, a 5-minute break, and a longer break after four blocks. Pomofocus starts with those lengths (25, 5, and 20 minutes after four) and lets you change each one in Settings.</p></article>
+      <article class="rv"><h3>Is it in the Mac App Store?</h3><p>No. You download it from GitHub. The build isn't notarized by Apple, so macOS asks you to allow it once under Privacy &amp; Security. After that it opens like any other app and updates itself.</p></article>
+      <article class="rv d1"><h3>Does it have a menu bar timer?</h3><p>Yes. The countdown and a small progress tank sit in the menu bar, so you can close the window and keep working. There are also desktop widgets in three sizes with a live countdown.</p></article>
+      <article class="rv d2"><h3>Where is my data kept?</h3><p>On your Mac, in one human-readable JSON file in Application Support. Pomofocus has no account, no telemetry and no cloud sync. The only thing it asks the internet is whether a newer version is out, and you can switch that off.</p></article>
+      <article class="rv"><h3>Does it sync between Macs or with iPhone?</h3><p>No. Pomofocus is a Mac app and keeps everything local. To move your history to another Mac, copy the JSON file across before you open the app there.</p></article>
+      <article class="rv d1"><h3>Can I change the focus and break lengths?</h3><p>Yes. Focus, short break and long break each have their own stepper in Settings, and the focus plan can raise them for you a few minutes at a time as your focus grows.</p></article>
+      <article class="rv d2"><h3>How do updates work?</h3><p>From version 0.22.1 on, Pomofocus checks GitHub for a new release and shows Update now. One click downloads it, reopens the app and keeps every session, task and setting. Older versions are updated once by hand.</p></article>
     </div>
   </div>
 </section>
 
 <!-- ───────── Finale ───────── -->
 <section class="finale" id="download">
-  <img class="icon rv" src="assets/app-icon.png" alt="The Pomofocus app icon" width="520" height="520">
-  <div class="big rv d1">Pomofocus<span class="gold-text">.</span></div>
+  <img class="icon rv" src="assets/app-icon.png" alt="The Pomofocus app icon" width="360" height="360" loading="lazy" decoding="async">
+  <h2 class="big rv d1">Pomofocus<span class="gold-text">.</span></h2>
   <p class="lead rv d2" style="margin-top:18px">One meaningful thing at a time.</p>
   <div class="ctas rv d2">
     <a class="btn btn-gold" href="https://github.com/CryptoChefA/pomofocus-mac/releases/latest/download/Pomofocus.zip">
@@ -696,10 +904,10 @@ footer a:hover { color: var(--ink); text-decoration: underline; }
   <div class="req rv d3">Version 0.22.7 for macOS 14 or later on Apple silicon. Free and open source under the MIT license.</div>
 
   <div class="install">
-    <div class="step rv"><div class="n">Step 1</div><h4>Download</h4><p>Get <b>Pomofocus.zip</b> and unzip it.</p></div>
-    <div class="step rv d1"><div class="n">Step 2</div><h4>Move to Applications</h4><p>Drag Pomofocus into your Applications folder.</p></div>
-    <div class="step rv d2"><div class="n">Step 3</div><h4>Open it once</h4><p>This build isn't notarized by Apple, so allow it under <b>System Settings → Privacy &amp; Security → Open Anyway</b>, or run:</p><code title="Click to copy" data-copy>xattr -dr com.apple.quarantine /Applications/Pomofocus.app</code></div>
-    <div class="step rv d3"><div class="n">Step 4</div><h4>That's it</h4><p>From version 0.22.1 on, Pomofocus updates itself: it lets you know when a new version is out, or choose <b>Pomofocus → Check for Updates</b>. To pass it on, use <b>Settings → Share Pomofocus</b>.</p></div>
+    <div class="step rv"><div class="n">Step 1</div><h3>Download</h3><p>Get <b>Pomofocus.zip</b> and unzip it.</p></div>
+    <div class="step rv d1"><div class="n">Step 2</div><h3>Move to Applications</h3><p>Drag Pomofocus into your Applications folder.</p></div>
+    <div class="step rv d2"><div class="n">Step 3</div><h3>Open it once</h3><p>This build isn't notarized by Apple, so allow it under <b>System Settings → Privacy &amp; Security → Open Anyway</b>, or run:</p><code title="Click to copy" data-copy>xattr -dr com.apple.quarantine /Applications/Pomofocus.app</code></div>
+    <div class="step rv d3"><div class="n">Step 4</div><h3>That's it</h3><p>From version 0.22.1 on, Pomofocus updates itself: it lets you know when a new version is out, or choose <b>Pomofocus → Check for Updates</b>. To pass it on, use <b>Settings → Share Pomofocus</b>.</p></div>
   </div>
 
   <div class="update" id="update">
@@ -715,7 +923,7 @@ footer a:hover { color: var(--ink); text-decoration: underline; }
 
 <footer>
   <div class="wrap">
-    <span>Pomofocus is free, open source software released under the MIT license.</span>
+    <span>Pomofocus is a free, open source Pomodoro timer for macOS, released under the MIT license.</span>
     <span class="links"><a href="https://github.com/CryptoChefA/pomofocus-mac">Source</a><a href="https://github.com/CryptoChefA/pomofocus-mac/releases">Releases</a><a href="#update">How to update</a><a href="https://github.com/CryptoChefA/pomofocus-mac/issues">Report an issue</a></span>
     <span class="credits">Sound previews: rain (public domain) and ocean (CC0) from Wikimedia Commons; wall clock by Work With Sounds / Technical Museum of Slovenia, <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a> (<a href="https://commons.wikimedia.org/wiki/File:WWS_Wallclockwithweightticking.ogg">source</a>); noise made for Pomofocus.</span>
   </div>

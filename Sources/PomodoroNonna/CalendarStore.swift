@@ -14,6 +14,15 @@ struct CalendarEvent: Identifiable, Equatable, Sendable {
     let endedAt: Date
     let isAllDay: Bool
     let location: String
+    /// Shown as free in the calendar (holds, reminders, working-location entries).
+    var isFree = false
+
+    /// Whether planning should keep clear of it. All-day events, events marked free, and
+    /// ones lasting 8 hours or more (trips, "at work", multi-day blocks) would otherwise
+    /// fill the whole day and leave nothing to plan into.
+    var blocksPlanning: Bool {
+        !isAllDay && !isFree && endedAt.timeIntervalSince(startedAt) < 8 * 3600
+    }
 }
 
 struct CalendarInfo: Identifiable, Equatable, Sendable {
@@ -42,8 +51,11 @@ final class CalendarStore: ObservableObject {
     private var store = EKEventStore()
     private var cache: [Date: [CalendarEvent]] = [:]
     private var observer: NSObjectProtocol?
+    /// The app's store, for windows outside the main scene such as Cinema mode.
+    private(set) static weak var current: CalendarStore?
 
     init() {
+        Self.current = self
         refreshAccess()
         observer = NotificationCenter.default.addObserver(
             forName: .EKEventStoreChanged,
@@ -109,6 +121,20 @@ final class CalendarStore: ObservableObject {
         return all.filter { !hidden.contains($0.calendarID) }
     }
 
+    /// The next timed event starting within `horizon`, looking into tomorrow when the
+    /// evening is nearly over. All-day events are left out: they don't start at a time.
+    func nextEvent(after now: Date = Date(), within horizon: TimeInterval = 12 * 3600, hiddenIDs: [String]) -> CalendarEvent? {
+        let today = Calendar.current.startOfDay(for: now)
+        var days = [today]
+        if let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: today),
+           now.addingTimeInterval(horizon) > tomorrow {
+            days.append(tomorrow)
+        }
+        return days.flatMap { events(on: $0, hiddenIDs: hiddenIDs) }
+            .filter { !$0.isAllDay && $0.startedAt > now && $0.startedAt <= now.addingTimeInterval(horizon) }
+            .min { $0.startedAt < $1.startedAt }
+    }
+
     private func storeChanged() {
         guard access == .granted else { return }
         cache = [:]
@@ -160,7 +186,8 @@ final class CalendarStore: ObservableObject {
                 startedAt: start,
                 endedAt: max(end, start.addingTimeInterval(60)),
                 isAllDay: event.isAllDay,
-                location: event.location ?? ""
+                location: event.location ?? "",
+                isFree: event.availability == .free
             )
         }
         .sorted { $0.startedAt < $1.startedAt }

@@ -14,6 +14,16 @@ enum WhatsNew {
 
     /// Newest first. Add an entry with every release.
     static let releases: [(version: String, items: [Item])] = [
+        ("0.22.8", [
+            Item(icon: "building.columns", title: "Skyline in Cinema", detail: "With a dark theme, press Skyline (or S) in Cinema to put Westminster at night along the bottom of the screen, with open sky for the clock."),
+            Item(icon: "square.on.square.dashed", title: "Glass", detail: "A Glass slider in Settings, under Appearance, turns the timer, cards and panels from solid to glass, so your theme shows through."),
+            Item(icon: "cloud.rain", title: "London", detail: "A new theme: Westminster across the Thames on a rainy night, with Big Ben at the real time and the Eye turning at its real speed. Turn the rain or a storm on in Settings."),
+            Item(icon: "wind", title: "Focus reset", detail: "Pick a short guided session and what plays under it: rain, binaural beats, meditation music or just the voice. The window goes quiet, with a breathing flower that moves with the voice."),
+            Item(icon: "captions.bubble", title: "Captions", detail: "Turn on Focus reset captions in Settings to follow along without sound."),
+            Item(icon: "calendar", title: "Up next in Cinema", detail: "Under the clock, Cinema shows your next calendar event, how soon it starts and when."),
+            Item(icon: "chevron.down.circle", title: "Tidier Settings", detail: "Each section folds to its heading, with a summary like your timer lengths, so there's far less scrolling."),
+            Item(icon: "calendar.day.timeline.left", title: "A cleaner timeline", detail: "The running block keeps its lined shading to show where it ends, without extra blocks stacked underneath."),
+        ]),
         ("0.22.7", [
             Item(icon: "calendar.day.timeline.left", title: "Your day stays in view", detail: "The timeline stays open while you focus, and shows your break and next block ahead, so you can see where the time is going."),
         ]),
