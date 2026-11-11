@@ -148,22 +148,9 @@ struct MenuBarTimerView: View {
                         .lineLimit(2)
                         .frame(width: 122)
                 } else {
-                    RollingClockText(
-                        text: timeText,
-                        countsDown: !model.isOvertime,
-                        travel: 16,
-                        animation: reduceMotion ? nil : NonnaMotion.numeric
-                    )
-                        .font(.system(size: 40, weight: .medium))
-                        .tracking(-1.5)
-                        .monospacedDigit()
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.62)
-                        .allowsTightening(true)
-                        .frame(width: 136)
-                        .foregroundStyle(isAlerting ? NonnaTheme.alert : NonnaTheme.ink)
-                        .shadow(color: isAlerting ? NonnaTheme.alert.opacity(0.38) : .clear, radius: isAlerting ? 10 : 0)
-                        .alertFlash(isFlashing)
+                    // Room for the clock, which is drawn over the dial below: it rolls in
+                    // Core Animation, and a native view can't live inside the flattened dial.
+                    clockPlaceholder
                 }
                 Text(caption)
                     .font(.system(size: 10, weight: .medium).monospacedDigit())
@@ -173,6 +160,36 @@ struct MenuBarTimerView: View {
         }
         .frame(width: 180, height: 180)
         .drawingGroup(opaque: false, colorMode: .linear)
+        .overlay {
+            if !model.isBreathing {
+                // The same stack as inside the dial, so the clock lands exactly on its spot.
+                VStack(spacing: 5) {
+                    clockPlaceholder
+                        .overlay {
+                            LayerRollingClock(
+                                text: timeText,
+                                countsDown: !model.isOvertime,
+                                travel: 16,
+                                animated: !reduceMotion,
+                                size: 40,
+                                tracking: -1.5,
+                                color: isAlerting ? NonnaTheme.alert : NonnaTheme.ink,
+                                glows: isAlerting,
+                                glowOpacity: 0.38,
+                                glowRadius: 10,
+                                flashes: isFlashing,
+                                fitWidth: 136
+                            )
+                            .accessibilityElement()
+                            .accessibilityLabel(timeText)
+                        }
+                    Text(caption)
+                        .font(.system(size: 10, weight: .medium).monospacedDigit())
+                        .hidden()
+                }
+                .padding(.horizontal, 22)
+            }
+        }
         // The drop shadow goes outside the flattened dial; inside it was clipped into a
         // square that showed as a grey box on light themes.
         .background {
@@ -204,6 +221,16 @@ struct MenuBarTimerView: View {
         if model.isOvertime || model.awaitingNextPhase != nil { return 1 }
         if model.status == .idle { return 0 }
         return liveProgress
+    }
+
+    /// A clock-sized gap. The text sets the height the old SwiftUI clock had.
+    private var clockPlaceholder: some View {
+        Text("00:00")
+            .font(.system(size: 40, weight: .medium))
+            .monospacedDigit()
+            .hidden()
+            .frame(width: 136)
+            .accessibilityHidden(true)
     }
 
     private var timeText: String {

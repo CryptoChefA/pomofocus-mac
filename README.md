@@ -33,6 +33,7 @@ After installing, Pomofocus updates itself.
 - Native SwiftUI macOS app and menu-bar timer with a live progress ring and countdown
 - Native small, medium, and large desktop/sidebar widgets with a live timer, one restrained gold progress band, and buttons to start, pause, resume, skip a break or end a session without opening the app
 - Control Center and menu bar buttons (macOS 26 and later): one that starts, pauses, resumes or moves on, whichever fits, and one that ends the session
+- Spotlight and Siri: search Spotlight for Pomofocus, or say "Start focus in Pomofocus", to start, pause, resume, skip a break or end a session
 - `pomofocus://start`, `pause`, `resume`, `toggle`, `next`, `end` and `skip-break` links for Shortcuts and scripts
 - Light on the Mac: with a timer running, about 4% CPU with the window in view and under 1% when it's hidden; the clock's roll runs in Core Animation, and anything you can't see stops redrawing
 - Obsidian Atelier interface with graphite surfaces, champagne accents, and precision typography
@@ -165,12 +166,13 @@ swiftc Sources/PomodoroNonna/Models.swift Sources/PomodoroNonna/MoodCheckIn.swif
 - `PomofocusWidget.swift`: small, medium, and large macOS widget layouts
 - `YearReplay.swift` and `YearViews.swift`: Your year in focus, the yearly look back as story cards, with a numbers-only image to share
 - `WidgetControls.swift`: the widget's buttons, as App Intents that pass each request to the app
+- `PomofocusIntents.swift`: the app's Spotlight, Shortcuts and Siri actions and its App Shortcuts
 - `ControlCenterControls.swift`: the Control Center buttons, built on the same intents
 - `LayerRollingClock.swift`: the big rolling clock, animated by Core Animation so the roll costs the app nothing per frame
 - `WeeklyTotals.swift`: focus per calendar week for the Dashboard's Hours by week chart
 - `WindowVisibility.swift`: tells views whether their window can be seen, so hidden ones stop redrawing
 - `AppControl.swift`: runs widget, Shortcuts and `pomofocus://` requests when they fit the timer's state
-- `Scripts/appintents-metadata.py`: writes the widget's App Intents metadata, which Xcode would normally generate
+- `Scripts/appintents-metadata.py`: writes the App Intents metadata (actions and App Shortcuts) for the app and the widget, which Xcode would normally generate
 - `FocusView.swift`: main focus ritual and the one-click session rating
 - `FocusCanvasView.swift`: local text, pasted images, captions, resizing, and ordering
 - `CinematicMode.swift`: full-screen Cinema scene, with Core Animation backdrop and minute tape

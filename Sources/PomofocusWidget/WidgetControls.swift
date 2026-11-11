@@ -38,6 +38,8 @@ enum ControlSender {
 struct StartTimerIntent: AppIntent {
     static let title: LocalizedStringResource = "Start Focus"
     static let description = IntentDescription("Starts the Pomofocus timer.")
+    // The app lists its own copy in Shortcuts and Spotlight; this one is for the buttons.
+    static let isDiscoverable = false
     func perform() async throws -> some IntentResult {
         await ControlSender.send(.start)
         return .result()
@@ -47,6 +49,8 @@ struct StartTimerIntent: AppIntent {
 struct PauseTimerIntent: AppIntent {
     static let title: LocalizedStringResource = "Pause Timer"
     static let description = IntentDescription("Pauses the running Pomofocus timer.")
+    // The app lists its own copy in Shortcuts and Spotlight; this one is for the buttons.
+    static let isDiscoverable = false
     func perform() async throws -> some IntentResult {
         await ControlSender.send(.pause)
         return .result()
@@ -56,6 +60,8 @@ struct PauseTimerIntent: AppIntent {
 struct ResumeTimerIntent: AppIntent {
     static let title: LocalizedStringResource = "Resume Timer"
     static let description = IntentDescription("Resumes a paused Pomofocus timer.")
+    // The app lists its own copy in Shortcuts and Spotlight; this one is for the buttons.
+    static let isDiscoverable = false
     func perform() async throws -> some IntentResult {
         await ControlSender.send(.resume)
         return .result()
@@ -65,6 +71,8 @@ struct ResumeTimerIntent: AppIntent {
 struct NextBlockIntent: AppIntent {
     static let title: LocalizedStringResource = "Start Next Block"
     static let description = IntentDescription("Moves on to the next focus block or break, or skips the breathing ritual.")
+    // The app lists its own copy in Shortcuts and Spotlight; this one is for the buttons.
+    static let isDiscoverable = false
     func perform() async throws -> some IntentResult {
         await ControlSender.send(.next)
         return .result()
@@ -74,6 +82,8 @@ struct NextBlockIntent: AppIntent {
 struct EndSessionIntent: AppIntent {
     static let title: LocalizedStringResource = "End Session"
     static let description = IntentDescription("Ends the current Pomofocus session and saves it.")
+    // The app lists its own copy in Shortcuts and Spotlight; this one is for the buttons.
+    static let isDiscoverable = false
     func perform() async throws -> some IntentResult {
         await ControlSender.send(.end)
         return .result()
@@ -83,6 +93,8 @@ struct EndSessionIntent: AppIntent {
 struct SkipBreakIntent: AppIntent {
     static let title: LocalizedStringResource = "Skip Break"
     static let description = IntentDescription("Skips the break and starts the next focus block.")
+    // The app lists its own copy in Shortcuts and Spotlight; this one is for the buttons.
+    static let isDiscoverable = false
     func perform() async throws -> some IntentResult {
         await ControlSender.send(.skipBreak)
         return .result()
@@ -92,6 +104,8 @@ struct SkipBreakIntent: AppIntent {
 struct ToggleTimerIntent: AppIntent {
     static let title: LocalizedStringResource = "Start or Pause Timer"
     static let description = IntentDescription("Starts, pauses or resumes the Pomofocus timer, or moves on to the next block when one is waiting.")
+    // The app lists its own copy in Shortcuts and Spotlight; this one is for the buttons.
+    static let isDiscoverable = false
     func perform() async throws -> some IntentResult {
         await ControlSender.send(.toggle)
         return .result()

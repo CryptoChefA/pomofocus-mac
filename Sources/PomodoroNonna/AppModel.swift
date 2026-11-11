@@ -202,7 +202,11 @@ final class AppModel {
         return next == .focus ? "Next: \(minutes) min focus" : "Next: \(minutes) min break"
     }
 
+    /// The app's one model, for actions run from Spotlight, Shortcuts and Siri.
+    static weak var current: AppModel?
+
     init() {
+        Self.current = self
         Task { await load() }
     }
 

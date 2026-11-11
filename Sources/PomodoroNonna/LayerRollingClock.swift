@@ -26,6 +26,9 @@ struct LayerRollingClock: NSViewRepresentable {
     var glowOpacity: Double = 0.45
     var glowRadius: CGFloat = 14
     var flashes = false
+    /// Shrinks the digits (to 62% at most) when the text would be wider than this, like
+    /// SwiftUI's `minimumScaleFactor`.
+    var fitWidth: CGFloat?
 
     func makeNSView(context: Context) -> RollingDigitsView {
         RollingDigitsView()
@@ -33,11 +36,19 @@ struct LayerRollingClock: NSViewRepresentable {
 
     func updateNSView(_ view: RollingDigitsView, context: Context) {
         view.configure(
-            font: NSFont.monospacedDigitSystemFont(ofSize: size, weight: weight), tracking: tracking,
+            font: NSFont.monospacedDigitSystemFont(ofSize: fittedSize, weight: weight), tracking: tracking * fittedSize / size,
             duration: duration, color: NSColor(color), travel: travel,
             glow: glows ? (glowOpacity, glowRadius) : nil, flashes: flashes
         )
         view.show(text, countsDown: countsDown, animated: animated)
+    }
+
+    private var fittedSize: CGFloat {
+        guard let fitWidth else { return size }
+        let font = NSFont.monospacedDigitSystemFont(ofSize: size, weight: weight)
+        let width = NSAttributedString(string: text, attributes: [.font: font, .kern: tracking]).size().width
+        guard width > fitWidth else { return size }
+        return size * max(0.62, fitWidth / width)
     }
 
     func sizeThatFits(_ proposal: ProposedViewSize, nsView: RollingDigitsView, context: Context) -> CGSize? {

@@ -14,6 +14,10 @@ enum WhatsNew {
 
     /// Newest first. Add an entry with every release.
     static let releases: [(version: String, items: [Item])] = [
+        ("0.22.11", [
+            Item(icon: "magnifyingglass", title: "Pomofocus in Spotlight", detail: "Search Spotlight for Pomofocus to start a focus block, pause, resume, skip a break or end a session without opening the app. Siri knows them too: try \"Start focus in Pomofocus\"."),
+            Item(icon: "menubar.rectangle", title: "A lighter menu bar timer", detail: "The clock in the menu bar panel now rolls the same way using almost no power, like the big clock on the Focus screen."),
+        ]),
         ("0.22.10", [
             Item(icon: "rectangle.stack", title: "Your year in focus", detail: "Your year as a few cards: your hours, your biggest month, where the time went, your rhythm, your longest streak and how it felt. It ends with an image you can share, which only shows numbers. Open it from the Dashboard any time; in December it's waiting for you."),
             Item(icon: "playpause", title: "Buttons on the widget and in Control Center", detail: "Start, pause, resume, skip a break or end a session right from the desktop widget, without opening Pomofocus. Add the Pomofocus buttons to Control Center or the menu bar too. The same actions work in Shortcuts, or as links like pomofocus://pause."),
