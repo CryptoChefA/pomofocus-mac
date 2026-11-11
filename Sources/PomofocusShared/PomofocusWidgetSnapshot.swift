@@ -72,6 +72,9 @@ public struct PomofocusWidgetSnapshot: Codable, Equatable, Sendable {
     public var todayFocusSeconds: Int
     /// Missing in files written before themes reached the widget.
     public var theme: PomofocusWidgetTheme?
+    /// The label for moving on ("Next: 5 min break") when a block has ended and the next
+    /// is waiting; nil otherwise. Missing in older files.
+    public var nextTitle: String?
 
     public init(
         phase: PomofocusWidgetPhase,
@@ -88,7 +91,8 @@ public struct PomofocusWidgetSnapshot: Codable, Equatable, Sendable {
         cycleCurrent: Int,
         cycleTotal: Int,
         todayFocusSeconds: Int,
-        theme: PomofocusWidgetTheme? = nil
+        theme: PomofocusWidgetTheme? = nil,
+        nextTitle: String? = nil
     ) {
         self.phase = phase
         self.status = status
@@ -105,6 +109,7 @@ public struct PomofocusWidgetSnapshot: Codable, Equatable, Sendable {
         self.cycleTotal = cycleTotal
         self.todayFocusSeconds = todayFocusSeconds
         self.theme = theme
+        self.nextTitle = nextTitle
     }
 
     public static let placeholder = PomofocusWidgetSnapshot(
@@ -161,14 +166,30 @@ public enum PomofocusWidgetSnapshotStore {
         let directory = fileURL.deletingLastPathComponent()
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
+        // Fractions of a second matter here: the widget's countdown turns over from the end
+        // date, and whole seconds would put it up to a second ahead of the menu bar.
+        encoder.dateEncodingStrategy = .custom { date, encoder in
+            let formatter = ISO8601DateFormatter()
+            formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            var container = encoder.singleValueContainer()
+            try container.encode(formatter.string(from: date))
+        }
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
         try encoder.encode(snapshot).write(to: fileURL, options: .atomic)
     }
 
     public static func load() throws -> PomofocusWidgetSnapshot {
         let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
+        decoder.dateDecodingStrategy = .custom { decoder in
+            let text = try decoder.singleValueContainer().decode(String.self)
+            let formatter = ISO8601DateFormatter()
+            formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            if let date = formatter.date(from: text) { return date }
+            // Files written before fractions were kept.
+            formatter.formatOptions = [.withInternetDateTime]
+            if let date = formatter.date(from: text) { return date }
+            throw DecodingError.dataCorrupted(.init(codingPath: decoder.codingPath, debugDescription: "Not a date: \(text)"))
+        }
         return try decoder.decode(
             PomofocusWidgetSnapshot.self,
             from: Data(contentsOf: fileURL)

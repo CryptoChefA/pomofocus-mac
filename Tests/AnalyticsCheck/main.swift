@@ -185,4 +185,42 @@ let emptyDeepDive = DeepDiveSnapshot.calculate(
 )
 check(emptyDeepDive.days.count == 30 && emptyDeepDive.totalFocusSeconds == 0, "empty deep dive is safe")
 
+
+// A block that switched lists part-way is saved as two parts; it's one completed session.
+let blockID = UUID()
+var firstPart = session(at: now.addingTimeInterval(-7_200), seconds: 600)
+firstPart.blockID = blockID
+var secondPart = session(at: now.addingTimeInterval(-6_600), seconds: 900)
+secondPart.blockID = blockID
+var overtimeBlock = session(at: now.addingTimeInterval(-3_600), seconds: 2_100)   // 10 min past a 25 min plan
+let earlyBlock = session(at: now.addingTimeInterval(-600), seconds: 300, outcome: .finishedEarly)
+let split = AnalyticsSnapshot.calculate(sessions: [firstPart, secondPart, overtimeBlock, earlyBlock], tasks: [task], now: now, calendar: calendar)
+check(split.completedSessions == 2, "a split block counts as one completed session")
+check(split.endedEarlySessions == 1, "ended-early blocks are counted")
+check(split.overtimeSeconds == 600, "overtime past the bell is reported")
+check(split.totalFocusSeconds == 600 + 900 + 2_100 + 300, "total focus still counts every minute")
+
+// Weekly totals: twelve weeks, oldest first, this week last.
+let weekly = WeeklyTotals.calculate(
+    sessions: [session(at: now, seconds: 1_500), firstPart, secondPart, earlyBlock,
+               session(at: calendar.date(byAdding: .weekOfYear, value: -1, to: now)!, seconds: 3_000),
+               session(at: calendar.date(byAdding: .weekOfYear, value: -3, to: now)!, seconds: 1_000),
+               session(at: calendar.date(byAdding: .weekOfYear, value: -20, to: now)!, seconds: 9_999),
+               session(at: now, seconds: 400, outcome: .abandoned)],
+    now: now, calendar: calendar
+)
+check(weekly.weeks.count == 12, "twelve weeks")
+check(weekly.thisWeek?.seconds == 1_500 + 600 + 900 + 300, "this week's focus, abandoned blocks left out")
+check(weekly.thisWeek?.completed == 2 && weekly.thisWeek?.endedEarly == 1, "this week's blocks, split block once")
+check(weekly.lastWeek?.seconds == 3_000, "last week's focus")
+let weekStart = calendar.dateInterval(of: .weekOfYear, for: now)!.start
+let lastWeekEarly = session(at: calendar.date(byAdding: .weekOfYear, value: -1, to: weekStart)!.addingTimeInterval(60), seconds: 700)
+let lastWeekLate = session(at: calendar.date(byAdding: .weekOfYear, value: -1, to: now)!.addingTimeInterval(3_600), seconds: 800)
+let toDate = WeeklyTotals.calculate(sessions: [lastWeekEarly, lastWeekLate], now: now, calendar: calendar)
+check(toDate.lastWeekToDateSeconds == 700, "last week is compared up to the same point in the week")
+check(weekly.averageSeconds == (3_000 + 1_000) / 2, "average uses finished weeks with focus only")
+check(weekly.weeks.reduce(0) { $0 + $1.seconds } == 3_300 + 3_000 + 1_000, "older weeks are left out")
+check(zip(weekly.weeks, weekly.weeks.dropFirst()).allSatisfy { $0.start < $1.start }, "weeks run oldest first")
+check(WeeklyTotals.calculate(sessions: [], now: now, calendar: calendar).averageSeconds == nil, "no average without data")
+
 print("Analytics and settings checks passed")

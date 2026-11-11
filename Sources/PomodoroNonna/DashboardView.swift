@@ -44,6 +44,8 @@ struct DashboardView: View {
                 )
 
                 FocusScoreCard()
+                WeekDashboardRow()
+                YearDashboardRow()
                 RunawayTimersBanner()
 
                 let totalBreakSeconds = model.breakSessions.reduce(0) { $0 + $1.restedSeconds }
@@ -58,12 +60,16 @@ struct DashboardView: View {
                 DashboardStatGrid(columns: compact ? 2 : 3, stats: [
                     DashboardStat(
                         metric: .focus,
-                        trends: trends[.focus] ?? [],
+                        // Why this is more than completed sessions times their length.
+                        trends: (trends[.focus] ?? []) + (analytics.overtimeSeconds >= 60
+                            ? [.note("\(analytics.overtimeSeconds.focusDurationString) of it past the bell")] : []),
                         icon: "hourglass",
                         label: "Focused in total",
                         value: analytics.totalFocusSeconds.focusDurationString,
-                        help: "Every minute you've spent focusing, across all your lists, since you started using Pomofocus. Paused time isn't counted.",
-                        detail: "Across every list",
+                        help: "Every minute you've spent focusing, across all your lists, since you started using Pomofocus. It includes time you kept going after the bell and blocks you ended early, so it's usually more than your completed sessions times their length. Paused time isn't counted.",
+                        detail: analytics.overtimeSeconds >= 60
+                            ? "Includes \(analytics.overtimeSeconds.focusDurationString) past the bell"
+                            : "Across every list",
                         tint: NonnaTheme.terracotta
                     ),
                     DashboardStat(
@@ -108,12 +114,15 @@ struct DashboardView: View {
                     ),
                     DashboardStat(
                         metric: .completed,
-                        trends: trends[.completed] ?? [],
+                        trends: (trends[.completed] ?? []) + (analytics.endedEarlySessions > 0
+                            ? [.note("Plus \(analytics.endedEarlySessions) ended early")] : []),
                         icon: "checkmark.seal.fill",
                         label: "Completed sessions",
                         value: "\(analytics.completedSessions)",
-                        help: "Focus blocks you ran all the way to their planned length, instead of ending early.",
-                        detail: "Full planned intervals",
+                        help: "Focus blocks you ran all the way to their planned length. Blocks you ended early aren't counted here, but their minutes are in your focus time. A block that switched lists part-way counts once.",
+                        detail: analytics.endedEarlySessions > 0
+                            ? "Plus \(analytics.endedEarlySessions) ended early"
+                            : "Full planned intervals",
                         tint: NonnaTheme.secondaryInk
                     ),
                 ]) { selectedMetric = $0 }
@@ -125,6 +134,8 @@ struct DashboardView: View {
                         .frame(maxWidth: compact ? .infinity : 330)
                         .frame(width: compact ? nil : 330)
                 }
+
+                WeeklyHoursCard()
 
                 MoodCard()
 
@@ -644,5 +655,159 @@ private struct UsageHeatmap: View {
         case 3600..<7200: NonnaTheme.sage.opacity(0.72)
         default: NonnaTheme.sage
         }
+    }
+}
+
+/// Hours focused in each of the last twelve weeks, with this week's total up top.
+private struct WeeklyHoursCard: View {
+    @Environment(AppModel.self) private var model
+    @State private var hoveredWeek: Date?
+
+    var body: some View {
+        // One snapshot for the chart and its hover handler, so moving the pointer doesn't
+        // recount the history.
+        let totals = WeeklyTotals.calculate(sessions: model.sessions)
+        let thisWeek = totals.thisWeek
+        let average = totals.averageSeconds
+        return NonnaCard {
+            VStack(alignment: .leading, spacing: 18) {
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 7) {
+                        Text("Hours by week")
+                            .font(.system(size: 18, weight: .semibold))
+                        InfoButton(title: "Hours by week", text: "How long you focused in each of the last 12 weeks, counting every minute of focus: full blocks, time past the bell and blocks you ended early. The badge compares this week so far with last week up to the same point. The dashed line is your average over the weeks you focused. Hover a bar to see that week.")
+                    }
+                    HStack(alignment: .center, spacing: 10) {
+                        Text((thisWeek?.seconds ?? 0).focusDurationString)
+                            .font(.system(size: 26, weight: .semibold))
+                            .monospacedDigit()
+                            .foregroundStyle(NonnaTheme.ink)
+                            .contentTransition(.numericText())
+                        DeltaPill(current: thisWeek?.seconds ?? 0, previous: totals.lastWeekToDateSeconds)
+                        Text("This week so far")
+                            .font(.system(size: 12))
+                            .foregroundStyle(NonnaTheme.secondaryInk)
+                        Spacer(minLength: 8)
+                        if let average {
+                            VStack(alignment: .trailing, spacing: 2) {
+                                Text(average.focusDurationString)
+                                    .font(.system(size: 14, weight: .semibold))
+                                    .monospacedDigit()
+                                    .foregroundStyle(NonnaTheme.ink)
+                                Text("Weekly average")
+                                    .font(.system(size: 11))
+                                    .foregroundStyle(NonnaTheme.secondaryInk)
+                            }
+                        }
+                    }
+                }
+
+                if !totals.hasFocus {
+                    EmptyState(
+                        icon: "chart.bar",
+                        title: "No focus yet",
+                        message: "Your weekly hours show here once you've focused."
+                    )
+                } else {
+                    chart(totals, average: average)
+                }
+            }
+        }
+    }
+
+    private func chart(_ totals: WeeklyTotals, average: Int?) -> some View {
+        let weeks = totals.weeks
+        let calendar = Calendar.current
+        let first = weeks.first?.start ?? Date()
+        let last = weeks.last?.start ?? Date()
+        let end = calendar.date(byAdding: .weekOfYear, value: 1, to: last) ?? last
+        return Chart {
+            if let hovered = weeks.first(where: { $0.start == hoveredWeek }) {
+                RectangleMark(x: .value("Week", hovered.start, unit: .weekOfYear))
+                    .foregroundStyle(NonnaTheme.terracotta.opacity(0.12))
+                    .cornerRadius(4)
+            }
+            ForEach(weeks) { week in
+                BarMark(
+                    x: .value("Week", week.start, unit: .weekOfYear),
+                    y: .value("Hours", Double(week.seconds) / 3600),
+                    width: .ratio(0.55)
+                )
+                .foregroundStyle(
+                    LinearGradient(
+                        colors: [NonnaTheme.darkTerracotta, NonnaTheme.terracotta],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
+                // The week in progress is lighter until it's done.
+                .opacity(week.start == last ? 0.55 : 1)
+                .cornerRadius(3)
+                .accessibilityLabel("Week of \(week.start.formatted(.dateTime.month(.abbreviated).day()))")
+                .accessibilityValue(week.seconds.focusDurationString)
+            }
+            if let average {
+                RuleMark(y: .value("Weekly average", Double(average) / 3600))
+                    .foregroundStyle(NonnaTheme.secondaryInk.opacity(0.7))
+                    .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 3]))
+                    .annotation(position: .top, alignment: .trailing, spacing: 3) {
+                        Text("Average")
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundStyle(NonnaTheme.secondaryInk)
+                    }
+            }
+        }
+        .chartXScale(domain: first...end)
+        .chartHover(Date.self) { date in
+            let week = date
+                .flatMap { calendar.dateInterval(of: .weekOfYear, for: $0)?.start }
+                .flatMap { start in weeks.contains { $0.start == start } ? start : nil }
+            if hoveredWeek != week { hoveredWeek = week }
+        }
+        .chartHoverTooltip {
+            if let hovered = weeks.first(where: { $0.start == hoveredWeek }) {
+                ChartTooltip(title: title(for: hovered, isCurrent: hovered.start == last), lines: lines(for: hovered))
+            }
+        }
+        .chartXAxis {
+            AxisMarks(values: weeks.map(\.start)) { value in
+                if let date = value.as(Date.self), shouldLabel(date, in: weeks) {
+                    AxisValueLabel(anchor: .top, collisionResolution: .disabled) {
+                        Text(date == last ? "This week" : date.formatted(.dateTime.month(.abbreviated).day()))
+                    }
+                    .foregroundStyle(NonnaTheme.secondaryInk)
+                }
+            }
+        }
+        .chartYAxis {
+            AxisMarks(position: .leading, values: .automatic(desiredCount: 4)) { value in
+                AxisGridLine(stroke: StrokeStyle(lineWidth: 1, dash: [2, 2]))
+                    .foregroundStyle(NonnaTheme.line)
+                AxisValueLabel {
+                    if let hours = value.as(Double.self) {
+                        Text(Int((hours * 60).rounded()).minutesString)
+                    }
+                }
+                .foregroundStyle(NonnaTheme.secondaryInk)
+            }
+        }
+        .frame(height: 220)
+    }
+
+    /// Every third week, counting back from this one, so the labels never crowd.
+    private func shouldLabel(_ date: Date, in weeks: [WeeklyTotals.Week]) -> Bool {
+        guard let index = weeks.firstIndex(where: { $0.start == date }) else { return false }
+        return (weeks.count - 1 - index) % 3 == 0
+    }
+
+    private func title(for week: WeeklyTotals.Week, isCurrent: Bool) -> String {
+        isCurrent ? "This week" : "Week of \(week.start.formatted(.dateTime.month(.abbreviated).day()))"
+    }
+
+    private func lines(for week: WeeklyTotals.Week) -> [String] {
+        var lines = ["\(week.seconds.focusDurationString) focus"]
+        lines.append("\(week.completed) completed \(week.completed == 1 ? "session" : "sessions")")
+        if week.endedEarly > 0 { lines.append("\(week.endedEarly) ended early") }
+        return lines
     }
 }

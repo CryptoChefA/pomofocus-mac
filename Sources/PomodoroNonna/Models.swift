@@ -422,7 +422,12 @@ struct DayTotal: Identifiable, Equatable, Sendable {
 struct AnalyticsSnapshot: Equatable, Sendable {
     let totalFocusSeconds: Int
     let usedDays: Int
+    /// Blocks run to their planned length. A block split across lists counts once.
     let completedSessions: Int
+    /// Blocks ended before their planned length.
+    let endedEarlySessions: Int
+    /// Focus past the planned length of completed blocks. Part of `totalFocusSeconds`.
+    let overtimeSeconds: Int
     let currentStreak: Int
     let longestStreak: Int
     let taskTotals: [TaskTotal]
@@ -487,10 +492,14 @@ struct AnalyticsSnapshot: Equatable, Sendable {
             cursor = calendar.date(byAdding: .day, value: -1, to: cursor) ?? cursor
         }
 
+        let blocks = FocusSession.mergedBlocks(focusSessions)
+        let completedBlocks = blocks.filter { $0.outcome == .completed }
         return AnalyticsSnapshot(
             totalFocusSeconds: focusSessions.reduce(0) { $0 + $1.focusedSeconds },
             usedDays: usedDaySet.count,
-            completedSessions: focusSessions.filter { $0.outcome == .completed }.count,
+            completedSessions: completedBlocks.count,
+            endedEarlySessions: blocks.filter { $0.outcome == .finishedEarly }.count,
+            overtimeSeconds: completedBlocks.reduce(0) { $0 + max(0, $1.focusedSeconds - $1.plannedSeconds) },
             currentStreak: current,
             longestStreak: longest,
             taskTotals: taskTotals,

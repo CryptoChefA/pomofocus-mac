@@ -40,6 +40,12 @@ cp "$PROJECT_DIR"/Resources/London/*.png "$TEMP_APP_DIR/Contents/Resources/"
 for licensed in "$PROJECT_DIR"/Resources/Licensed/*.m4a(N); do
   cp "$licensed" "$TEMP_APP_DIR/Contents/Resources/"
 done
+# The widget's buttons are App Intents; macOS needs their metadata, which Xcode would
+# write. Read from the unstripped binary, so this comes before strip.
+/usr/bin/python3 "$PROJECT_DIR/Scripts/appintents-metadata.py" \
+  "$WIDGET_DIR/Contents/MacOS/PomofocusWidgetExtension" \
+  "$PROJECT_DIR/Sources/PomofocusWidget" \
+  "$WIDGET_DIR/Contents/Resources/Metadata.appintents"
 chmod 755 "$TEMP_APP_DIR/Contents/MacOS/Pomofocus"
 chmod 755 "$WIDGET_DIR/Contents/MacOS/PomofocusWidgetExtension"
 # Drop local and debug symbols from the shipped binaries: smaller on disk and fewer

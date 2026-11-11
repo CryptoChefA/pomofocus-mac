@@ -339,18 +339,25 @@ struct CinematicView: View {
                         .id(model.breathingStage)
                         .transition(.opacity.combined(with: .scale(scale: 0.97)))
                 } else {
-                    RollingClockText(
+                    // Rolled by Core Animation, so the full-screen clock costs nothing between
+                    // seconds (see LayerRollingClock).
+                    LayerRollingClock(
                         text: clockText,
                         countsDown: !model.isOvertime,
                         travel: unit * 0.07,
-                        animation: reduceMotion ? nil : .easeInOut(duration: 0.42)
+                        animated: !reduceMotion,
+                        size: unit * 0.235,
+                        weight: .light,
+                        tracking: -unit * 0.008,
+                        duration: 0.42,
+                        color: isAlerting ? NonnaTheme.alert : NonnaTheme.ink,
+                        glows: isAlerting,
+                        glowOpacity: 0.35,
+                        glowRadius: unit * 0.03,
+                        flashes: isFlashing
                     )
-                    .font(.system(size: unit * 0.235, weight: .light))
-                    .tracking(-unit * 0.008)
-                    .monospacedDigit()
-                    .foregroundStyle(isAlerting ? NonnaTheme.alert : NonnaTheme.ink)
-                    .shadow(color: isAlerting ? NonnaTheme.alert.opacity(0.35) : .clear, radius: isAlerting ? unit * 0.03 : 0)
-                    .alertFlash(isFlashing)
+                    .accessibilityElement()
+                    .accessibilityLabel(clockText)
                     .transition(.opacity.combined(with: .scale(scale: 0.985)))
                 }
             }

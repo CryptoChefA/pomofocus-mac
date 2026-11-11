@@ -1,3 +1,4 @@
+import AppIntents
 import Foundation
 import PomofocusShared
 import SwiftUI
@@ -99,15 +100,17 @@ private struct PomofocusWidgetView: View {
                 Spacer(minLength: 0)
             }
 
-            Spacer(minLength: 8)
+            Spacer(minLength: 6)
             timerText(size: 34)
-            Spacer(minLength: 8)
+            Spacer(minLength: 6)
+            WidgetControlRow(actions: WidgetAction.actions(for: entry.snapshot), palette: palette, compact: true, short: true)
+                .padding(.bottom, 10)
             ProgressBand(palette: palette, snapshot: entry.snapshot)
         }
     }
 
     private var mediumView: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .center, spacing: 24) {
                 VStack(alignment: .leading, spacing: 9) {
                     HStack(spacing: 7) {
@@ -116,6 +119,8 @@ private struct PomofocusWidgetView: View {
                             .font(.system(size: 11, weight: .semibold))
                     }
                     timerText(size: 38)
+                    WidgetControlRow(actions: WidgetAction.actions(for: entry.snapshot), palette: palette, compact: true, short: true)
+                        .padding(.top, 2)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -185,7 +190,11 @@ private struct PomofocusWidgetView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
 
-            Spacer(minLength: 20)
+            Spacer(minLength: 16)
+
+            WidgetControlRow(actions: WidgetAction.actions(for: entry.snapshot), palette: palette, compact: false)
+
+            Spacer(minLength: 16)
 
             HStack {
                 Text("Today")
@@ -246,6 +255,83 @@ private struct PomofocusWidgetView: View {
         let minutes = (safe % 3_600) / 60
         if hours > 0 { return minutes > 0 ? "\(hours)h \(minutes)m" : "\(hours)h" }
         return "\(minutes)m"
+    }
+}
+
+/// One widget button: what it says, and the intent it runs.
+struct WidgetAction {
+    let title: String
+    let icon: String
+    let intent: any AppIntent
+    let prominent: Bool
+    /// For the small and medium sizes, where "Next: 25 min focus" won't fit.
+    var shortTitle: String?
+
+    /// The same choices as the menu bar panel, picked from the widget's last snapshot. The
+    /// app double-checks each one against its live state before acting.
+    static func actions(for snapshot: PomofocusWidgetSnapshot) -> [WidgetAction] {
+        let secondary = snapshot.phase == .focus
+            ? WidgetAction(title: "End", icon: "stop.fill", intent: EndSessionIntent(), prominent: false)
+            : WidgetAction(title: "Skip break", icon: "forward.end.fill", intent: SkipBreakIntent(), prominent: false)
+        if snapshot.status == .breathing {
+            return [WidgetAction(title: "Skip breaths", icon: "forward.fill", intent: NextBlockIntent(), prominent: true, shortTitle: "Skip"),
+                    WidgetAction(title: "Cancel", icon: "xmark", intent: EndSessionIntent(), prominent: false)]
+        }
+        if let next = snapshot.nextTitle {
+            let end = WidgetAction(title: "End", icon: "stop.fill", intent: EndSessionIntent(), prominent: false)
+            return [WidgetAction(title: next, icon: "arrow.right", intent: NextBlockIntent(), prominent: true, shortTitle: "Next"), end]
+        }
+        switch snapshot.status {
+        case .idle, .completed, .breathing:
+            return [WidgetAction(title: snapshot.phase == .focus ? "Start focus" : "Start break", icon: "play.fill",
+                                 intent: StartTimerIntent(), prominent: true, shortTitle: "Start")]
+        case .running, .overtime:
+            return [WidgetAction(title: "Pause", icon: "pause.fill", intent: PauseTimerIntent(), prominent: true), secondary]
+        case .paused:
+            return [WidgetAction(title: "Resume", icon: "play.fill", intent: ResumeTimerIntent(), prominent: true), secondary]
+        }
+    }
+}
+
+/// The main action as a filled capsule, and the other as a quiet one beside it. In the
+/// smaller sizes the second button shows only its symbol.
+private struct WidgetControlRow: View {
+    let actions: [WidgetAction]
+    let palette: WidgetPalette
+    let compact: Bool
+    var short = false
+
+    var body: some View {
+        HStack(spacing: 6) {
+            ForEach(Array(actions.enumerated()), id: \.offset) { _, action in
+                button(action)
+            }
+            if compact { Spacer(minLength: 0) }
+        }
+    }
+
+    private func button(_ action: WidgetAction) -> some View {
+        let iconOnly = compact && !action.prominent
+        return Button(intent: action.intent) {
+            HStack(spacing: 5) {
+                Image(systemName: action.icon)
+                    .font(.system(size: compact ? 9 : 10, weight: .bold))
+                if !iconOnly {
+                    Text(short ? action.shortTitle ?? action.title : action.title)
+                        .font(.system(size: compact ? 11 : 12, weight: .semibold))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                }
+            }
+            .foregroundStyle(action.prominent ? palette.black : palette.white)
+            .padding(.horizontal, iconOnly ? 0 : (compact ? 10 : 14))
+            .frame(width: iconOnly ? 26 : nil, height: compact ? 26 : 30)
+            .frame(maxWidth: compact ? nil : .infinity)
+            .background(action.prominent ? palette.gold : palette.track, in: Capsule())
+            .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(action.title)
     }
 }
 
@@ -312,5 +398,9 @@ private struct PomofocusTimerWidget: Widget {
 struct PomofocusWidgetBundle: WidgetBundle {
     var body: some Widget {
         PomofocusTimerWidget()
+        if #available(macOS 26.0, *) {
+            TimerControl()
+            EndSessionControl()
+        }
     }
 }

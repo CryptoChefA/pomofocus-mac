@@ -5,6 +5,14 @@ import SwiftUI
 struct MenuBarTimerView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.windowIsVisible) private var windowIsVisible
+
+    // The panel's window stays alive after it closes. While it can't be seen these read the
+    // timer without subscribing, so a closed panel isn't redrawn every second.
+    private var liveProgress: Double { windowIsVisible ? model.progress : model.unobservedProgress }
+    private var liveRemaining: Int { windowIsVisible ? model.remainingSeconds : model.unobservedRemainingSeconds }
+    private var liveDisplaySeconds: Int { windowIsVisible ? model.displaySeconds : model.unobservedDisplaySeconds }
+    private var liveElapsed: Int { windowIsVisible ? model.elapsedSeconds : model.unobservedElapsedSeconds }
 
     private var isAlerting: Bool { model.isOvertime && model.settings.overtimeAlert }
     private var isFlashing: Bool { isAlerting && model.status == .overtime }
@@ -195,13 +203,13 @@ struct MenuBarTimerView: View {
         }
         if model.isOvertime || model.awaitingNextPhase != nil { return 1 }
         if model.status == .idle { return 0 }
-        return model.progress
+        return liveProgress
     }
 
     private var timeText: String {
         if model.isBreathing { return model.breathingStage.prompt }
-        if model.status == .idle { return model.remainingSeconds.clockString }
-        return (model.isOvertime ? "+" : "") + model.displaySeconds.clockString
+        if model.status == .idle { return liveRemaining.clockString }
+        return (model.isOvertime ? "+" : "") + liveDisplaySeconds.clockString
     }
 
     private var caption: String {
@@ -211,11 +219,11 @@ struct MenuBarTimerView: View {
         case .idle:
             return "\(model.plannedSeconds / 60) min"
         case .paused:
-            return "\(model.remainingSeconds.clockString) left"
+            return "\(liveRemaining.clockString) left"
         case .overtime:
             return "Overtime"
         case .running:
-            let end = Date().addingTimeInterval(TimeInterval(model.remainingSeconds))
+            let end = Date().addingTimeInterval(TimeInterval(liveRemaining))
             return "Ends \(end.formatted(date: .omitted, time: .shortened))"
         }
     }
@@ -390,7 +398,7 @@ struct MenuBarTimerView: View {
     /// Finished focus today plus the block that is running right now.
     private var todayFocusSeconds: Int {
         let finished = model.todayRecordedFocusSeconds
-        let live = model.phase == .focus && model.status != .idle ? model.elapsedSeconds : 0
+        let live = model.phase == .focus && model.status != .idle ? liveElapsed : 0
         return finished + live
     }
 

@@ -21,12 +21,14 @@ extension AppModel {
             }
         }
 
+        // From the exact focused time, not the whole seconds the app shows, so the widget's
+        // countdown turns over on the same instant as the menu bar.
+        let active = exactActiveSeconds(at: now)
         let runningEndDate: Date? = widgetStatus == .running
-            ? now.addingTimeInterval(TimeInterval(max(0, remainingSeconds)))
+            ? now.addingTimeInterval(max(0, Double(plannedSeconds) - active))
             : nil
-        let overtimeSeconds = max(0, elapsedSeconds - plannedSeconds)
         let overtimeStartDate: Date? = widgetStatus == .overtime
-            ? now.addingTimeInterval(TimeInterval(-overtimeSeconds))
+            ? now.addingTimeInterval(-max(0, active - Double(plannedSeconds)))
             : nil
         let todayRecorded = todayRecordedFocusSeconds
         let activeToday = phase == .focus && status != .idle ? elapsedSeconds : 0
@@ -54,10 +56,27 @@ extension AppModel {
                 let p = ThemeManager.shared.resolved.palette
                 return PomofocusWidgetTheme(isDark: p.isDark, background: p.background, ink: p.ink,
                                             secondaryInk: p.secondaryInk, line: p.line, accent: p.accent)
-            }()
+            }(),
+            nextTitle: !isBreathing && canAdvanceCycle ? nextActionTitle : nil
         )
 
         try? PomofocusWidgetSnapshotStore.save(snapshot)
         WidgetCenter.shared.reloadTimelines(ofKind: PomofocusWidgetSnapshot.kind)
+        ControlCenterRefresh.reloadIfChanged(snapshot)
+    }
+}
+
+/// Control Center's timer button shows the action a press will take, so it's redrawn when
+/// that changes, not on every save.
+@MainActor
+private enum ControlCenterRefresh {
+    static var lastShown = ""
+
+    static func reloadIfChanged(_ snapshot: PomofocusWidgetSnapshot) {
+        guard #available(macOS 26.0, *) else { return }
+        let shown = "\(snapshot.phase.rawValue) \(snapshot.status.rawValue) \(snapshot.nextTitle ?? "")"
+        guard shown != lastShown else { return }
+        lastShown = shown
+        ControlCenter.shared.reloadControls(ofKind: PomofocusControl.controlCenterKinds[0])
     }
 }

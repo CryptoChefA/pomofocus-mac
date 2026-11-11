@@ -1,5 +1,6 @@
 import AppKit
 import Foundation
+import PomofocusShared
 import Observation
 import UniformTypeIdentifiers
 import UserNotifications
@@ -13,8 +14,14 @@ final class AppModel {
     private(set) var data: AppData = .starter {
         didSet { invalidateDerivedData() }
     }
-    var phase: TimerPhase = .focus
-    var status: TimerStatus = .idle
+    var phase: TimerPhase = .focus {
+        didSet { if phase != oldValue { FocusQuiet.shared.update(quiet: isQuietTime) } }
+    }
+    var status: TimerStatus = .idle {
+        didSet { if status != oldValue { FocusQuiet.shared.update(quiet: isQuietTime) } }
+    }
+    /// A focus block is counting, so notifications can be silenced (Settings → Experience).
+    var isQuietTime: Bool { phase == .focus && (status == .running || status == .overtime) }
     var selectedTaskID: UUID?
     var intention = ""
     var note = ""
@@ -33,6 +40,10 @@ final class AppModel {
     var showsWrapUp = false
     /// The daily "How are you feeling?" check-in sheet.
     var showsMoodCheckIn = false
+    /// The "Your week" sheet, open on the week starting here.
+    var weekSheetStart: Date?
+    /// The "Your year in focus" cards, open on this year.
+    var yearSheet: Int?
     /// The last day wrapped up, kept here so the evening banner hides as soon as it's done.
     var lastWrapUpDay: Date?
     /// The blocks a session-end rating applies to (empty when rating a single block).
@@ -44,6 +55,9 @@ final class AppModel {
     private(set) var activityIntervals: [ActivityInterval] = []
 
     @ObservationIgnored private var timer: Timer?
+    /// Keeps App Nap from holding back the clock while something is timing. A napping app's
+    /// timers can fire seconds late, which left the menu bar behind the widget.
+    @ObservationIgnored private var timingActivity: NSObjectProtocol?
     @ObservationIgnored private var lastTick = Date()
     private var sessionStartedAt: Date?
     @ObservationIgnored private var lastPersistSecond = 0
@@ -98,6 +112,13 @@ final class AppModel {
         return seconds
     }
 
+    /// Today's completed blocks, counting a block split across lists once.
+    func refreshTodayCycleCount() {
+        completedFocusCycleCount = FocusSession.mergedBlocks(data.sessions.filter {
+            Calendar.current.isDateInToday($0.startedAt)
+        }).filter { $0.outcome == .completed }.count
+    }
+
     private func invalidateDerivedData() {
         cachedSessions = nil
         cachedBreaks = nil
@@ -128,6 +149,22 @@ final class AppModel {
     static let breathingTotalSeconds = breathingCycleCount * breathingCycleSeconds
 
     var isBreathing: Bool { breathingRemaining > 0 }
+
+    /// The clock's value read without subscribing to it, for a view whose window is off
+    /// screen: it shows the last value and isn't redrawn each second until it's seen again.
+    var unobservedDisplaySeconds: Int {
+        if _breathingRemaining > 0 { return _breathingRemaining }
+        return _isOvertime ? max(0, _elapsedSeconds - _plannedSeconds) : _remainingSeconds
+    }
+
+    var unobservedRemainingSeconds: Int { _remainingSeconds }
+
+    var unobservedElapsedSeconds: Int { _elapsedSeconds }
+
+    var unobservedProgress: Double {
+        guard _plannedSeconds > 0 else { return 0 }
+        return min(1, max(0, Double(_elapsedSeconds) / Double(_plannedSeconds)))
+    }
 
     var breathingStage: BreathingStage {
         let elapsed = max(0, Self.breathingTotalSeconds - breathingRemaining)
@@ -173,6 +210,11 @@ final class AppModel {
     /// overtime, or paused). An idle app schedules no wakeups at all.
     private func ensureTicking() {
         syncMenuPulse()
+        if timingActivity == nil {
+            timingActivity = ProcessInfo.processInfo.beginActivity(
+                options: [.userInitiatedAllowingIdleSystemSleep], reason: "Timing a focus block"
+            )
+        }
         guard timer == nil else { return }
         let clock = Timer(timeInterval: 1, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated { self?.tick() }
@@ -187,6 +229,8 @@ final class AppModel {
         guard status == .idle, !isBreathing else { return }
         timer?.invalidate()
         timer = nil
+        if let timingActivity { ProcessInfo.processInfo.endActivity(timingActivity) }
+        timingActivity = nil
         syncMenuPulse()
     }
 
@@ -220,7 +264,15 @@ final class AppModel {
             data = try await LocalStore.shared.load()
             applyTheme()
             hasLoaded = true
+            // Picks up a block restored at launch, or turns Do Not Disturb back off if the
+            // app was closed mid-block last time.
+            FocusQuiet.shared.update(quiet: isQuietTime)
             startAwayObservers()
+            startControlObservers()
+            // Today's pomodoro count starts again at midnight, even with the app left open.
+            NotificationCenter.default.addObserver(forName: .NSCalendarDayChanged, object: nil, queue: .main) { [weak self] _ in
+                MainActor.assumeIsolated { self?.refreshTodayCycleCount() }
+            }
             // 0.21.0 stored estimates as pomodoros; they're minutes now.
             if data.todos?.contains(where: { $0.estimate != nil }) == true {
                 data.todos = data.todos?.map { todo in
@@ -238,9 +290,7 @@ final class AppModel {
             note = data.draft?.note ?? ""
             noteImages = data.draft?.attachments ?? []
             awaitingNextPhase = data.pendingPhase
-            completedFocusCycleCount = FocusSession.mergedBlocks(data.sessions.filter {
-                Calendar.current.isDateInToday($0.startedAt)
-            }).filter { $0.outcome == .completed }.count
+            refreshTodayCycleCount()
             applyIdleDuration()
             if awaitingNextPhase != nil {
                 remainingSeconds = 0
@@ -255,6 +305,7 @@ final class AppModel {
             }
             evaluatePlanProgress()
             synchronizeWidget()
+            runPendingControl()
         } catch {
             storageError = "Could not read local data: \(error.localizedDescription)"
         }
@@ -402,7 +453,7 @@ final class AppModel {
         } else if status != .idle {
             if phase == .focus {
                 let outcome: SessionOutcome = elapsedSeconds >= plannedSeconds ? .completed : .finishedEarly
-                finish(outcome: outcome, showsReflection: false)
+                finish(outcome: outcome)
             } else {
                 finish(showsReflection: false)
             }
@@ -901,6 +952,8 @@ final class AppModel {
     /// Set once the saved data has been read. Until then `data` is the blank starter,
     /// which must not be mistaken for a fresh install.
     private(set) var hasLoaded = false
+    /// A widget button or link that arrived while the app was still starting up.
+    @ObservationIgnored var pendingControl: PomofocusControl?
 
     /// True on a fresh install until the welcome screen is finished.
     var needsOnboarding: Bool { hasLoaded && !data.settings.hasCompletedOnboarding }
@@ -1011,13 +1064,15 @@ final class AppModel {
         }
         if status != .idle {
             if phase == .focus {
-                // The celebration covers the end of a sitting; don't stack the reflection on it.
-                finish(outcome: elapsedSeconds >= plannedSeconds ? .completed : .finishedEarly,
-                       showsReflection: !settings.celebrateSessions)
+                finish(outcome: elapsedSeconds >= plannedSeconds ? .completed : .finishedEarly)
             } else {
                 finish(showsReflection: false)
             }
         }
+        // With "every block" chosen, the last block's rating is held back so it doesn't
+        // stack on the celebration, and asked once that has gone.
+        let blockRating = reflectionSession.map { ($0, reflectionRunIDs) }
+        reflectionSession = nil
         awaitingNextPhase = nil
         data.pendingPhase = nil
         if phase != .focus { phase = .focus }
@@ -1026,7 +1081,24 @@ final class AppModel {
         closeRun()
         persistDraft()
         stopTickingIfIdle()
-        askForSessionRating(since: runStart)
+        if let (session, runIDs) = blockRating {
+            presentRating(session, runIDs: runIDs)
+        } else {
+            askForSessionRating(since: runStart)
+        }
+    }
+
+    /// Shows the rating sheet, after the celebration if one is playing.
+    private func presentRating(_ session: FocusSession, runIDs: [UUID]) {
+        let present = { [weak self] in
+            self?.reflectionRunIDs = runIDs
+            self?.reflectionSession = session
+        }
+        if CelebrationController.shared.isShowing {
+            CelebrationController.shared.onDismiss = present
+        } else {
+            present()
+        }
     }
 
     /// One rating for the whole sitting, when the user prefers that to rating every block.
@@ -1034,16 +1106,7 @@ final class AppModel {
         guard settings.rateFocus == .endOfSession, let runStart else { return }
         let blocks = data.sessions.filter { $0.startedAt >= runStart && $0.outcome != .abandoned && $0.focusedSeconds > 0 }
         guard let last = blocks.last else { return }
-        let present = { [weak self] in
-            self?.reflectionRunIDs = blocks.map(\.id)
-            self?.reflectionSession = last
-        }
-        // Don't stack the rating on the celebration; ask once it has gone.
-        if CelebrationController.shared.isShowing {
-            CelebrationController.shared.onDismiss = present
-        } else {
-            present()
-        }
+        presentRating(last, runIDs: blocks.map(\.id))
     }
 
     /// For data saved before sittings were tracked: walk back from the current block
@@ -1077,7 +1140,9 @@ final class AppModel {
     func advanceToNextPhase() {
         if phase == .focus, isOvertime {
             let breakPhase = upcomingBreakPhase()
-            finish(outcome: .completed, showsReflection: false)
+            // With "every block" chosen, ask about the block here too; the sheet waits
+            // over the break that has just started.
+            finish(outcome: .completed)
             phase = breakPhase
             applyIdleDuration()
             beginTimer()
@@ -1104,7 +1169,7 @@ final class AppModel {
         guard phase != .focus || isOvertime else { return }
 
         if phase == .focus, isOvertime {
-            finish(outcome: .completed, showsReflection: false)
+            finish(outcome: .completed)
         } else if status != .idle {
             finish(showsReflection: false)
         }
@@ -1304,7 +1369,11 @@ final class AppModel {
             let remaining = breathingEndsAt.map { max(0, Int(ceil($0.timeIntervalSince(now)))) } ?? 0
             if remaining != breathingRemaining { breathingRemaining = remaining }
             lastTick = now
-            if breathingRemaining == 0 { beginTimer() }
+            if breathingRemaining == 0 { beginTimer(); return }
+            if let end = breathingEndsAt {
+                let left = end.timeIntervalSince(now)
+                alignNextTick(now: now, untilNextSecond: left - left.rounded(.down))
+            }
             return
         }
         let now = Date()
@@ -1315,6 +1384,8 @@ final class AppModel {
         }
         lastTick = now
         refreshTrackedDurations(at: now)
+        let active = exactActiveSeconds(at: now)
+        alignNextTick(now: now, untilNextSecond: 1 - (active - active.rounded(.down)))
 
         if isOvertime {
             if status != .overtime { status = .overtime }
@@ -1505,6 +1576,19 @@ final class AppModel {
         guard let index = activityIntervals.indices.last,
               activityIntervals[index].endedAt == nil else { return }
         activityIntervals[index].endedAt = max(activityIntervals[index].startedAt, date)
+    }
+
+    /// Focused time to the fraction of a second, for the widget's end date and the clock's timing.
+    func exactActiveSeconds(at date: Date) -> Double {
+        activityIntervals.reduce(0.0) { $0 + $1.duration(through: date) }
+    }
+
+    /// Moves the next tick to just after the clock's next whole second, so the menu bar
+    /// changes at the same moment as the widget instead of up to a second later.
+    private func alignNextTick(now: Date, untilNextSecond gap: Double) {
+        guard let timer else { return }
+        let wait = (gap <= 0.001 ? 1 : gap) + 0.015
+        timer.fireDate = now.addingTimeInterval(wait)
     }
 
     private func refreshTrackedDurations(at date: Date) {

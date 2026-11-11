@@ -14,6 +14,16 @@ enum WhatsNew {
 
     /// Newest first. Add an entry with every release.
     static let releases: [(version: String, items: [Item])] = [
+        ("0.22.10", [
+            Item(icon: "rectangle.stack", title: "Your year in focus", detail: "Your year as a few cards: your hours, your biggest month, where the time went, your rhythm, your longest streak and how it felt. It ends with an image you can share, which only shows numbers. Open it from the Dashboard any time; in December it's waiting for you."),
+            Item(icon: "playpause", title: "Buttons on the widget and in Control Center", detail: "Start, pause, resume, skip a break or end a session right from the desktop widget, without opening Pomofocus. Add the Pomofocus buttons to Control Center or the menu bar too. The same actions work in Shortcuts, or as links like pomofocus://pause."),
+            Item(icon: "chart.bar", title: "Hours by week", detail: "A new chart on the Dashboard shows how many hours you focused in each of the last 12 weeks, with your weekly average and how this week compares with the same point last week. Your total focus time now also shows how much of it ran past the bell, and Completed sessions shows how many blocks you ended early, so the two add up."),
+            Item(icon: "leaf", title: "Lighter on your Mac", detail: "A running timer now uses a fraction of the power it did: about a third while you're looking at it, and almost nothing when the window is hidden. The clock still rolls the same way. The menu bar and the widget also tick over on the same second now."),
+            Item(icon: "calendar", title: "Your week", detail: "At the start of each week, a calm look back: your focus, best day and time, top list, how your mood went, and one suggestion for the week ahead. Open it any time from the Dashboard."),
+            Item(icon: "moon", title: "Quiet while you focus", detail: "Turn on Silence notifications during focus in Settings → Experience and Do Not Disturb comes on with each block, then off for your break."),
+            Item(icon: "checklist", title: "Set it up your way", detail: "A short setup on first launch: how you like to work, your daily goal, a look, a sound and a few extras, all optional. Run it again any time from Settings → Experience."),
+            Item(icon: "clock", title: "The time, quietly", detail: "A small clock at the top of the timer, so you can see if you're running late without leaving Pomofocus. Turn it off in Settings → Experience."),
+        ]),
         ("0.22.9", [
             Item(icon: "heart.text.square", title: "How are you feeling?", detail: "A quick daily check-in, like State of Mind on iPhone: slide to how today feels and watch the shape change, then pick a word or two, what's behind it and a line of your own. The Dashboard shows your mood over the last 30 days and five weeks, and it all stays on this Mac."),
         ]),

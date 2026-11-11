@@ -3,7 +3,8 @@ import SwiftUI
 /// One short "how is this going" line for a dashboard number: which way it moved and
 /// whether that's good. Arrows show the direction; green or red shows good or bad.
 struct MetricTrend: Equatable, Identifiable {
-    enum Direction { case up, down, flat }
+    /// `note` is a plain fact about the number rather than a change, like what it includes.
+    enum Direction { case up, down, flat, note }
 
     let text: String
     let direction: Direction
@@ -25,6 +26,7 @@ struct MetricTrend: Equatable, Identifiable {
         case .up: "arrowtriangle.up.fill"
         case .down: "arrowtriangle.down.fill"
         case .flat: "equal"
+        case .note: "info.circle"
         }
     }
 }
@@ -174,5 +176,12 @@ struct TrendTicker: View {
             }
         }
         .accessibilityElement(children: .combine)
+    }
+}
+
+extension MetricTrend {
+    /// A neutral line explaining what a number includes.
+    static func note(_ text: String) -> MetricTrend {
+        MetricTrend(text: text, direction: .note, isGood: nil)
     }
 }

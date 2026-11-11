@@ -55,6 +55,8 @@ struct PomodoroNonnaApp: App {
                     .disabled(model.phase == .focus && !model.isOvertime)
                 Divider()
                 Button("How Are You Feeling…") { model.showsMoodCheckIn = true }
+                Button("Your Week…") { model.weekSheetStart = model.lastWeekStart }
+                Button("Your Year in Focus…") { model.yearSheet = model.replayYearNow }
                 Button("Wrap Up Today…") { model.showsWrapUp = true }
                 Divider()
                 Button("Cinema Mode") { CinematicController.shared.toggle(model: model) }
@@ -64,6 +66,7 @@ struct PomodoroNonnaApp: App {
 
         MenuBarExtra {
             MenuBarTimerView()
+                .tracksWindowVisibility()
                 .environment(model)
                 .preferredColorScheme(NonnaTheme.colorScheme)
         } label: {

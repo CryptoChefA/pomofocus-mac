@@ -1,3 +1,4 @@
+import PomofocusShared
 import SwiftUI
 
 enum AppSection: String, CaseIterable, Identifiable {
@@ -28,6 +29,13 @@ struct RootView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var selection: AppSection = .focus
     @State private var workSuggestions: [WorkSuggestion] = []
+
+    /// Any sheet other than the focus rating.
+    private var otherSheetShowing: Bool {
+        model.needsOnboarding || Updater.shared.showsSheet || model.showsWrapUp
+            || model.weekSheetStart != nil || model.yearSheet != nil || model.showsMoodCheckIn
+            || Updater.shared.showsWhatsNew || !workSuggestions.isEmpty
+    }
 
     var body: some View {
         ZStack {
@@ -74,6 +82,7 @@ struct RootView: View {
         }
         .foregroundStyle(NonnaTheme.ink)
         .tint(NonnaTheme.terracotta)
+        .tracksWindowVisibility()
         .onChange(of: model.focusScreenRequest) { _, _ in
             withAnimation(reduceMotion ? nil : NonnaMotion.page) { selection = .focus }
         }
@@ -81,6 +90,12 @@ struct RootView: View {
             withAnimation(reduceMotion ? nil : NonnaMotion.page) { selection = .reset }
         }
         .onOpenURL { url in
+            // pomofocus://pause and friends, from Shortcuts or from a widget button when the
+            // app wasn't open, do their job without bringing the window forward.
+            if let control = PomofocusControl(url: url) {
+                model.perform(control)
+                return
+            }
             // pomofocus://focus, from a click on the desktop widget.
             if url.host == "focus" { selection = .focus }
             NSApp.activate()
@@ -112,6 +127,19 @@ struct RootView: View {
         .sheet(isPresented: Bindable(model).showsWrapUp) {
             WrapUpSheet { model.showsWrapUp = false }
                 .environment(model)
+        }
+        .sheet(isPresented: Binding(get: { model.weekSheetStart != nil }, set: { if !$0 { model.weekSheetStart = nil } })) {
+            if let start = model.weekSheetStart {
+                WeekSheet(initialStart: start) { model.weekSheetStart = nil }
+                    .environment(model)
+                    .closesOnClickOutside { model.weekSheetStart = nil }
+            }
+        }
+        .sheet(isPresented: Binding(get: { model.yearSheet != nil }, set: { if !$0 { model.yearSheet = nil } })) {
+            if let year = model.yearSheet {
+                YearSheet(year: year) { model.yearSheet = nil }
+                    .environment(model)
+            }
         }
         .sheet(isPresented: Bindable(model).showsMoodCheckIn) {
             MoodCheckInSheet { model.showsMoodCheckIn = false }
@@ -151,9 +179,16 @@ struct RootView: View {
             WorkImportSheet(suggestions: workSuggestions) { workSuggestions = [] }
                 .environment(model)
         }
-        .sheet(item: Bindable(model).reflectionSession) { session in
-            ReflectionView(session: session)
-                .environment(model)
+        // A window shows one sheet at a time, and one asked for while another is up is
+        // dropped. The rating waits its turn instead: it appears once the other has closed.
+        .sheet(isPresented: Binding(
+            get: { model.reflectionSession != nil && !otherSheetShowing },
+            set: { if !$0 { model.reflectionSession = nil } }
+        )) {
+            if let session = model.reflectionSession {
+                ReflectionView(session: session)
+                    .environment(model)
+            }
         }
         .alert("Local storage", isPresented: Binding(
             get: { model.storageError != nil },

@@ -9,6 +9,7 @@ struct FocusView: View {
     /// brought back; the timeline no longer folds by itself.
     @AppStorage("pomofocus.timelineAutoCollapsed") private var timelineAutoCollapsed = false
     @Environment(\.compactLayout) private var compact
+    @Environment(\.windowIsVisible) private var windowIsVisible
     /// On a narrow window the timeline slides out over the timer instead of beside it.
     @State private var timelineDrawerOpen = false
     @State private var confirmsAbandon = false
@@ -28,6 +29,7 @@ struct FocusView: View {
 
     @AppStorage("displayName") private var displayName = ""
     @AppStorage(MoodPrompt.enabledKey) private var dailyCheckIn = true
+    @AppStorage(QuietClock.enabledKey) private var showsClock = true
     private var isBlackIce: Bool { ThemeManager.shared.themeID == ThemeChoice.blackIce.rawValue }
     private var isBespoke: Bool { ThemeManager.shared.themeID == ThemeChoice.bespoke.rawValue }
 
@@ -59,6 +61,10 @@ struct FocusView: View {
                                 .foregroundStyle(NonnaTheme.terracotta)
                         }
                         Spacer()
+                        if showsClock {
+                            QuietClock()
+                                .padding(.trailing, 4)
+                        }
                         if dailyCheckIn {
                             MoodButton()
                         }
@@ -87,6 +93,10 @@ struct FocusView: View {
 
                     if model.status == .idle {
                         MoodCheckInBanner()
+                            .frame(maxWidth: 690)
+                        WeekReadyBanner()
+                            .frame(maxWidth: 690)
+                        YearReadyBanner()
                             .frame(maxWidth: 690)
                         WrapUpBanner()
                             .frame(maxWidth: 690)
@@ -277,48 +287,9 @@ struct FocusView: View {
                     .animation(reduceMotion ? nil : NonnaMotion.settle, value: model.isBreathing)
 
                     if !model.isBreathing {
-                        VStack(spacing: 7) {
-                            Text(timerStateLabel)
-                                .font(.system(size: 10, weight: .semibold).monospacedDigit())
-                                .foregroundStyle(accent)
-                                .help(model.easedFocusReason ?? "")
-                                .padding(.horizontal, isAlerting ? 9 : 0)
-                                .frame(height: isAlerting ? 20 : nil)
-                                .background {
-                                    if isAlerting {
-                                        RoundedRectangle(cornerRadius: 4, style: .continuous)
-                                            .fill(NonnaTheme.alert.opacity(0.13))
-                                    }
-                                }
-                                .overlay {
-                                    if isAlerting {
-                                        RoundedRectangle(cornerRadius: 4, style: .continuous)
-                                            .stroke(NonnaTheme.alert.opacity(0.75), lineWidth: 0.8)
-                                    }
-                                }
-                                .alertFlash(isFlashing)
-                            RollingClockText(
-                                text: (model.isOvertime ? "+" : "") + model.displaySeconds.clockString,
-                                countsDown: !model.isOvertime,
-                                travel: 22,
-                                animation: reduceMotion ? nil : NonnaMotion.numeric
-                            )
-                                .font(.system(size: 56, weight: .medium))
-                                .tracking(-2)
-                                .monospacedDigit()
-                                .foregroundStyle(isAlerting ? NonnaTheme.alert : NonnaTheme.ink)
-                                // The glow only exists in overtime; a clear shadow still costs a blur pass.
-                                .shadow(color: isAlerting ? NonnaTheme.alert.opacity(0.45) : .clear, radius: isAlerting ? 14 : 0)
-                                .alertFlash(isFlashing)
-                            Text(timerRangeText)
-                                .font(.system(size: 11, weight: .medium).monospacedDigit())
-                                .foregroundStyle(NonnaTheme.secondaryInk)
-                                .padding(.horizontal, 10)
-                                .frame(height: 24)
-                                .background(NonnaTheme.pane(NonnaTheme.raisedPaper))
-                                .clipShape(Capsule())
-                                .overlay { Capsule().stroke(NonnaTheme.line, lineWidth: 0.8) }
-                        }
+                        // Its own view, so the once-a-second change redraws these three lines
+                        // and not the whole screen around them.
+                        ClockReadout(accent: accent, isAlerting: isAlerting, isFlashing: isFlashing)
                     }
 
                     timerControls
@@ -330,29 +301,6 @@ struct FocusView: View {
         }
     }
 
-    private var timerStateLabel: String {
-        if model.awaitingNextPhase != nil { return "Break complete" }
-        if model.status == .overtime { return model.phase == .focus ? "Focus overtime" : "Break overtime" }
-        if model.easedFocusReason != nil { return "Warm-up" }
-        return model.phase.compactTitle
-    }
-
-    private var timerRangeText: String {
-        let now = Date()
-        let interval = model.activityIntervals.last
-        let start = interval?.startedAt ?? model.activeTimerStartedAt ?? now
-        let end: Date
-        if model.status == .idle {
-            end = now.addingTimeInterval(TimeInterval(model.plannedSeconds))
-        } else if model.status == .paused {
-            end = interval?.endedAt ?? now
-        } else if model.isOvertime {
-            end = now
-        } else {
-            end = now.addingTimeInterval(TimeInterval(model.remainingSeconds))
-        }
-        return (start..<max(end, start)).formatted(date: .omitted, time: .shortened)
-    }
 
     /// How often the dial redraws while it runs. The progress ring (r ≈ 123 pt) is the
     /// fastest-moving edge; redrawing each time it travels a quarter point keeps the sweep
@@ -364,7 +312,7 @@ struct FocusView: View {
     }
 
     private var shouldAnimateDial: Bool {
-        !reduceMotion && !model.isBreathing && (model.status == .running || model.status == .overtime)
+        windowIsVisible && !reduceMotion && !model.isBreathing && (model.status == .running || model.status == .overtime)
     }
 
     /// Exact progress at the frame's date, read from the session's active intervals, so
@@ -402,7 +350,7 @@ struct FocusView: View {
     @ViewBuilder
     private var timerControls: some View {
         HStack(spacing: 10) {
-            if model.breathingRemaining > 0 {
+            if model.isBreathing {
                 Button("Skip breaths") { model.skipBreathing() }
                     .buttonStyle(NonnaButtonStyle(color: accent))
                 Button("Cancel") { model.cancelBreathing() }
@@ -762,6 +710,24 @@ struct BreathingFlower: View {
     }
 }
 
+/// The time of day, small and in the softer ink, in the corner where macOS keeps its own
+/// clock. It changes once a minute and never shows seconds, so it answers "am I late?"
+/// at a glance without ticking at you. Settings → Experience turns it off.
+struct QuietClock: View {
+    static let enabledKey = "focus.showClock"
+
+    var body: some View {
+        TimelineView(.everyMinute) { context in
+            Text(context.date.formatted(date: .omitted, time: .shortened))
+                .font(.system(size: 13, weight: .medium).monospacedDigit())
+                .foregroundStyle(NonnaTheme.secondaryInk)
+                .contentTransition(.numericText())
+                .accessibilityLabel("The time is \(context.date.formatted(date: .omitted, time: .shortened))")
+        }
+        .help(Date().formatted(.dateTime.weekday(.wide).month(.wide).day()))
+    }
+}
+
 struct NewTaskView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
@@ -834,8 +800,9 @@ struct ReflectionView: View {
                         .contentShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                     }
                     .buttonStyle(.plain)
-                    .keyboardShortcut(KeyEquivalent(Character(String(value))), modifiers: [])
-                    .help("\(Self.feelings[index]) (\(value))")
+                    // ⌘1 to ⌘5, not the bare digits: the sheet can appear while you're typing.
+                    .keyboardShortcut(KeyEquivalent(Character(String(value))), modifiers: .command)
+                    .help("\(Self.feelings[index]) (⌘\(value))")
                 }
             }
 
@@ -1010,5 +977,89 @@ private struct RomanDialMarkings: View {
         }
         .allowsHitTesting(false)
         .accessibilityHidden(true)
+    }
+}
+
+/// The phase label, the big clock and the start-to-end times under the dial. These change
+/// every second, so they read the timer here, where only they redraw; and while the window
+/// can't be seen they stop reading it, so a hidden window isn't woken each second.
+private struct ClockReadout: View {
+    @Environment(AppModel.self) private var model
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.windowIsVisible) private var windowIsVisible
+    let accent: Color
+    let isAlerting: Bool
+    let isFlashing: Bool
+
+
+    private var seconds: Int { windowIsVisible ? model.displaySeconds : model.unobservedDisplaySeconds }
+
+    var body: some View {
+        VStack(spacing: 7) {
+            Text(timerStateLabel)
+                .font(.system(size: 10, weight: .semibold).monospacedDigit())
+                .foregroundStyle(accent)
+                .help(model.easedFocusReason ?? "")
+                .padding(.horizontal, isAlerting ? 9 : 0)
+                .frame(height: isAlerting ? 20 : nil)
+                .background {
+                    if isAlerting {
+                        RoundedRectangle(cornerRadius: 4, style: .continuous)
+                            .fill(NonnaTheme.alert.opacity(0.13))
+                    }
+                }
+                .overlay {
+                    if isAlerting {
+                        RoundedRectangle(cornerRadius: 4, style: .continuous)
+                            .stroke(NonnaTheme.alert.opacity(0.75), lineWidth: 0.8)
+                    }
+                }
+                .alertFlash(isFlashing)
+            LayerRollingClock(
+                text: (model.isOvertime ? "+" : "") + seconds.clockString,
+                countsDown: !model.isOvertime,
+                travel: 22,
+                animated: !reduceMotion,
+                size: 56,
+                color: isAlerting ? NonnaTheme.alert : NonnaTheme.ink,
+                glows: isAlerting,
+                flashes: isFlashing
+            )
+            .accessibilityElement()
+            .accessibilityLabel((model.isOvertime ? "Overtime " : "") + seconds.clockString)
+            Text(timerRangeText)
+                .font(.system(size: 11, weight: .medium).monospacedDigit())
+                .foregroundStyle(NonnaTheme.secondaryInk)
+                .padding(.horizontal, 10)
+                .frame(height: 24)
+                .background(NonnaTheme.pane(NonnaTheme.raisedPaper))
+                .clipShape(Capsule())
+                .overlay { Capsule().stroke(NonnaTheme.line, lineWidth: 0.8) }
+        }
+    }
+
+    private var timerStateLabel: String {
+        if model.awaitingNextPhase != nil { return "Break complete" }
+        if model.status == .overtime { return model.phase == .focus ? "Focus overtime" : "Break overtime" }
+        if model.easedFocusReason != nil { return "Warm-up" }
+        return model.phase.compactTitle
+    }
+
+    private var timerRangeText: String {
+        let now = Date()
+        let interval = model.activityIntervals.last
+        let start = interval?.startedAt ?? model.activeTimerStartedAt ?? now
+        let end: Date
+        if model.status == .idle {
+            end = now.addingTimeInterval(TimeInterval(model.plannedSeconds))
+        } else if model.status == .paused {
+            end = interval?.endedAt ?? now
+        } else if model.isOvertime {
+            end = now
+        } else {
+            // From the block's exact focused time, so this line doesn't redraw every second.
+            end = now.addingTimeInterval(max(0, Double(model.plannedSeconds) - model.exactActiveSeconds(at: now)))
+        }
+        return (start..<max(end, start)).formatted(date: .omitted, time: .shortened)
     }
 }

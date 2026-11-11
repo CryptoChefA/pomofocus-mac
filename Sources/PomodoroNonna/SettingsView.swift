@@ -4,6 +4,7 @@ import SwiftUI
 struct SettingsView: View {
     @Environment(AppModel.self) private var model
     @AppStorage(MoodPrompt.enabledKey) private var dailyCheckIn = true
+    @AppStorage(QuietClock.enabledKey) private var showsClock = true
     @EnvironmentObject private var calendarStore: CalendarStore
     @Environment(\.compactLayout) private var compact
 
@@ -227,6 +228,12 @@ struct SettingsView: View {
                 binding: settingsBinding(\.simpleTasks)
             )
             ToggleRow(
+                title: "Show the time",
+                subtitle: "A small clock at the top of the timer, in a soft grey",
+                binding: $showsClock
+            )
+            FocusQuietSettingsRow()
+            ToggleRow(
                 title: "Daily check-in",
                 subtitle: "Ask how you're feeling once a day, with a flower at the top of the timer to check in any time. Your mood shows on the Dashboard and stays on this Mac",
                 binding: $dailyCheckIn
@@ -241,6 +248,18 @@ struct SettingsView: View {
                 subtitle: "Show what the voice says, for following along without sound",
                 binding: settingsBinding(\.resetCaptions)
             )
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Setup")
+                        .font(.system(size: 12, weight: .medium))
+                    Text("Go through the first-launch questions again: how you work, your look, sound and extras")
+                        .font(.system(size: 10))
+                        .foregroundStyle(NonnaTheme.secondaryInk)
+                }
+                Spacer(minLength: 12)
+                Button("Run setup again") { model.updateSettings { $0.hasCompletedOnboarding = false } }
+                    .buttonStyle(NonnaButtonStyle(prominent: false))
+            }
         }
     }
 
