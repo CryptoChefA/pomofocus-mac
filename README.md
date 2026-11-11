@@ -20,6 +20,14 @@ Pomofocus is a free, open source Pomodoro timer for macOS: a beautiful, local-fi
    xattr -dr com.apple.quarantine /Applications/Pomofocus.app
    ```
 
+Or install it with [Homebrew](https://brew.sh) in one line, which also skips the Open Anyway step:
+
+```sh
+brew install --cask cryptochefa/tap/pomofocus
+```
+
+After installing, Pomofocus updates itself.
+
 ## What works today
 
 - Native SwiftUI macOS app and menu-bar timer with a live progress ring and countdown

@@ -579,6 +579,8 @@ kbd {
 .install p, .update-grid p { margin: 0; color: var(--ink-2); font-size: 15px; }
 .install code { display: block; margin-top: 14px; padding: 12px 14px; border-radius: 12px; background: #000; box-shadow: 0 0 0 1px rgba(255,255,255,.1) inset; font: 12px/1.6 var(--mono); color: var(--gold-2); overflow-x: auto; white-space: pre; cursor: copy; }
 .install code:hover { box-shadow: 0 0 0 1px rgba(201,176,122,.5) inset; }
+.install.brew-row { margin-top: 20px; }
+.install.brew-row .step { grid-column: 1 / -1; }
 
 footer { border-top: 1px solid rgba(255,255,255,.08); padding: 26px 22px 40px; color: var(--ink-2); font-size: 12px; }
 footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 14px; }
@@ -961,6 +963,9 @@ footer a:hover { color: var(--ink); text-decoration: underline; }
     <div class="step rv d1"><div class="n">Step 2</div><h3>Move to Applications</h3><p>Drag Pomofocus into your Applications folder.</p></div>
     <div class="step rv d2"><div class="n">Step 3</div><h3>Open it once</h3><p>This build isn't notarized by Apple, so allow it under <b>System Settings → Privacy &amp; Security → Open Anyway</b>, or run:</p><code title="Click to copy" data-copy>xattr -dr com.apple.quarantine /Applications/Pomofocus.app</code></div>
     <div class="step rv d3"><div class="n">Step 4</div><h3>That's it</h3><p>From version 0.22.1 on, Pomofocus updates itself: it lets you know when a new version is out, or choose <b>Pomofocus → Check for Updates</b>. To pass it on, use <b>Settings → Share Pomofocus</b>.</p></div>
+  </div>
+  <div class="install brew-row">
+    <div class="step rv"><div class="n">Or with Homebrew</div><h3>One line in Terminal</h3><p>Installs Pomofocus into Applications, ready to open without the Open Anyway step. After that it updates itself.</p><code title="Click to copy" data-copy>brew install --cask cryptochefa/tap/pomofocus</code></div>
   </div>
 
   <div class="update" id="update">
