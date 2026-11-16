@@ -21,7 +21,9 @@ final class AppModel {
         didSet { if status != oldValue { FocusQuiet.shared.update(quiet: isQuietTime) } }
     }
     /// A focus block is counting, so notifications can be silenced (Settings → Experience).
-    var isQuietTime: Bool { phase == .focus && (status == .running || status == .overtime) }
+    /// Notifications are silenced while a focus block runs, and back on the moment it ends:
+    /// overtime isn't quiet time, or the "time for a break" alert would be silenced too.
+    var isQuietTime: Bool { phase == .focus && status == .running }
     var selectedTaskID: UUID?
     var intention = ""
     var note = ""
@@ -1411,6 +1413,7 @@ final class AppModel {
             if reminderMark > lastOvertimeReminderMark {
                 lastOvertimeReminderMark = reminderMark
                 play(.overtimeReminder)
+                glowIfWanted()
             }
         }
         if elapsedSeconds - lastPersistSecond >= 15 {
@@ -1426,6 +1429,7 @@ final class AppModel {
     private func timerReachedZero() {
         play(.complete)
         sendCompletionNotification()
+        glowIfWanted()
         if phase == .focus, settings.allowOvertime, !settings.autoStartBreaks {
             isOvertime = true
             status = .overtime
@@ -1800,6 +1804,18 @@ final class AppModel {
         cuePlayer.play(cue)
     }
 
+    /// The silent alert: a glow around every screen, over full-screen apps too, in the
+    /// menu bar's colour when one is chosen, otherwise the theme's.
+    private func glowIfWanted() {
+        guard settings.screenGlow else { return }
+        var color: NSColor?
+        if settings.menuBarColor != "auto" {
+            let rgb = RGB(hex: settings.menuBarColor)
+            color = NSColor(srgbRed: rgb.r, green: rgb.g, blue: rgb.b, alpha: 1)
+        }
+        ScreenGlow.shared.show(color: color)
+    }
+
     private func requestNotifications() {
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { _, _ in }
     }
@@ -1834,9 +1850,13 @@ extension AppModel {
     }
 
     /// When this block's planned time ran (or will run) out, following its active stretches.
+    /// For a block still short of its length, it's when the running stretch reaches it.
+    /// (Returning nothing there used to pause a block at the moment the screen locked, so
+    /// reading away from the Mac lost all the time since.)
     private func plannedEndDate(now: Date = Date()) -> Date? {
         var left = TimeInterval(plannedSeconds)
         for interval in activityIntervals {
+            if interval.endedAt == nil { return interval.startedAt.addingTimeInterval(left) }
             let length = interval.duration(through: now)
             if length >= left { return interval.startedAt.addingTimeInterval(left) }
             left -= length

@@ -241,6 +241,21 @@ struct NonnaSettings: Codable, Equatable, Sendable {
     var ambientSound: AmbientSound = .off
     var ambientVolume = 0.32
     var showInMenuBar = true
+    /// How the menu-bar item looks: "chip" (the timer chip), "bars" (three bars that empty
+    /// as the block runs) or "icon" (an image you choose).
+    var menuBarStyle = "chip"
+    /// The bars' colour: "auto" follows the menu bar's own text colour, or a hex colour.
+    var menuBarColor = "auto"
+    /// The time beside the bars or your icon. Older setting; `menuBarText` replaces it.
+    var menuBarShowsTime = false
+    /// What the menu bar writes beside the bars or your icon, or on its own in the
+    /// minimal style: "none", "time" (time left) or "percent" (how far through).
+    var menuBarText = "none"
+    /// A soft glow around the screen when a block or break ends, for when the sound is off
+    /// or you're in a full-screen app.
+    var screenGlow = true
+    /// Your icon takes the menu bar's colour, for one-colour icons.
+    var menuBarIconTemplate = false
     var showCalendarEvents = false
     var hiddenCalendarIDs: [String] = []
     var celebrateSessions = true
@@ -276,6 +291,7 @@ struct NonnaSettings: Codable, Equatable, Sendable {
         case celebrateSessions, themeID, customTheme, hasCompletedOnboarding
         case pauseWhenAway, awayMinutes, rateFocus, savedThemes, celebrationStyle, simpleTasks
         case resetCaptions, resetAmbience
+        case menuBarStyle, menuBarColor, menuBarShowsTime, menuBarIconTemplate, menuBarText, screenGlow
     }
 
     init() {}
@@ -314,6 +330,12 @@ struct NonnaSettings: Codable, Equatable, Sendable {
         simpleTasks = try values.decodeIfPresent(Bool.self, forKey: .simpleTasks) ?? true
         resetCaptions = try values.decodeIfPresent(Bool.self, forKey: .resetCaptions) ?? false
         resetAmbience = try values.decodeIfPresent(String.self, forKey: .resetAmbience) ?? "rain"
+        menuBarStyle = try values.decodeIfPresent(String.self, forKey: .menuBarStyle) ?? "chip"
+        menuBarColor = try values.decodeIfPresent(String.self, forKey: .menuBarColor) ?? "auto"
+        menuBarShowsTime = try values.decodeIfPresent(Bool.self, forKey: .menuBarShowsTime) ?? false
+        menuBarIconTemplate = try values.decodeIfPresent(Bool.self, forKey: .menuBarIconTemplate) ?? false
+        menuBarText = try values.decodeIfPresent(String.self, forKey: .menuBarText) ?? (menuBarShowsTime ? "time" : "none")
+        screenGlow = try values.decodeIfPresent(Bool.self, forKey: .screenGlow) ?? true
         themeID = try values.decodeIfPresent(String.self, forKey: .themeID) ?? ThemeChoice.obsidian.rawValue
         customTheme = try values.decodeIfPresent(CustomThemeSpec.self, forKey: .customTheme) ?? CustomThemeSpec()
         hasCompletedOnboarding = try values.decodeIfPresent(Bool.self, forKey: .hasCompletedOnboarding) ?? true
@@ -331,6 +353,12 @@ struct NonnaSettings: Codable, Equatable, Sendable {
         try values.encode(simpleTasks, forKey: .simpleTasks)
         try values.encode(resetCaptions, forKey: .resetCaptions)
         try values.encode(resetAmbience, forKey: .resetAmbience)
+        try values.encode(menuBarStyle, forKey: .menuBarStyle)
+        try values.encode(menuBarColor, forKey: .menuBarColor)
+        try values.encode(menuBarShowsTime, forKey: .menuBarShowsTime)
+        try values.encode(menuBarIconTemplate, forKey: .menuBarIconTemplate)
+        try values.encode(menuBarText, forKey: .menuBarText)
+        try values.encode(screenGlow, forKey: .screenGlow)
         try values.encode(themeID, forKey: .themeID)
         try values.encode(customTheme, forKey: .customTheme)
         try values.encode(hasCompletedOnboarding, forKey: .hasCompletedOnboarding)

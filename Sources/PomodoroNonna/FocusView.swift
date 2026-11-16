@@ -196,7 +196,10 @@ struct FocusView: View {
     }
 
     private var todayProgress: some View {
-        let todaySeconds = model.todayRecordedFocusSeconds
+        // Includes the block that's running, like the menu bar and Cinema do. Minutes only,
+        // so this redraws once a minute rather than every second.
+        let live = model.phase == .focus && model.status != .idle ? model.elapsedSeconds / 60 * 60 : 0
+        let todaySeconds = model.todayRecordedFocusSeconds + live
         let goal = max(1, model.settings.dailyGoalMinutes * 60)
         return VStack(alignment: .trailing, spacing: 5) {
             Text("Today")
@@ -914,23 +917,29 @@ private struct AwayBanner: View {
             Image(systemName: "moon.zzz.fill")
                 .font(.system(size: 20))
                 .foregroundStyle(NonnaTheme.sage)
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Paused at \(pausedAt.formatted(date: .omitted, time: .shortened))")
-                    .font(.system(size: 14, weight: .semibold))
-                Text("Looks like you stepped away, so the time after that wasn’t counted.")
-                    .font(.system(size: 12))
-                    .foregroundStyle(NonnaTheme.secondaryInk)
+            // Read once a minute, so the "for 18 min" stays right while it waits.
+            TimelineView(.everyMinute) { context in
+                let minutes = max(1, Int(context.date.timeIntervalSince(pausedAt) / 60))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Were you still focusing?")
+                        .font(.system(size: 14, weight: .semibold))
+                    Text("You seemed to be away from your Mac, so the timer paused at \(pausedAt.formatted(date: .omitted, time: .shortened)). If you kept working away from the screen, count those \(minutes) min.")
+                        .font(.system(size: 12))
+                        .foregroundStyle(NonnaTheme.secondaryInk)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
-            Spacer()
-            Button("I was here") { withAnimation(reduceMotion ? nil : NonnaMotion.dismiss) { model.countAwayTime() } }
+            Spacer(minLength: 8)
+            Button("End session") { withAnimation(reduceMotion ? nil : NonnaMotion.dismiss) { model.endSession() } }
                 .buttonStyle(.plain)
                 .font(.system(size: 12))
                 .foregroundStyle(NonnaTheme.secondaryInk)
-                .help("Count the time since then after all")
-            Button("End session") { withAnimation(reduceMotion ? nil : NonnaMotion.dismiss) { model.endSession() } }
+            Button("Don't count it") { withAnimation(reduceMotion ? nil : NonnaMotion.dismiss) { model.togglePause() } }
                 .buttonStyle(NonnaButtonStyle(prominent: false))
-            Button("Resume") { withAnimation(reduceMotion ? nil : NonnaMotion.dismiss) { model.togglePause() } }
+                .help("Resume from where the timer paused")
+            Button("Count it") { withAnimation(reduceMotion ? nil : NonnaMotion.dismiss) { model.countAwayTime() } }
                 .buttonStyle(NonnaButtonStyle())
+                .help("Count the time since it paused, and keep going")
         }
         .padding(16)
         .background {

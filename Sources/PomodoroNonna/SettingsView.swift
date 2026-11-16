@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct SettingsView: View {
     @Environment(AppModel.self) private var model
@@ -29,6 +30,7 @@ struct SettingsView: View {
                     }
                     VStack(spacing: 18) {
                         experienceSettings
+                        MenuBarSettingsCard()
                         widgetSettings
                         calendarSettings
                         privacySettings
@@ -168,13 +170,13 @@ struct SettingsView: View {
             )
             ToggleRow(
                 title: "Pause when I'm away",
-                subtitle: "If a timer runs over and you leave the Mac, stop counting from when you left",
+                subtitle: "Stop counting when your Mac is locked or asleep for a while, or nobody touches it while a timer runs over. A block still counts up to its bell, and you can count the rest when you're back. Turn this off if you often study away from the screen.",
                 binding: settingsBinding(\.pauseWhenAway)
             )
             if model.settings.pauseWhenAway {
                 StepperRow(
                     title: "Away after",
-                    value: "\(model.settings.awayMinutes) min without keyboard or mouse",
+                    value: "\(model.settings.awayMinutes) min",
                     range: 5...30,
                     step: 5,
                     binding: settingsBinding(\.awayMinutes)
@@ -185,6 +187,42 @@ struct SettingsView: View {
                 subtitle: "Flash the time red once a timer runs over",
                 binding: settingsBinding(\.overtimeAlert)
             )
+            ToggleRow(
+                title: "Glow when time's up",
+                subtitle: "A soft glow around your screen when a block or break ends, and again with each overtime reminder. Silent, and it shows over full-screen apps.",
+                binding: settingsBinding(\.screenGlow)
+            )
+            if model.settings.screenGlow {
+                HStack {
+                    Spacer()
+                    Button("Try the Glow") {
+                        var color: NSColor?
+                        if model.settings.menuBarColor != "auto" {
+                            let rgb = RGB(hex: model.settings.menuBarColor)
+                            color = NSColor(srgbRed: rgb.r, green: rgb.g, blue: rgb.b, alpha: 1)
+                        }
+                        ScreenGlow.shared.show(color: color)
+                    }
+                    .buttonStyle(NonnaButtonStyle(prominent: false))
+                }
+            }
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Notifications that stay")
+                        .font(.system(size: 12, weight: .medium))
+                    Text("In macOS, set Pomofocus's notifications to Persistent so \"time to rest\" waits until you've seen it.")
+                        .font(.system(size: 10))
+                        .foregroundStyle(NonnaTheme.secondaryInk)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: 12)
+                Button("Open Settings") {
+                    let url = URL(string: "x-apple.systempreferences:com.apple.Notifications-Settings.extension?id=org.pomodorononna.app")
+                        ?? URL(string: "x-apple.systempreferences:com.apple.Notifications-Settings.extension")!
+                    NSWorkspace.shared.open(url)
+                }
+                .buttonStyle(NonnaButtonStyle(prominent: false))
+            }
             HStack(spacing: 12) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Rate your focus")
@@ -661,5 +699,247 @@ private struct ShareSettingsCard: View {
                 .buttonStyle(NonnaButtonStyle(prominent: false))
             }
         }
+    }
+}
+
+/// How the menu-bar item looks: the timer chip, three bars in a colour you pick, or your
+/// own icon, with or without the time beside it.
+private struct MenuBarSettingsCard: View {
+    @Environment(AppModel.self) private var model
+    @State private var iconError: String?
+
+    private static let swatches: [(name: String, hex: String)] = [
+        ("Red", "FF3B30"), ("White", "FFFFFF"), ("Black", "000000"),
+    ]
+
+    private var settings: NonnaSettings { model.settings }
+    private var style: MenuBarStyle { MenuBarStyle(rawValue: settings.menuBarStyle) ?? .chip }
+
+    var body: some View {
+        SettingsCard(title: "Menu bar", icon: "menubar.rectangle",
+                     summary: settings.showInMenuBar ? style.title : "Hidden") {
+            ToggleRow(
+                title: "Show in the menu bar",
+                subtitle: "The timer at the top of your screen. Click it for the timer panel.",
+                binding: binding(\.showInMenuBar)
+            )
+            if settings.showInMenuBar {
+                Divider().overlay(NonnaTheme.line)
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 110), spacing: 10)], spacing: 10) {
+                    ForEach(MenuBarStyle.allCases) { option in styleTile(option) }
+                }
+                if style == .bars || style == .minimal { colorRow }
+                if style == .icon { iconRows }
+                if style != .chip { textRow }
+            }
+        }
+    }
+
+    // MARK: Style
+
+    private func styleTile(_ option: MenuBarStyle) -> some View {
+        let selected = option == style
+        return Button {
+            model.updateSettings { $0.menuBarStyle = option.rawValue }
+        } label: {
+            VStack(spacing: 8) {
+                preview(option)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 30)
+                    .background(NonnaTheme.sunken, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+                Text(option.title)
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(selected ? NonnaTheme.ink : NonnaTheme.secondaryInk)
+            }
+            .padding(8)
+            .background(NonnaTheme.raisedPaper, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .stroke(selected ? NonnaTheme.terracotta : NonnaTheme.line, lineWidth: selected ? 1.5 : 0.8)
+            }
+            .contentShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(selected ? .isSelected : [])
+    }
+
+    /// What the menu bar writes: the time left or a percentage. Minimal always shows one.
+    private var textRow: some View {
+        HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(style == .minimal ? "Show" : "Beside it")
+                    .font(.system(size: 12, weight: .medium))
+                Text(textMode == "percent" ? "How far through the block, like 62%" : textMode == "time" ? "Time left, like 18:42" : "Just the \(style == .icon ? "icon" : "bars")")
+                    .font(.system(size: 10))
+                    .foregroundStyle(NonnaTheme.secondaryInk)
+            }
+            Spacer(minLength: 12)
+            Picker("Show", selection: Binding(
+                get: { textMode },
+                set: { mode in model.updateSettings { $0.menuBarText = mode } }
+            )) {
+                if style != .minimal { Text("Nothing").tag("none") }
+                Text("Time left").tag("time")
+                Text("Percent").tag("percent")
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .fixedSize()
+        }
+    }
+
+    /// The text setting as the current style uses it: Minimal can't show nothing.
+    private var textMode: String {
+        style == .minimal && settings.menuBarText == "none" ? "time" : settings.menuBarText
+    }
+
+    /// A still of each look, part-way through a block.
+    @ViewBuilder
+    private func preview(_ option: MenuBarStyle) -> some View {
+        let mode = option == .minimal && settings.menuBarText == "none" ? "time" : settings.menuBarText
+        let sample: String? = mode == "percent" ? "62%" : mode == "time" ? "18:42" : nil
+        let time = option == style || option == .minimal ? sample : nil
+        switch option {
+        case .chip:
+            Image(nsImage: MenuBarGlyph.image(text: "18:42", fill: 0.62, tone: .focus))
+        case .bars, .icon:
+            let image = MenuBarMark.image(
+                bars: MenuBarMark.Bars(levels: [1, 1, 0.45], alpha: 1),
+                color: barColor,
+                icon: option == .icon ? MenuBarIconStore.image : nil,
+                iconFollowsMenuBar: settings.menuBarIconTemplate,
+                text: time
+            )
+            Image(nsImage: image)
+                .foregroundStyle(NonnaTheme.ink)
+        case .minimal:
+            Image(nsImage: MenuBarMark.image(
+                bars: MenuBarMark.Bars(levels: [], alpha: 1), color: barColor, icon: nil,
+                iconFollowsMenuBar: false, text: time ?? "18:42", showsMark: false))
+                .foregroundStyle(NonnaTheme.ink)
+        }
+    }
+
+    // MARK: Colour
+
+    private var barColor: NSColor? {
+        guard settings.menuBarColor != "auto" else { return nil }
+        let rgb = RGB(hex: settings.menuBarColor)
+        return NSColor(srgbRed: rgb.r, green: rgb.g, blue: rgb.b, alpha: 1)
+    }
+
+    private var colorRow: some View {
+        HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Colour")
+                    .font(.system(size: 12, weight: .medium))
+                Text(settings.menuBarColor == "auto" ? "Matches the menu bar, light or dark" : (style == .minimal ? "The text's colour, and the glow's" : "The bars' colour, and the glow's"))
+                    .font(.system(size: 10))
+                    .foregroundStyle(NonnaTheme.secondaryInk)
+            }
+            Spacer(minLength: 12)
+            swatch(hex: "auto", name: "Match the menu bar") {
+                Circle().fill(LinearGradient(colors: [.white, .black], startPoint: .topLeading, endPoint: .bottomTrailing))
+            }
+            ForEach(Self.swatches, id: \.hex) { swatch in
+                self.swatch(hex: swatch.hex, name: swatch.name) { Circle().fill(Color(hex: swatch.hex)) }
+            }
+            ColorPicker("Any colour", selection: customColor, supportsOpacity: false)
+                .labelsHidden()
+                .help("Any colour")
+        }
+    }
+
+    private func swatch<Fill: View>(hex: String, name: String, @ViewBuilder fill: () -> Fill) -> some View {
+        let selected = settings.menuBarColor.uppercased() == hex.uppercased()
+        return Button {
+            model.updateSettings { $0.menuBarColor = hex }
+        } label: {
+            fill()
+                .frame(width: 18, height: 18)
+                .overlay { Circle().stroke(NonnaTheme.strongLine, lineWidth: 0.8) }
+                .padding(3)
+                .overlay { Circle().stroke(selected ? NonnaTheme.terracotta : .clear, lineWidth: 1.5) }
+        }
+        .buttonStyle(.plain)
+        .help(name)
+        .accessibilityLabel(name)
+        .accessibilityAddTraits(selected ? .isSelected : [])
+    }
+
+    /// The colour well: shows the chosen colour, and picking one makes it the bars' colour.
+    private var customColor: Binding<Color> {
+        Binding(
+            get: { settings.menuBarColor == "auto" ? NonnaTheme.terracotta : Color(hex: settings.menuBarColor) },
+            set: { color in
+                guard let srgb = NSColor(color).usingColorSpace(.sRGB) else { return }
+                let hex = RGB(r: srgb.redComponent, g: srgb.greenComponent, b: srgb.blueComponent).hex
+                model.updateSettings { $0.menuBarColor = hex }
+            }
+        )
+    }
+
+    // MARK: Your icon
+
+    @ViewBuilder
+    private var iconRows: some View {
+        HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Icon")
+                    .font(.system(size: 12, weight: .medium))
+                Text(iconError ?? (MenuBarIconStore.image == nil
+                    ? "A PNG, JPEG, HEIC or PDF. Until you choose one, the bars stand in."
+                    : "Shown at menu bar size. Square pictures work best."))
+                    .font(.system(size: 10))
+                    .foregroundStyle(iconError == nil ? NonnaTheme.secondaryInk : NonnaTheme.alert)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 12)
+            if MenuBarIconStore.image != nil {
+                Button("Remove") {
+                    MenuBarIconStore.remove()
+                    refreshMenuBar()
+                }
+                .buttonStyle(NonnaButtonStyle(prominent: false))
+            }
+            Button(MenuBarIconStore.image == nil ? "Choose Image…" : "Change…") { chooseIcon() }
+                .buttonStyle(NonnaButtonStyle())
+        }
+        if MenuBarIconStore.image != nil {
+            ToggleRow(
+                title: "Match the menu bar colour",
+                subtitle: "For one-colour icons: white on a dark menu bar, black on a light one",
+                binding: binding(\.menuBarIconTemplate)
+            )
+        }
+    }
+
+    private func chooseIcon() {
+        let panel = NSOpenPanel()
+        panel.title = "Choose a Menu Bar Icon"
+        panel.prompt = "Use as Icon"
+        panel.allowedContentTypes = [.png, .jpeg, .heic, .tiff, .pdf, .gif, .bmp]
+        panel.allowsMultipleSelection = false
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        do {
+            try MenuBarIconStore.save(from: url)
+            iconError = nil
+        } catch {
+            iconError = "That file couldn't be read as a picture. Try a PNG or JPEG."
+        }
+        refreshMenuBar()
+    }
+
+    /// The menu-bar item redraws on timer changes; a new icon isn't one, so nudge it.
+    private func refreshMenuBar() {
+        model.menuPulse.tick &+= 1
+        model.updateSettings { _ in }
+    }
+
+    private func binding<Value>(_ keyPath: WritableKeyPath<NonnaSettings, Value>) -> Binding<Value> {
+        Binding(
+            get: { model.settings[keyPath: keyPath] },
+            set: { newValue in model.updateSettings { $0[keyPath: keyPath] = newValue } }
+        )
     }
 }

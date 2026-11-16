@@ -308,6 +308,12 @@ struct MenuBarTimerView: View {
                     icon: "play.fill",
                     prominent: true
                 ) { model.start() }
+            } else if model.awayPausedAt != nil {
+                // Paused because the Mac was locked or asleep: the same choice as the banner.
+                panelButton("Count it", icon: "checkmark", prominent: true) { model.countAwayTime() }
+                    .help("You were away. Count the time since the timer paused, and keep going")
+                panelButton("Don't count", icon: "play.fill", prominent: false) { model.togglePause() }
+                    .help("Resume from where the timer paused")
             } else {
                 panelButton(
                     model.status == .paused ? "Resume" : "Pause",

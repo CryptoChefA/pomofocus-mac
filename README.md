@@ -32,6 +32,8 @@ After installing, Pomofocus updates itself.
 
 - Native SwiftUI macOS app and menu-bar timer with a live progress ring and countdown
 - Native small, medium, and large desktop/sidebar widgets with a live timer, one restrained gold progress band, and buttons to start, pause, resume, skip a break or end a session without opening the app
+- Menu bar looks: the timer chip, three bars that empty as a block runs, your own icon, or Minimal (just the time left or a percentage), in the menu bar's colour or any colour
+- A silent glow around the screen when a block or break ends, shown over full-screen apps too
 - Control Center and menu bar buttons (macOS 26 and later): one that starts, pauses, resumes or moves on, whichever fits, and one that ends the session
 - Spotlight and Siri: search Spotlight for Pomofocus, or say "Start focus in Pomofocus", to start, pause, resume, skip a break or end a session
 - `pomofocus://start`, `pause`, `resume`, `toggle`, `next`, `end` and `skip-break` links for Shortcuts and scripts
@@ -170,6 +172,7 @@ swiftc Sources/PomodoroNonna/Models.swift Sources/PomodoroNonna/MoodCheckIn.swif
 - `ControlCenterControls.swift`: the Control Center buttons, built on the same intents
 - `LayerRollingClock.swift`: the big rolling clock, animated by Core Animation so the roll costs the app nothing per frame
 - `WeeklyTotals.swift`: focus per calendar week for the Dashboard's Hours by week chart
+- `ScreenGlow.swift`: the silent end-of-block glow around every screen
 - `WindowVisibility.swift`: tells views whether their window can be seen, so hidden ones stop redrawing
 - `AppControl.swift`: runs widget, Shortcuts and `pomofocus://` requests when they fit the timer's state
 - `Scripts/appintents-metadata.py`: writes the App Intents metadata (actions and App Shortcuts) for the app and the widget, which Xcode would normally generate

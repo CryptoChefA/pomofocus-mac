@@ -14,6 +14,12 @@ enum WhatsNew {
 
     /// Newest first. Add an entry with every release.
     static let releases: [(version: String, items: [Item])] = [
+        ("0.22.12", [
+            Item(icon: "light.max", title: "A glow when time's up", detail: "When a block or break ends, a soft glow breathes around the edges of your screen, even over a full-screen app and with the sound off. It comes back with each overtime reminder. Turn it off or try it in Settings. Notifications also stay on now when a block runs into overtime, instead of being silenced with it."),
+            Item(icon: "menubar.rectangle", title: "Your menu bar, your way", detail: "In Settings → Menu bar, swap the timer chip for three simple bars that empty as your block runs, your own picture, or Minimal: just the time left or a percentage. Pick the menu bar's own colour or red, white, black or any colour you like. You can also hide Pomofocus from the menu bar there."),
+            Item(icon: "book", title: "Study away from the screen", detail: "If your Mac locks or sleeps while you read or write on paper, the block now keeps counting up to its bell. Before, it paused when the screen locked and the time after that was lost. If you're away past the bell, Pomofocus asks whether you were still focusing, and Count it adds that time."),
+            Item(icon: "sun.max", title: "Today includes the block you're in", detail: "The Today total on the Focus screen now counts the block that's running, like the menu bar and Cinema already did."),
+        ]),
         ("0.22.11", [
             Item(icon: "magnifyingglass", title: "Pomofocus in Spotlight", detail: "Search Spotlight for Pomofocus to start a focus block, pause, resume, skip a break or end a session without opening the app. Siri knows them too: try \"Start focus in Pomofocus\"."),
             Item(icon: "menubar.rectangle", title: "A lighter menu bar timer", detail: "The clock in the menu bar panel now rolls the same way using almost no power, like the big clock on the Focus screen."),

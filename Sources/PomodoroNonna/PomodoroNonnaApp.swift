@@ -64,7 +64,16 @@ struct PomodoroNonnaApp: App {
             }
         }
 
-        MenuBarExtra {
+        // "Show in the menu bar" in setup and Settings; taking the item out with ⌘-drag turns it off too.
+        MenuBarExtra(isInserted: Binding(
+            get: { model.settings.showInMenuBar },
+            // SwiftUI writes this back while it updates the scene; saving an unchanged
+            // value would update the scene again, round and round.
+            set: { shown in
+                guard shown != model.settings.showInMenuBar else { return }
+                model.updateSettings { $0.showInMenuBar = shown }
+            }
+        )) {
             MenuBarTimerView()
                 .tracksWindowVisibility()
                 .environment(model)
@@ -104,6 +113,69 @@ private struct MenuBarLabel: View {
     }
 
     private func glyph(at now: Date) -> NSImage {
+        let settings = model.settings
+        let style = MenuBarStyle(rawValue: settings.menuBarStyle) ?? .chip
+        guard style != .chip else { return chip(at: now) }
+        let color: NSColor? = settings.menuBarColor == "auto" ? nil : {
+            let rgb = RGB(hex: settings.menuBarColor)
+            return NSColor(srgbRed: rgb.r, green: rgb.g, blue: rgb.b, alpha: 1)
+        }()
+        // Without a saved icon, "Your icon" shows the bars until one is chosen.
+        let icon = style == .icon ? MenuBarIconStore.image : nil
+        let minimal = style == .minimal
+        // Minimal always shows something: the time left unless percent is chosen.
+        let mode = minimal && settings.menuBarText == "none" ? "time" : settings.menuBarText
+        let marks = bars(at: now)
+        return MenuBarMark.image(
+            bars: minimal ? MenuBarMark.Bars(levels: [], alpha: marks.alpha) : marks,
+            color: color,
+            icon: icon,
+            iconFollowsMenuBar: settings.menuBarIconTemplate,
+            text: label(mode: mode, minimal: minimal),
+            showsMark: !minimal
+        )
+    }
+
+    /// The words beside the mark: the time left, or how far through the block as a
+    /// percentage. Idle, the minimal style shows the next block's length, dimmed by `bars`.
+    private func label(mode: String, minimal: Bool) -> String? {
+        switch mode {
+        case "time":
+            if let text = menuBarText { return text }
+            return minimal ? (model.plannedSeconds / 60).description + ":00" : nil
+        case "percent":
+            if model.awaitingNextPhase != nil { return "done" }
+            if model.isBreathing { return "breathe" }
+            if model.status == .idle { return minimal ? "0%" : nil }
+            if model.isOvertime { return "100%" }
+            return "\(Int((model.progress * 100).rounded(.down)))%"
+        default:
+            return nil
+        }
+    }
+
+    /// The three bars: each is a third of the block, and they empty from the right as the
+    /// time runs down. Full when idle or done, breathing with you in the opening ritual,
+    /// dim while paused, and blinking in overtime.
+    private func bars(at now: Date) -> MenuBarMark.Bars {
+        if model.isBreathing {
+            let breath = model.breathFill ?? 0
+            return MenuBarMark.Bars(levels: [breath, breath, breath], alpha: 1)
+        }
+        if model.status == .idle || model.awaitingNextPhase != nil {
+            // Minimal shows the waiting time dimmed, so idle looks different from running.
+            let idleAlpha = model.settings.menuBarStyle == MenuBarStyle.minimal.rawValue && model.status == .idle ? 0.55 : 1
+            return MenuBarMark.Bars(levels: [1, 1, 1], alpha: idleAlpha)
+        }
+        let left = model.isOvertime ? 1 : max(0, min(1, 1 - model.progress))
+        let levels = (0..<3).map { max(0, min(1, left * 3 - Double($0))) }
+        let blinking = model.isOvertime && model.settings.overtimeAlert && model.status == .overtime
+        let lit = !blinking || Int(now.timeIntervalSinceReferenceDate * 2) % 2 == 0
+        let alpha = model.status == .paused ? 0.45 : (lit ? 1 : 0.3)
+        return MenuBarMark.Bars(levels: levels, alpha: alpha)
+    }
+
+    private func chip(at now: Date) -> NSImage {
         if model.isBreathing {
             return MenuBarGlyph.image(text: "breathe", fill: model.breathFill ?? 0, tone: .focus)
         }

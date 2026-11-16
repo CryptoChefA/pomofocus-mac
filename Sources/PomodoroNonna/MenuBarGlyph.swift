@@ -107,3 +107,171 @@ enum MenuBarGlyph {
         return image
     }
 }
+
+/// The menu-bar item's look, chosen in Settings → Menu bar.
+enum MenuBarStyle: String, CaseIterable, Identifiable {
+    /// The timer chip above, with the time inside.
+    case chip
+    /// Three bars, one third of the block each, that empty from the right as time runs.
+    case bars
+    /// An image you choose.
+    case icon
+    /// Just the time left or the percentage, in your colour. Nothing else.
+    case minimal
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .chip: "Timer chip"
+        case .bars: "Three bars"
+        case .icon: "Your icon"
+        case .minimal: "Minimal"
+        }
+    }
+}
+
+/// The simpler menu-bar looks: three bars, or your own icon, with the time beside them if
+/// you want it. With the colour on "auto" they're template images, so macOS draws them in
+/// the menu bar's own colour, light or dark, and highlights them when the panel opens.
+enum MenuBarMark {
+    /// What the bars show, worked out from the timer.
+    struct Bars: Equatable {
+        /// 0...1 of each bar still full, left to right.
+        var levels: [Double]
+        /// Dimmer while paused, and on the off beat of the overtime blink.
+        var alpha: Double
+    }
+
+    @MainActor private static var lastImage: (key: String, image: NSImage)?
+
+    /// - Parameters:
+    ///   - color: nil follows the menu bar (a template image).
+    ///   - icon: your image instead of the bars.
+    @MainActor
+    static func image(bars: Bars, color: NSColor?, icon: NSImage?, iconFollowsMenuBar: Bool, text: String?,
+                      showsMark: Bool = true) -> NSImage {
+        // Levels are quantised to the half point a bar can actually show.
+        let levels = bars.levels.map { Int(($0.isFinite ? $0 : 0) * 26) }
+        let key = "\(levels)|\(Int(bars.alpha * 100))|\(color?.description ?? "auto")|\(icon.map { ObjectIdentifier($0).hashValue } ?? 0)|\(iconFollowsMenuBar)|\(text ?? "-")|\(showsMark)"
+        if let lastImage, lastImage.key == key { return lastImage.image }
+        let image = render(bars: bars, color: color, icon: icon, iconFollowsMenuBar: iconFollowsMenuBar, text: text,
+                           showsMark: showsMark)
+        lastImage = (key, image)
+        return image
+    }
+
+    private static let height: CGFloat = 18
+    private static let barWidth: CGFloat = 2.6
+    private static let barHeight: CGFloat = 12.5
+    private static let barGap: CGFloat = 2.4
+    private static let iconSide: CGFloat = 16
+    private static var font: NSFont { NSFont.monospacedDigitSystemFont(ofSize: 12.5, weight: .medium) }
+
+    private static func render(bars: Bars, color: NSColor?, icon: NSImage?, iconFollowsMenuBar: Bool, text: String?,
+                               showsMark: Bool) -> NSImage {
+        let markWidth = !showsMark ? 0 : (icon == nil ? barWidth * 3 + barGap * 2 : iconSide)
+        let textWidth = text.map { ceil(NSAttributedString(string: $0, attributes: [.font: font]).size().width) } ?? 0
+        let gap: CGFloat = showsMark ? 5 : 0
+        let width = ceil(markWidth + (text == nil ? 0 : gap + textWidth)) + 2
+        // A template image is drawn in the menu bar's colour by macOS; anything else in
+        // the colour chosen. Your own icon, unless it follows the menu bar, keeps its colours
+        // and the time beside it takes the menu bar's text colour.
+        let template = icon == nil ? color == nil : iconFollowsMenuBar
+        let alpha = CGFloat(min(1, max(0.15, bars.alpha)))
+
+        let image = NSImage(size: NSSize(width: width, height: height), flipped: false) { _ in
+            let ink = template ? NSColor.black : (color ?? NSColor.labelColor)
+            var x: CGFloat = 1
+            if !showsMark {
+                // Minimal: the text alone.
+            } else if let icon {
+                let size = icon.size
+                let scale = min(iconSide / max(1, size.width), iconSide / max(1, size.height))
+                let drawn = NSSize(width: size.width * scale, height: size.height * scale)
+                let rect = NSRect(x: x + (iconSide - drawn.width) / 2, y: (height - drawn.height) / 2,
+                                  width: drawn.width, height: drawn.height)
+                icon.draw(in: rect, from: .zero, operation: .sourceOver, fraction: alpha)
+                x += iconSide
+            } else {
+                let bottom = (height - barHeight) / 2
+                for (index, level) in bars.levels.prefix(3).enumerated() {
+                    let bar = NSRect(x: x, y: bottom, width: barWidth, height: barHeight)
+                    // The emptied part stays as a faint outline of the bar, so the shape
+                    // always reads as three bars.
+                    ink.withAlphaComponent(alpha * 0.28).setFill()
+                    NSBezierPath(rect: bar).fill()
+                    let filled = barHeight * CGFloat(min(1, max(0, level.isFinite ? level : 0)))
+                    ink.withAlphaComponent(alpha).setFill()
+                    NSBezierPath(rect: NSRect(x: bar.minX, y: bottom, width: barWidth, height: filled)).fill()
+                    x += barWidth + (index < 2 ? barGap : 0)
+                }
+            }
+            if let text {
+                let textColor = template ? NSColor.black : (icon != nil ? NSColor.labelColor : ink)
+                let string = NSAttributedString(string: text, attributes: [
+                    .font: font, .foregroundColor: textColor.withAlphaComponent(alpha)])
+                let size = string.size()
+                string.draw(at: NSPoint(x: x + gap, y: (height - size.height) / 2))
+            }
+            return true
+        }
+        image.isTemplate = template
+        return image
+    }
+}
+
+/// Your own menu-bar icon, kept as a small PNG next to the app's data.
+enum MenuBarIconStore {
+    static var url: URL {
+        FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent("Library/Application Support/Pomofocus", isDirectory: true)
+            .appendingPathComponent("menubar-icon.png")
+    }
+
+    @MainActor private static var cached: (date: Date, image: NSImage)?
+
+    /// The saved icon, read again only when the file changes.
+    @MainActor static var image: NSImage? {
+        guard let date = (try? FileManager.default.attributesOfItem(atPath: url.path))?[.modificationDate] as? Date else {
+            cached = nil
+            return nil
+        }
+        if let cached, cached.date == date { return cached.image }
+        guard let image = NSImage(contentsOf: url) else { return nil }
+        cached = (date, image)
+        return image
+    }
+
+    /// Saves a chosen picture as a 64-pixel square PNG (sharp at 16 points on a Retina
+    /// menu bar), keeping its shape and transparency.
+    @MainActor static func save(from source: URL) throws {
+        guard let picture = NSImage(contentsOf: source), picture.size.width > 0, picture.size.height > 0 else {
+            throw CocoaError(.fileReadCorruptFile)
+        }
+        let side = 64
+        guard let rep = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: side, pixelsHigh: side, bitsPerSample: 8,
+                                         samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
+                                         colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0) else {
+            throw CocoaError(.fileWriteUnknown)
+        }
+        rep.size = NSSize(width: side, height: side)
+        NSGraphicsContext.saveGraphicsState()
+        NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: rep)
+        NSGraphicsContext.current?.imageInterpolation = .high
+        let scale = min(CGFloat(side) / picture.size.width, CGFloat(side) / picture.size.height)
+        let drawn = NSSize(width: picture.size.width * scale, height: picture.size.height * scale)
+        picture.draw(in: NSRect(x: (CGFloat(side) - drawn.width) / 2, y: (CGFloat(side) - drawn.height) / 2,
+                                width: drawn.width, height: drawn.height))
+        NSGraphicsContext.restoreGraphicsState()
+        guard let png = rep.representation(using: .png, properties: [:]) else { throw CocoaError(.fileWriteUnknown) }
+        try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try png.write(to: url, options: .atomic)
+        cached = nil
+    }
+
+    @MainActor static func remove() {
+        try? FileManager.default.removeItem(at: url)
+        cached = nil
+    }
+}
