@@ -14,6 +14,9 @@ enum WhatsNew {
 
     /// Newest first. Add an entry with every release.
     static let releases: [(version: String, items: [Item])] = [
+        ("0.22.14", [
+            Item(icon: "person.2", title: "Joining a group works", detail: "Friends can now join your study group. Before, a join failed every time. If two of you start a group by mistake, the one nobody has joined shows the other group, so you can join it instead."),
+        ]),
         ("0.22.13", [
             Item(icon: "person.2", title: "Study together", detail: "Studying with friends in the same room? One of you starts a group from Together on the Focus screen and the others join it. Everyone's timer then follows: the same blocks, and breaks at the same moment. It works over Bluetooth and Wi-Fi without the internet, and only the timer and your first name are shared."),
             Item(icon: "figure.walk", title: "Help when focus slips", detail: "After a rough block, your break suggests one thing that fits: a walk when you felt restless, a brain dump or a guided reset when you felt scattered, and a proper rest after two tough blocks in a row. Mid-block, Drifting? offers a one-minute reset, a place to park what's on your mind, or finishing small with ten more minutes."),

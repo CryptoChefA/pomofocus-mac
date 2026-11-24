@@ -65,7 +65,11 @@ struct StudyTogetherSheet: View {
         .frame(width: 500)
         .background(NonnaTheme.cream)
         .onAppear { group.startLooking() }
-        .onDisappear { if group.role == .none { group.stopLooking() } }
+        .onDisappear {
+            // Looking costs battery; a join in progress still needs it.
+            if case .joining = group.role { return }
+            group.stopLooking()
+        }
     }
 
     @ViewBuilder
@@ -81,19 +85,7 @@ struct StudyTogetherSheet: View {
                         .foregroundStyle(NonnaTheme.secondaryInk)
                 }
             } else {
-                ForEach(group.nearby) { nearby in
-                    HStack {
-                        Image(systemName: "person.2.fill")
-                            .foregroundStyle(NonnaTheme.terracotta)
-                        Text("\(nearby.hostName)'s group")
-                            .font(.system(size: 13, weight: .medium))
-                        Spacer()
-                        Button("Join") { group.join(nearby) }
-                            .buttonStyle(NonnaButtonStyle())
-                    }
-                    .padding(10)
-                    .background(NonnaTheme.raisedPaper, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-                }
+                nearbyRows
                 Text("Joining replaces your timer with the group's. Anything you're timing now is saved first.")
                     .font(.system(size: 10))
                     .foregroundStyle(NonnaTheme.secondaryInk)
@@ -103,7 +95,9 @@ struct StudyTogetherSheet: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text("Or lead one")
                     .font(.system(size: 13, weight: .semibold))
-                Text("Your timer becomes the group's. Start, pause and breaks happen for everyone.")
+                Text(group.nearby.isEmpty
+                 ? "Your timer becomes the group's. Start, pause and breaks happen for everyone."
+                 : "Only one person leads. If a friend's group is listed above, join that instead.")
                     .font(.system(size: 11))
                     .foregroundStyle(NonnaTheme.secondaryInk)
             }
@@ -129,6 +123,32 @@ struct StudyTogetherSheet: View {
                 .fixedSize(horizontal: false, vertical: true)
             Button("End the Group") { group.leave() }
                 .buttonStyle(NonnaButtonStyle(prominent: false))
+            if group.members.count <= 1, !group.nearby.isEmpty {
+                // Two of you started a group: only one can lead, so offer the other.
+                Text("A friend started a group too. Only one of you should lead. Join theirs instead?")
+                    .font(.system(size: 11))
+                    .foregroundStyle(NonnaTheme.secondaryInk)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.top, 4)
+                nearbyRows
+            }
+        }
+        .onAppear { group.startLooking() }
+    }
+
+    private var nearbyRows: some View {
+        ForEach(group.nearby) { nearby in
+            HStack {
+                Image(systemName: "person.2.fill")
+                    .foregroundStyle(NonnaTheme.terracotta)
+                Text("\(nearby.hostName)'s group")
+                    .font(.system(size: 13, weight: .medium))
+                Spacer()
+                Button("Join") { group.join(nearby) }
+                    .buttonStyle(NonnaButtonStyle())
+            }
+            .padding(10)
+            .background(NonnaTheme.raisedPaper, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
         }
     }
 

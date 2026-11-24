@@ -59,8 +59,9 @@ final class StudyGroup: NSObject {
         return name.isEmpty ? "A friend" : String(name.prefix(30))
     }
 
-    private func makeSession() -> MCSession {
-        let peer = MCPeerID(displayName: myName)
+    /// Multipeer Connectivity only connects a join when the browser that sent the invitation
+    /// and the session share one peer ID, so both always use `me`.
+    private func makeSession(peer: MCPeerID) -> MCSession {
         me = peer
         let session = MCSession(peer: peer, securityIdentity: nil, encryptionPreference: .required)
         session.delegate = self
@@ -72,7 +73,7 @@ final class StudyGroup: NSObject {
 
     func startHosting() {
         leave()
-        let session = makeSession()
+        let session = makeSession(peer: MCPeerID(displayName: myName))
         let advertiser = MCNearbyServiceAdvertiser(peer: session.myPeerID, discoveryInfo: ["host": myName],
                                                    serviceType: Self.serviceType)
         advertiser.delegate = self
@@ -87,6 +88,8 @@ final class StudyGroup: NSObject {
         }
         RunLoop.main.add(beat, forMode: .common)
         heartbeat = beat
+        // Until someone joins, keep an eye out for friends' groups, in case two of you started one.
+        startLooking()
     }
 
     /// Tells the group straight away when the host's timer changes, rather than at the next beat.
@@ -108,8 +111,9 @@ final class StudyGroup: NSObject {
 
     /// Looks for groups nearby, for the Study together sheet.
     func startLooking() {
-        guard role == .none, browser == nil else { return }
-        let peer = me ?? MCPeerID(displayName: myName)
+        guard browser == nil, role == .none || (role == .hosting && members.count <= 1) else { return }
+        // Hosting looks with the group's own peer ID; otherwise start fresh with today's name.
+        let peer = role == .hosting ? (me ?? MCPeerID(displayName: myName)) : MCPeerID(displayName: myName)
         me = peer
         let browser = MCNearbyServiceBrowser(peer: peer, serviceType: Self.serviceType)
         browser.delegate = self
@@ -124,8 +128,18 @@ final class StudyGroup: NSObject {
     }
 
     func join(_ group: NearbyGroup) {
-        guard let browser else { return }
-        let session = makeSession()
+        guard let browser, let peer = me else { return }
+        if role == .hosting {
+            // Leaving your own empty group to join a friend's: close it but keep looking.
+            heartbeat?.invalidate()
+            heartbeat = nil
+            advertiser?.stopAdvertisingPeer()
+            advertiser = nil
+            session?.disconnect()
+            names = [:]
+            lastSent = nil
+        }
+        let session = makeSession(peer: peer)
         hostPeer = group.peer
         role = .joining(group.hostName)
         lastProblem = nil
@@ -182,6 +196,7 @@ final class StudyGroup: NSObject {
         case .hosting:
             if state == .notConnected { names[peer] = nil }
             if state == .connected, names[peer] == nil { names[peer] = peer.displayName }
+            if state == .connected { stopLooking() }
             refreshMembers()
             if state == .connected { broadcast(force: true) }
         case .joining, .following:
@@ -208,7 +223,7 @@ final class StudyGroup: NSObject {
     }
 
     fileprivate func found(_ peer: MCPeerID, info: [String: String]?) {
-        guard !nearby.contains(where: { $0.peer == peer }) else { return }
+        guard peer != me, !nearby.contains(where: { $0.peer == peer }) else { return }
         nearby.append(NearbyGroup(peer: peer, hostName: info?["host"] ?? peer.displayName))
     }
 
