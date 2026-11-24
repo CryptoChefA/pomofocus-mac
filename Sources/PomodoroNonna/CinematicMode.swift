@@ -446,8 +446,10 @@ struct CinematicView: View {
         VStack(spacing: 12) {
             HStack(spacing: 10) {
                 if model.isBreathing {
-                    Button("Skip breaths") { model.skipBreathing() }
-                        .buttonStyle(NonnaButtonStyle(color: accent))
+                    if !StudyGroup.shared.isFollowing {
+                        Button("Skip breaths") { model.skipBreathing() }
+                            .buttonStyle(NonnaButtonStyle(color: accent))
+                    }
                 } else if model.canAdvanceCycle {
                     Button {
                         model.advanceToNextPhase()

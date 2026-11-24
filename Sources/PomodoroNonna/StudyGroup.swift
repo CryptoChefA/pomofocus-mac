@@ -1,5 +1,9 @@
 import Foundation
 @preconcurrency import MultipeerConnectivity
+import os
+
+/// Group events, in Console under org.pomodorononna.app. Names stay private.
+private let groupLog = Logger(subsystem: "org.pomodorononna.app", category: "StudyGroup")
 
 /// Studying together with friends in the same room. One Mac hosts a group; friends nearby
 /// join it, and their timers follow the host's: the same block, breaks at the same moment.
@@ -33,6 +37,9 @@ final class StudyGroup: NSObject {
     /// First names of everyone in the group, host first.
     private(set) var members: [String] = []
     private(set) var lastProblem: String?
+    /// While following: the host's timer as last heard, and when, for the sheet.
+    private(set) var hostTimer: GroupTimer?
+    private(set) var lastHeard: Date?
 
     var isInGroup: Bool { role != .none }
     var isFollowing: Bool { if case .following = role { return true } else { return false } }
@@ -102,7 +109,8 @@ final class StudyGroup: NSObject {
         guard role == .hosting, let session, let model, !session.connectedPeers.isEmpty else { return }
         let timer = model.groupTimer(hostName: myName, members: members)
         if !force, let lastSent, lastSent.blockID == timer.blockID, lastSent.state == timer.state,
-           lastSent.phase == timer.phase, lastSent.planned == timer.planned { return }
+           lastSent.phase == timer.phase, lastSent.planned == timer.planned,
+           (lastSent.breathingLeft == nil) == (timer.breathingLeft == nil) { return }
         lastSent = timer
         send(GroupMessage(kind: .timer, timer: timer), to: session.connectedPeers, reliable: true)
     }
@@ -158,6 +166,8 @@ final class StudyGroup: NSObject {
         session = nil
         stopLooking()
         hostPeer = nil
+        hostTimer = nil
+        lastHeard = nil
         followingBlock = nil
         lastSent = nil
         names = [:]
@@ -169,11 +179,21 @@ final class StudyGroup: NSObject {
 
     private func send(_ message: GroupMessage, to peers: [MCPeerID], reliable: Bool) {
         guard let session, !peers.isEmpty, let data = try? JSONEncoder().encode(message) else { return }
-        try? session.send(data, toPeers: peers, with: reliable ? .reliable : .unreliable)
+        do {
+            try session.send(data, toPeers: peers, with: reliable ? .reliable : .unreliable)
+        } catch {
+            groupLog.error("send \(message.kind.rawValue, privacy: .public) to \(peers.count) failed: \(error.localizedDescription, privacy: .public)")
+        }
     }
 
     fileprivate func received(_ data: Data, from peer: MCPeerID) {
-        guard let message = try? JSONDecoder().decode(GroupMessage.self, from: data) else { return }
+        let message: GroupMessage
+        do {
+            message = try JSONDecoder().decode(GroupMessage.self, from: data)
+        } catch {
+            groupLog.error("couldn't read a \(data.count) byte message: \(String(describing: error), privacy: .public)")
+            return
+        }
         switch message.kind {
         case .hello:
             guard role == .hosting else { return }
@@ -181,10 +201,24 @@ final class StudyGroup: NSObject {
             refreshMembers()
             broadcast(force: true)
         case .timer:
-            guard let timer = message.timer, peer == hostPeer, let model else { return }
+            guard var timer = message.timer, peer == hostPeer, let model else {
+                groupLog.notice("ignored a timer message (from host: \(peer == self.hostPeer, privacy: .public), model: \(self.model != nil, privacy: .public))")
+                return
+            }
+            // Count from when it arrived, not the host's clock: two Macs' clocks can disagree
+            // by more than a message takes to cross the room.
+            let now = Date()
+            timer.sentAt = now
             if case .joining = role { role = .following(host: timer.hostName) }
             members = timer.members
-            let action = GroupSync.action(local: model.groupLocal(following: followingBlock), host: timer, now: Date())
+            let changed = hostTimer.map { $0.state != timer.state || $0.phase != timer.phase || $0.blockID != timer.blockID } ?? true
+            hostTimer = timer
+            lastHeard = now
+            let local = model.groupLocal(following: followingBlock)
+            let action = GroupSync.action(local: local, host: timer, now: now)
+            if changed || action != .none {
+                groupLog.notice("host \(timer.state.rawValue, privacy: .public) \(timer.phase.rawValue, privacy: .public) block \(timer.blockID ?? "-", privacy: .public) \(Int(timer.elapsed), privacy: .public)/\(timer.planned, privacy: .public)s; here \(local.state.rawValue, privacy: .public) \(local.phase.rawValue, privacy: .public) following \(local.followingBlock ?? "-", privacy: .public); action \(String(describing: action), privacy: .public)")
+            }
             if case let .start(blockID, _, _, _, _) = action { followingBlock = blockID }
             if case .stop = action { followingBlock = nil }
             model.applyGroup(action)
@@ -192,6 +226,7 @@ final class StudyGroup: NSObject {
     }
 
     fileprivate func peer(_ peer: MCPeerID, changed state: MCSessionState) {
+        groupLog.notice("peer \(state.rawValue, privacy: .public) (0 gone, 1 connecting, 2 connected) while \(String(describing: self.role).prefix(9), privacy: .public)")
         switch role {
         case .hosting:
             if state == .notConnected { names[peer] = nil }

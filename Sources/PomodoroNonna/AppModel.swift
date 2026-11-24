@@ -489,13 +489,15 @@ final class AppModel {
             breathingEndsAt = Date().addingTimeInterval(TimeInterval(Self.breathingTotalSeconds))
             lastTick = Date()
             ensureTicking()
+            StudyGroup.shared.hostTimerChanged()
             return
         }
         beginTimer()
     }
 
     func skipBreathing() {
-        guard breathingRemaining > 0 else { return }
+        // In a group the leader decides when the block starts.
+        guard breathingRemaining > 0, !StudyGroup.shared.isFollowing else { return }
         breathingRemaining = 0
         breathingEndsAt = nil
         beginTimer()
@@ -507,6 +509,7 @@ final class AppModel {
         applyIdleDuration()
         persistDraft()
         stopTickingIfIdle()
+        StudyGroup.shared.hostTimerChanged()
     }
 
     private func beginTimer() {
@@ -1449,7 +1452,16 @@ final class AppModel {
             let remaining = breathingEndsAt.map { max(0, Int(ceil($0.timeIntervalSince(now)))) } ?? 0
             if remaining != breathingRemaining { breathingRemaining = remaining }
             lastTick = now
-            if breathingRemaining == 0 { beginTimer(); return }
+            if breathingRemaining == 0 {
+                if StudyGroup.shared.isFollowing {
+                    // Breathed in step with the leader: their block starts this one, a moment
+                    // from now, so both begin together instead of this Mac starting its own.
+                    breathingEndsAt = nil
+                    return
+                }
+                beginTimer()
+                return
+            }
             if let end = breathingEndsAt {
                 let left = end.timeIntervalSince(now)
                 alignNextTick(now: now, untilNextSecond: left - left.rounded(.down))
@@ -2114,15 +2126,24 @@ extension AppModel {
             elapsed: state == .idle ? 0 : exactActiveSeconds(at: now),
             sentAt: now,
             hostName: hostName,
-            members: members
+            members: members,
+            breathingLeft: breathingLeftExactly(at: now)
         )
     }
 
     /// This Mac's timer as a friend following a group sees it.
     func groupLocal(following block: String?) -> GroupSync.Local {
         let state: GroupTimer.State = isBreathing || status == .idle ? .idle : (status == .paused ? .paused : .running)
+        let now = Date()
         return GroupSync.Local(followingBlock: block, phase: phase, state: state, planned: plannedSeconds,
-                               elapsed: state == .idle ? 0 : exactActiveSeconds(at: Date()))
+                               elapsed: state == .idle ? 0 : exactActiveSeconds(at: now),
+                               breathingLeft: breathingLeftExactly(at: now) ?? 0)
+    }
+
+    /// Seconds left in the opening breaths, to the fraction, while they run.
+    private func breathingLeftExactly(at now: Date) -> Double? {
+        guard isBreathing, let end = breathingEndsAt else { return nil }
+        return max(0, end.timeIntervalSince(now))
     }
 
     /// Follows the host: does what `GroupSync` decided. Blocks still save here as usual.
@@ -2169,6 +2190,17 @@ extension AppModel {
             alignGroup(planned: plannedSeconds, elapsed: elapsed)
         case let .align(planned, elapsed):
             alignGroup(planned: planned, elapsed: elapsed)
+        case let .breathe(nextPhase, remaining):
+            if status != .idle { finish() }
+            awaitingNextPhase = nil
+            data.pendingPhase = nil
+            if phase != nextPhase { phase = nextPhase }
+            breathingEndsAt = now.addingTimeInterval(remaining)
+            breathingRemaining = max(1, Int(ceil(remaining)))
+            lastTick = now
+            ensureTicking()
+        case .stopBreathing:
+            if isBreathing { cancelBreathing() }
         }
     }
 

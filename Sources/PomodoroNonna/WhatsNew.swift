@@ -14,6 +14,10 @@ enum WhatsNew {
 
     /// Newest first. Add an entry with every release.
     static let releases: [(version: String, items: [Item])] = [
+        ("0.22.15", [
+            Item(icon: "wind", title: "Breathe together", detail: "In a study group, when the leader starts a block with the opening breaths, everyone breathes along in step, and the block begins for all of you at the same moment."),
+            Item(icon: "person.2", title: "A steadier group", detail: "Groups no longer depend on everyone's clock agreeing, which could keep a friend's timer from following. The Together window now shows the leader's timer and when you last heard from it."),
+        ]),
         ("0.22.14", [
             Item(icon: "person.2", title: "Joining a group works", detail: "Friends can now join your study group. Before, a join failed every time. If two of you start a group by mistake, the one nobody has joined shows the other group, so you can join it instead."),
         ]),

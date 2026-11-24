@@ -161,9 +161,36 @@ struct StudyTogetherSheet: View {
                 .font(.system(size: 12))
                 .foregroundStyle(NonnaTheme.secondaryInk)
                 .fixedSize(horizontal: false, vertical: true)
+            // What this Mac last heard, so a stuck group is easy to spot.
+            TimelineView(.periodic(from: .now, by: 1)) { context in
+                Text(heardLine(host: host, now: context.date))
+                    .font(.system(size: 11).monospacedDigit())
+                    .foregroundStyle(NonnaTheme.secondaryInk)
+            }
             Button("Leave the Group") { group.leave() }
                 .buttonStyle(NonnaButtonStyle(prominent: false))
         }
+    }
+}
+
+extension StudyTogetherSheet {
+    func heardLine(host: String, now: Date) -> String {
+        guard let timer = group.hostTimer, let heard = group.lastHeard else { return "Waiting to hear from \(host)…" }
+        let ago = max(0, Int(now.timeIntervalSince(heard)))
+        let phase = switch timer.phase {
+        case .focus: "Focus"
+        case .shortBreak: "Short break"
+        case .longBreak: "Long break"
+        }
+        let what: String
+        switch timer.state {
+        case .idle: what = "\(phase), not started"
+        case .paused: what = "\(phase), paused"
+        case .running:
+            let left = max(0, timer.planned - Int(timer.elapsed(at: now)))
+            what = "\(phase), \(left / 60):\(String(format: "%02d", left % 60)) left"
+        }
+        return "\(host)'s timer: \(what). Heard \(ago < 2 ? "just now" : "\(ago)s ago")."
     }
 }
 

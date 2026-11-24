@@ -43,6 +43,25 @@ check(GroupSync.action(local: local(nil, .focus, .idle, elapsed: 0), host: host(
       "idle friends follow the host's tab")
 // A paused host block isn't counted on while it waits.
 check(host("b1", .focus, .paused, elapsed: 100, sentAgo: 60).elapsed(at: now) == 100, "paused time doesn't count")
+// Breathing together: the host's opening breaths start the friend's, in step.
+var breathing = host(nil, .focus, .idle, elapsed: 0); breathing.breathingLeft = 24
+check(GroupSync.action(local: local(nil, .focus, .idle, elapsed: 0), host: breathing, now: now)
+      == .breathe(phase: .focus, remaining: 24), "a host's breaths start the friend's")
+var inStep = local(nil, .focus, .idle, elapsed: 0); inStep.breathingLeft = 23.6
+check(GroupSync.action(local: inStep, host: breathing, now: now) == .none, "breaths within a second are in step")
+inStep.breathingLeft = 21
+check(GroupSync.action(local: inStep, host: breathing, now: now) == .breathe(phase: .focus, remaining: 24), "drifting breaths line up")
+var lastSecond = breathing; lastSecond.breathingLeft = 0.4
+check(GroupSync.action(local: local(nil, .focus, .idle, elapsed: 0), host: lastSecond, now: now) == .none,
+      "no breaths started in the last second")
+inStep.breathingLeft = 0.6
+check(GroupSync.action(local: inStep, host: lastSecond, now: now) == .none, "the last breath isn't cut short")
+check(GroupSync.action(local: inStep, host: host(nil, .focus, .idle, elapsed: 0), now: now) == .stopBreathing,
+      "the host cancelling the breaths cancels the friend's")
+// Older hosts don't send breaths; their messages still read.
+let old = #"{"blockID":null,"phase":"focus","state":"idle","planned":1500,"elapsed":0,"sentAt":0,"hostName":"Sam","members":["Sam"]}"#
+check((try? JSONDecoder().decode(GroupTimer.self, from: Data(old.utf8)))?.breathingLeft == nil, "messages without breaths still decode")
+
 // Messages survive the trip.
 let message = GroupMessage(kind: .timer, name: nil, timer: host("b1"))
 let decoded = try! JSONDecoder().decode(GroupMessage.self, from: JSONEncoder().encode(message))
