@@ -233,3 +233,24 @@ var paused = block(0, focused: 35); paused.pausedSeconds = 6 * 60
 check(climbed.breakMinutes(after: paused) == climbed.level.breakMinutes + 5, "a block broken by long pauses earns five more minutes")
 check(climbed.breakMinutes(after: block(0, focused: 47)) == climbed.level.breakMinutes + 5, "running well past the end earns a longer break")
 check(climbed.breakMinutes(after: block(0, focused: 35, rating: 2)) == climbed.level.breakMinutes + 5, "a Restless block earns a longer break")
+
+// How a block felt drives the plan, not only whether it ran its length.
+var feel = FocusPlan.build(from: answers, now: start)
+feel.levelIndex = 5 // 35-minute blocks
+feel.levelStartedAt = start
+func felt(_ day: Int, _ minute: Int, rating: Int?, focused: Int = 35) -> FocusSession {
+    var s = session(day: day, minutes: focused)
+    s.startedAt = start.addingTimeInterval(TimeInterval(day * 86_400 + minute * 60))
+    s.plannedSeconds = 35 * 60
+    s.focusRating = rating
+    return s
+}
+let twoRestless = [felt(0, 60, rating: 4), felt(1, 60, rating: 2), felt(1, 120, rating: 1)]
+check(feel.adjustment(sessions: twoRestless, calendar: calendar) == .stepBack, "two Restless or Scattered blocks in a row step back")
+let earnedButRough = [felt(0, 60, rating: 4), felt(0, 120, rating: 3), felt(1, 60, rating: 4), felt(1, 120, rating: 4), felt(1, 180, rating: 2)]
+check(feel.adjustment(sessions: earnedButRough, calendar: calendar) == nil, "no climb right after a rough block, and one alone doesn't step back")
+let earnedWell = [felt(0, 60, rating: 4), felt(0, 120, rating: 3), felt(1, 60, rating: 4), felt(1, 120, rating: 5)]
+check(feel.adjustment(sessions: earnedWell, calendar: calendar) == .levelUp, "steady blocks over two days still climb")
+let cutShortPair = [felt(1, 60, rating: nil, focused: 15), felt(1, 120, rating: nil, focused: 12)]
+check(feel.adjustment(sessions: cutShortPair, calendar: calendar) == .stepBack, "two blocks cut well short step back")
+print("Adaptive plan checks passed")

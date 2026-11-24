@@ -201,8 +201,13 @@ struct FocusPlanView: View {
                             .foregroundStyle(NonnaTheme.secondaryInk)
                     }
                 }
-                PlanLadder(plan: plan)
+                PlanLadder(plan: plan) { model.stepPlan(toLevel: $0) }
                     .frame(height: 150)
+                if plan.levelIndex > 0 {
+                    Text("Feeling stretched? Click a shorter bar to step down to it.")
+                        .font(.system(size: 11))
+                        .foregroundStyle(NonnaTheme.secondaryInk)
+                }
             }
         }
 
@@ -614,8 +619,11 @@ private struct LevelRing: View {
 
 private struct PlanLadder: View {
     let plan: FocusPlan
+    /// When given, a shorter rung can be clicked to step down to it.
+    var onStepDown: ((Int) -> Void)?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var shown = false
+    @State private var stepDownTo: Int?
 
     var body: some View {
         let maxMinutes = Double(plan.levels.last?.focusMinutes ?? 45)
@@ -646,9 +654,25 @@ private struct PlanLadder: View {
                         .foregroundStyle(current ? NonnaTheme.ink : NonnaTheme.secondaryInk)
                 }
                 .frame(maxWidth: .infinity)
+                // A shorter rung can be chosen any time; longer ones are earned.
+                .contentShape(Rectangle())
+                .onTapGesture { if done, onStepDown != nil { stepDownTo = index } }
+                .help(done && onStepDown != nil ? "Step down to \(level.focusMinutes)-minute blocks" : "")
             }
         }
         .onAppear { shown = true }
+        .confirmationDialog(
+            stepDownTo.map { "Step down to \(plan.levels[$0].focusMinutes)-minute blocks?" } ?? "",
+            isPresented: Binding(get: { stepDownTo != nil }, set: { if !$0 { stepDownTo = nil } })
+        ) {
+            Button("Step down") {
+                if let index = stepDownTo { onStepDown?(index) }
+                stepDownTo = nil
+            }
+            Button("Cancel", role: .cancel) { stepDownTo = nil }
+        } message: {
+            Text("Your next blocks will be this length. Climb back up the usual way, by finishing blocks that feel steady.")
+        }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Ladder from \(plan.levels.first?.focusMinutes ?? 0) to \(plan.levels.last?.focusMinutes ?? 0) minutes, currently at \(plan.level.focusMinutes)")
     }
@@ -1150,12 +1174,23 @@ private struct RewardField: View {
                     editing = false
                 }
                 .onChange(of: editing) { _, isEditing in if !isEditing { save() } }
-            Image(systemName: "pencil")
-                .font(.system(size: 11))
-                .foregroundStyle(NonnaTheme.secondaryInk)
-                .opacity(editing ? 0 : 1)
+            // A real button: clicking the pencil starts editing, as it looks like it should.
+            Button {
+                editing = true
+            } label: {
+                Image(systemName: "pencil")
+                    .font(.system(size: 12))
+                    .foregroundStyle(NonnaTheme.secondaryInk)
+                    .frame(width: 24, height: 24)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .opacity(editing ? 0 : 1)
+            .accessibilityLabel("Change your reward")
         }
         .padding(.vertical, 4)
+        .contentShape(Rectangle())
+        .onTapGesture { editing = true }
         .overlay(alignment: .bottom) {
             Rectangle().fill(editing ? NonnaTheme.terracotta : .clear).frame(height: 1)
         }

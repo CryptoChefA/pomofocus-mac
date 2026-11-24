@@ -44,6 +44,7 @@ struct DashboardView: View {
                 )
 
                 FocusScoreCard()
+                PeakHoursCard()
                 WeekDashboardRow()
                 YearDashboardRow()
                 RunawayTimersBanner()
@@ -808,6 +809,126 @@ private struct WeeklyHoursCard: View {
         var lines = ["\(week.seconds.focusDurationString) focus"]
         lines.append("\(week.completed) completed \(week.completed == 1 ? "session" : "sessions")")
         if week.endedEarly > 0 { lines.append("\(week.endedEarly) ended early") }
+        return lines
+    }
+}
+
+/// When you focus best: each hour judged by how its blocks went (finished, and how they
+/// felt), with the best two-hour stretch named in plain words.
+private struct PeakHoursCard: View {
+    @Environment(AppModel.self) private var model
+    @State private var hoveredHour: Int?
+    @State private var chartWidth: CGFloat = 600
+
+    private static let feelings = ["Scattered", "Restless", "Steady", "Focused", "Flow"]
+
+    private func feeling(_ rating: Double?) -> String? {
+        guard let rating else { return nil }
+        return Self.feelings[min(4, max(0, Int(rating.rounded()) - 1))]
+    }
+
+    private func range(_ window: PeakHours.Window) -> String {
+        "\(window.start.clockHourLabel) to \(window.end.clockHourLabel)"
+    }
+
+    var body: some View {
+        let peak = PeakHours.calculate(sessions: model.sessions)
+        return NonnaCard {
+            VStack(alignment: .leading, spacing: 16) {
+                HStack(spacing: 7) {
+                    Text("Your peak hours")
+                        .font(.system(size: 18, weight: .semibold))
+                    InfoButton(title: "Your peak hours", text: "When your focus goes best, from the last 60 days. Each hour is judged by how its blocks went: how often you finished them, and how they felt when you rated them. Minutes alone would only show when you happened to study. The highlighted stretch is your best two hours; plan your hardest work there.")
+                }
+                if peak.hasEnoughData, let best = peak.best {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("You focus best from \(range(best))")
+                            .font(.system(size: 22, weight: .semibold))
+                            .foregroundStyle(NonnaTheme.ink)
+                        Text(summary(best: best, hardest: peak.hardest))
+                            .font(.system(size: 12))
+                            .foregroundStyle(NonnaTheme.secondaryInk)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    chart(peak, best: best)
+                } else {
+                    EmptyState(
+                        icon: "clock",
+                        title: "Not enough blocks yet",
+                        message: "After \(PeakHours.minimumBlocks) blocks at different times, this shows when you focus best. You have \(peak.blockCount) so far."
+                    )
+                }
+            }
+        }
+    }
+
+    private func summary(best: PeakHours.Window, hardest: PeakHours.Window?) -> String {
+        var text = "You finish \(Int((best.finishRate * 100).rounded()))% of the blocks you start then"
+        if let feel = feeling(best.averageRating) { text += ", and you usually rate them \(feel)" }
+        text += ". Put your hardest work there."
+        if let hardest {
+            text += " Your toughest stretch is \(range(hardest)), so keep lighter work for then."
+        }
+        return text
+    }
+
+    private func chart(_ peak: PeakHours, best: PeakHours.Window) -> some View {
+        let active = peak.hours.filter { $0.blocks > 0 }.map(\.hour)
+        let first = min(active.min() ?? 8, best.start)
+        let last = max(active.max() ?? 22, (best.end + 23) % 24)
+        let shown = peak.hours.filter { $0.hour >= first && $0.hour <= last }
+        let bestHours: Set<Int> = [best.start, (best.start + 1) % 24]
+        // Bars take about 60% of each hour's slot.
+        let barWidth = max(4, min(26, (chartWidth - 40) / CGFloat(max(1, last - first + 1)) * 0.6))
+        return Chart {
+            ForEach(shown) { hour in
+                BarMark(
+                    x: .value("Hour", Double(hour.hour)),
+                    y: .value("Minutes", hour.minutes),
+                    width: .fixed(barWidth)
+                )
+                .foregroundStyle(bestHours.contains(hour.hour)
+                                 ? NonnaTheme.terracotta
+                                 : NonnaTheme.terracotta.opacity(hour.blocks == 0 ? 0 : 0.18 + 0.4 * hour.quality))
+                .cornerRadius(3)
+            }
+        }
+        .chartXScale(domain: (Double(first) - 0.5)...(Double(last) + 0.5))
+        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { chartWidth = $0 }
+        .chartHover(Double.self) { hour in
+            let h = hour.map { min(last, max(first, Int($0.rounded()))) }
+            if hoveredHour != h { hoveredHour = h }
+        }
+        .chartHoverTooltip {
+            if let h = hoveredHour, let hour = peak.hours.first(where: { $0.hour == h }), hour.blocks > 0 {
+                ChartTooltip(title: "\(h.clockHourLabel) to \((h + 1).clockHourLabel)", lines: lines(hour))
+            }
+        }
+        .chartXAxis {
+            AxisMarks(values: Array(stride(from: first, through: last, by: 3)).map(Double.init)) { value in
+                AxisValueLabel {
+                    if let h = value.as(Double.self) { Text(Int(h).clockHourLabel) }
+                }
+                .foregroundStyle(NonnaTheme.secondaryInk)
+            }
+        }
+        .chartYAxis {
+            AxisMarks(position: .leading, values: .automatic(desiredCount: 3)) { value in
+                AxisGridLine(stroke: StrokeStyle(lineWidth: 1, dash: [2, 2]))
+                    .foregroundStyle(NonnaTheme.line)
+                AxisValueLabel {
+                    if let minutes = value.as(Int.self) { Text(minutes.minutesString) }
+                }
+                .foregroundStyle(NonnaTheme.secondaryInk)
+            }
+        }
+        .frame(height: 170)
+        .accessibilityLabel("Focus minutes by hour. Best from \(range(best)).")
+    }
+
+    private func lines(_ hour: PeakHours.Hour) -> [String] {
+        var lines = ["\(hour.minutes.minutesString) focused", "\(hour.finished) of \(hour.blocks) blocks finished"]
+        if let feel = feeling(hour.averageRating) { lines.append("Usually rated \(feel)") }
         return lines
     }
 }

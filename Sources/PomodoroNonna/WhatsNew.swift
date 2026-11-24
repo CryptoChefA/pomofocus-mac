@@ -14,6 +14,13 @@ enum WhatsNew {
 
     /// Newest first. Add an entry with every release.
     static let releases: [(version: String, items: [Item])] = [
+        ("0.22.13", [
+            Item(icon: "person.2", title: "Study together", detail: "Studying with friends in the same room? One of you starts a group from Together on the Focus screen and the others join it. Everyone's timer then follows: the same blocks, and breaks at the same moment. It works over Bluetooth and Wi-Fi without the internet, and only the timer and your first name are shared."),
+            Item(icon: "figure.walk", title: "Help when focus slips", detail: "After a rough block, your break suggests one thing that fits: a walk when you felt restless, a brain dump or a guided reset when you felt scattered, and a proper rest after two tough blocks in a row. Mid-block, Drifting? offers a one-minute reset, a place to park what's on your mind, or finishing small with ten more minutes."),
+            Item(icon: "clock", title: "Your peak hours", detail: "The Dashboard now shows when you focus best: the two hours where you finish the most blocks and rate them highest, and your toughest stretch, so you can plan hard work for the right time."),
+            Item(icon: "chart.line.downtrend.xyaxis", title: "A focus plan that listens", detail: "Your plan now waits for how a block felt before deciding anything. Two Restless or Scattered blocks in a row step it back a level, and it won't climb right after a rough one. Feeling stretched? Click a shorter bar on the ladder to step down yourself."),
+            Item(icon: "rectangle.on.rectangle", title: "Look before you switch", detail: "Clicking Short rest or Long rest while a block runs no longer stops it. The timer keeps going until you press Start short break or Start long break."),
+        ]),
         ("0.22.12", [
             Item(icon: "light.max", title: "A glow when time's up", detail: "When a block or break ends, a soft glow breathes around the edges of your screen, even over a full-screen app and with the sound off. It comes back with each overtime reminder. Turn it off or try it in Settings. Notifications also stay on now when a block runs into overtime, instead of being silenced with it."),
             Item(icon: "menubar.rectangle", title: "Your menu bar, your way", detail: "In Settings → Menu bar, swap the timer chip for three simple bars that empty as your block runs, your own picture, or Minimal: just the time left or a percentage. Pick the menu bar's own colour or red, white, black or any colour you like. You can also hide Pomofocus from the menu bar there."),

@@ -19,7 +19,7 @@
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>0.22.12</string>
+	<string>0.22.13</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
@@ -32,17 +32,24 @@
 		</dict>
 	</array>
 	<key>CFBundleVersion</key>
-	<string>60</string>
+	<string>61</string>
 	<key>LSApplicationCategoryType</key>
 	<string>public.app-category.productivity</string>
 	<key>LSMinimumSystemVersion</key>
 	<string>14.0</string>
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_pomofocus-grp._tcp</string>
+		<string>_pomofocus-grp._udp</string>
+	</array>
 	<key>NSCalendarsFullAccessUsageDescription</key>
 	<string>Pomofocus reads your calendar events to show them on the day timeline. It never creates, edits, or deletes events, and nothing leaves your Mac.</string>
 	<key>NSCalendarsUsageDescription</key>
 	<string>Pomofocus reads your calendar events to show them on the day timeline. It never creates, edits, or deletes events, and nothing leaves your Mac.</string>
 	<key>NSHighResolutionCapable</key>
 	<true/>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Pomofocus finds friends' Macs nearby when you study together, so your timers stay in step. Only the timer is shared.</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
 	<key>NSUserNotificationUsageDescription</key>

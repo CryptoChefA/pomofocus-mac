@@ -17,6 +17,19 @@ export SWIFTPM_MODULECACHE_OVERRIDE="$MODULE_CACHE_DIR/swiftpm"
 # Build against the toolchain's own SDK. The Observation macro in Swift 6.2 generates
 # code the older 15.x SDK headers cannot type-check, so the app must not pin 15.4.
 unset SDKROOT
+# From the macOS 27 SDK, SwiftUI's @State is a macro whose plugin comes only with Xcode.
+# With the Command Line Tools alone, fall back to the newest installed 26.x SDK.
+TOOLCHAIN_DIR=$(xcode-select -p)
+if [[ "$TOOLCHAIN_DIR" == */CommandLineTools ]] && ! ls "$TOOLCHAIN_DIR"/usr/lib/swift/host/plugins/*SwiftUIMacros* >/dev/null 2>&1; then
+  DEFAULT_SDK=$(xcrun --show-sdk-path)
+  if [[ "${DEFAULT_SDK:A:t}" != MacOSX26* ]]; then
+    FALLBACK_SDK=$(ls -d "$TOOLCHAIN_DIR"/SDKs/MacOSX26.*.sdk(N) | sort -V | tail -1)
+    if [[ -n "$FALLBACK_SDK" ]]; then
+      export SDKROOT="$FALLBACK_SDK"
+      echo "No SwiftUI macro plugin in the Command Line Tools; building with ${FALLBACK_SDK:t}"
+    fi
+  fi
+fi
 
 cleanup() {
   rm -rf -- "$TASK_BUILD_DIR"
@@ -24,11 +37,28 @@ cleanup() {
 trap cleanup EXIT
 
 cd "$PROJECT_DIR"
-swift build --disable-sandbox --scratch-path "$TASK_BUILD_DIR" --jobs 1 -c release
+# SwiftPM's newer default build system (swiftbuild) stamps the binary as built with the
+# macOS 14 SDK, which puts AppKit and SwiftUI in old compatibility modes (sheets drew in the
+# wrong place). The native build system records the real SDK, so use it while it exists.
+BUILD_SYSTEM=()
+if swift build --help 2>&1 | grep -q -- "--build-system"; then
+  BUILD_SYSTEM=(--build-system native)
+fi
+swift build "${BUILD_SYSTEM[@]}" --disable-sandbox --scratch-path "$TASK_BUILD_DIR" --jobs 1 -c release 2> >(grep -v "has been deprecated" >&2)
+BIN_DIR=$(swift build "${BUILD_SYSTEM[@]}" --disable-sandbox --scratch-path "$TASK_BUILD_DIR" -c release --show-bin-path 2>/dev/null)
+# Refuse a binary that records an SDK older than 26, for the reason above.
+for binary in "$BIN_DIR/Pomofocus" "$BIN_DIR/PomofocusWidgetExtension"; do
+  LINKED_SDK=$(otool -l "$binary" | awk '/LC_BUILD_VERSION/ {found=1} found && $1 == "sdk" {print $2; exit}')
+  if [[ "${LINKED_SDK%%.*}" -lt 26 ]]; then
+    echo "error: ${binary:t} records SDK $LINKED_SDK; macOS would run it in compatibility mode" >&2
+    exit 1
+  fi
+  echo "${binary:t}: SDK $LINKED_SDK"
+done
 
 mkdir -p "$TEMP_APP_DIR/Contents/MacOS" "$TEMP_APP_DIR/Contents/Resources" "$WIDGET_DIR/Contents/MacOS"
-cp "$TASK_BUILD_DIR/arm64-apple-macosx/release/Pomofocus" "$TEMP_APP_DIR/Contents/MacOS/Pomofocus"
-cp "$TASK_BUILD_DIR/arm64-apple-macosx/release/PomofocusWidgetExtension" "$WIDGET_DIR/Contents/MacOS/PomofocusWidgetExtension"
+cp "$BIN_DIR/Pomofocus" "$TEMP_APP_DIR/Contents/MacOS/Pomofocus"
+cp "$BIN_DIR/PomofocusWidgetExtension" "$WIDGET_DIR/Contents/MacOS/PomofocusWidgetExtension"
 cp "$PROJECT_DIR/Resources/Info.plist" "$TEMP_APP_DIR/Contents/Info.plist"
 cp "$PROJECT_DIR/Resources/WidgetInfo.plist" "$WIDGET_DIR/Contents/Info.plist"
 cp "$PROJECT_DIR/Resources/AppIcon.icns" "$TEMP_APP_DIR/Contents/Resources/AppIcon.icns"

@@ -61,6 +61,8 @@ struct FocusPlan: Codable, Equatable, Sendable {
     /// Below this completion rate over enough attempts, the plan steps back a level.
     static let stepBackCompletion = 0.4
     static let stepBackAttempts = 5
+    /// Rough blocks in a row at one length that step the plan back straight away.
+    static let roughStreakToStepBack = 2
     /// Struggling is judged on the most recent attempts, so an early good run can't hide a slump.
     static let recentWindow = 6
     /// Days fully missed before the first blocks back become shorter warm-ups.
@@ -116,6 +118,9 @@ struct FocusPlan: Codable, Equatable, Sendable {
         var recentFull = 0
         /// Full blocks rated Flow, which count twice toward the blocks needed.
         var flowBlocks = 0
+        /// Rough blocks in a row at the end, most recent first: rated Scattered or Restless,
+        /// cut well short or given up on.
+        var roughStreak = 0
 
         var completionRate: Double { attempts == 0 ? 0 : Double(fullBlocks) / Double(attempts) }
         var credit: Int { fullBlocks + flowBlocks }
@@ -125,8 +130,12 @@ struct FocusPlan: Codable, Equatable, Sendable {
                 && completionRate >= FocusPlan.levelUpCompletion
         }
 
+        /// Time to step down: two rough blocks in a row at this length, or a low completion
+        /// rate over enough attempts. Two restless blocks are a clear enough signal; waiting
+        /// for five kept people at a length they couldn't hold.
         var isStruggling: Bool {
-            recentAttempts >= FocusPlan.stepBackAttempts
+            if roughStreak >= FocusPlan.roughStreakToStepBack { return true }
+            return recentAttempts >= FocusPlan.stepBackAttempts
                 && Double(recentFull) / Double(recentAttempts) < FocusPlan.stepBackCompletion
         }
 
@@ -153,10 +162,12 @@ struct FocusPlan: Codable, Equatable, Sendable {
         }
         let full = started.filter(isFull)
         let days = Set(full.map { calendar.startOfDay(for: $0.startedAt) })
-        let recent = started.sorted { $0.startedAt < $1.startedAt }.suffix(FocusPlan.recentWindow)
+        let ordered = started.sorted { $0.startedAt < $1.startedAt }
+        let recent = ordered.suffix(FocusPlan.recentWindow)
         return Progress(attempts: started.count, fullBlocks: full.count, days: days.count,
                         recentAttempts: recent.count, recentFull: recent.filter(isFull).count,
-                        flowBlocks: full.filter { $0.focusRating == 5 }.count)
+                        flowBlocks: full.filter { $0.focusRating == 5 }.count,
+                        roughStreak: ordered.reversed().prefix { Self.wasRough($0) }.count)
     }
 
     // MARK: Coming back
@@ -288,8 +299,10 @@ struct FocusPlan: Codable, Equatable, Sendable {
     /// What the evidence says to do next, if anything.
     func adjustment(sessions: [FocusSession], calendar: Calendar = .current) -> Adjustment? {
         let progress = progress(sessions: sessions, calendar: calendar)
-        if !isFinalLevel, progress.isComplete { return .levelUp }
+        // Stepping back is checked first, and a climb never follows a rough block: how the
+        // last block felt matters more than how many came before it.
         if levelIndex > 0, progress.isStruggling { return .stepBack }
+        if !isFinalLevel, progress.isComplete, progress.roughStreak == 0 { return .levelUp }
         return nil
     }
 

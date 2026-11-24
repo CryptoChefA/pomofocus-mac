@@ -223,4 +223,26 @@ check(weekly.weeks.reduce(0) { $0 + $1.seconds } == 3_300 + 3_000 + 1_000, "olde
 check(zip(weekly.weeks, weekly.weeks.dropFirst()).allSatisfy { $0.start < $1.start }, "weeks run oldest first")
 check(WeeklyTotals.calculate(sessions: [], now: now, calendar: calendar).averageSeconds == nil, "no average without data")
 
+
+// Peak hours: judged by how blocks went, not just minutes.
+func block(hour: Int, day: Int, minutes: Int, planned: Int = 25, outcome: SessionOutcome = .completed, rating: Int?) -> FocusSession {
+    var s = session(at: calendar.date(bySettingHour: hour, minute: 10, second: 0,
+                                      of: calendar.date(byAdding: .day, value: -day, to: now)!)!, seconds: minutes * 60, outcome: outcome)
+    s.plannedSeconds = planned * 60
+    s.focusRating = rating
+    return s
+}
+var mornings: [FocusSession] = (1...5).map { block(hour: 9, day: $0, minutes: 25, rating: 4) }
+mornings += (1...3).map { block(hour: 10, day: $0, minutes: 25, rating: 5) }
+// Late nights: more minutes in total, but cut short and restless.
+let nights = (1...6).map { block(hour: 22, day: $0, minutes: 18, outcome: .finishedEarly, rating: 2) }
+let peak = PeakHours.calculate(sessions: mornings + nights, now: now, calendar: calendar)
+check(peak.hasEnoughData, "fourteen blocks are enough to name a peak")
+check(peak.best?.start == 9 && peak.best?.end == 11, "the best stretch is the finished, focused mornings (got \(String(describing: peak.best)))")
+check(peak.hardest?.start == 21 || peak.hardest?.start == 22, "late, restless blocks are the hardest stretch")
+check(peak.hours[22].finishRate == 0 && peak.hours[9].finishRate == 1, "finish rates per hour")
+let thin = PeakHours.calculate(sessions: Array(mornings.prefix(3)), now: now, calendar: calendar)
+check(!thin.hasEnoughData && thin.best == nil, "too few blocks to say anything")
+check(13.clockHourLabel == "1 PM" && 0.clockHourLabel == "12 AM" && 12.clockHourLabel == "12 PM", "hour labels")
+
 print("Analytics and settings checks passed")

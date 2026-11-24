@@ -13,6 +13,13 @@ struct FocusView: View {
     /// On a narrow window the timeline slides out over the timer instead of beside it.
     @State private var timelineDrawerOpen = false
     @State private var confirmsAbandon = false
+    /// A tab clicked while a timer runs: it's only shown, and the running block carries on
+    /// until "Start" is pressed for it.
+    @State private var browsedPhase: TimerPhase?
+    @State private var showsBrainDump = false
+    @State private var showsStudyTogether = false
+    /// The rough block whose suggestion was dismissed, so it doesn't come back.
+    @State private var dismissedCoach: UUID?
     @Namespace private var phaseSelection
     /// Height of the timer column, so the dial can shrink and keep the controls in view.
     @State private var columnHeight: CGFloat = 860
@@ -68,6 +75,7 @@ struct FocusView: View {
                         if dailyCheckIn {
                             MoodButton()
                         }
+                        TogetherButton { showsStudyTogether = true }
                         Button {
                             CinematicController.shared.enter(model: model)
                         } label: {
@@ -89,6 +97,21 @@ struct FocusView: View {
                         AwayBanner(pausedAt: pausedAt)
                             .frame(maxWidth: 690)
                             .transition(.banner(reduceMotion: reduceMotion))
+                    }
+
+                    if StudyGroup.shared.isInGroup {
+                        StudyGroupBar { showsStudyTogether = true }
+                            .frame(maxWidth: 690)
+                            .transition(.banner(reduceMotion: reduceMotion))
+                    }
+
+                    // After a rough block: one suggestion for the break, matched to how it went.
+                    if let suggestion = model.breakSuggestion, suggestion.blockID != dismissedCoach {
+                        CoachCard(kind: suggestion.kind, onBrainDump: { showsBrainDump = true }) {
+                            withAnimation(reduceMotion ? nil : NonnaMotion.dismiss) { dismissedCoach = suggestion.blockID }
+                        }
+                        .frame(maxWidth: 690)
+                        .transition(.banner(reduceMotion: reduceMotion))
                     }
 
                     if model.status == .idle {
@@ -161,10 +184,21 @@ struct FocusView: View {
         .onChange(of: compact) { _, isCompact in
             if !isCompact { timelineDrawerOpen = false }
         }
+        .sheet(isPresented: $showsStudyTogether) {
+            StudyTogetherSheet { showsStudyTogether = false }
+                .environment(model)
+        }
+        .sheet(isPresented: $showsBrainDump) {
+            BrainDumpSheet { showsBrainDump = false }
+                .environment(model)
+        }
         .sheet(isPresented: $showingNewTask) {
             NewTaskView()
                 .environment(model)
         }
+        // A looked-at tab is let go once the timer stops or moves on by itself.
+        .onChange(of: model.phase) { _, _ in browsedPhase = nil }
+        .onChange(of: model.status) { _, status in if status == .idle { browsedPhase = nil } }
         .onChange(of: model.intention) { _, _ in model.persistDraft() }
         .onChange(of: model.note) { _, _ in model.persistDraft() }
     }
@@ -221,11 +255,19 @@ struct FocusView: View {
                     ForEach(TimerPhase.allCases, id: \.self) { phase in
                         Button {
                             withAnimation(reduceMotion ? nil : NonnaMotion.selection) {
-                                model.selectPhase(phase)
+                                // Following a group: the host chooses the phase.
+                                if StudyGroup.shared.isFollowing { return }
+                                if model.status == .idle && !model.isBreathing {
+                                    browsedPhase = nil
+                                    model.selectPhase(phase)
+                                } else {
+                                    // A timer is going: just show this tab, and offer to start it.
+                                    browsedPhase = phase == model.phase ? nil : phase
+                                }
                             }
                         } label: {
                             ZStack {
-                                if model.phase == phase {
+                                if shownPhase == phase {
                                     RoundedRectangle(cornerRadius: 9, style: .continuous)
                                         .fill(NonnaTheme.pane(NonnaTheme.raisedPaper))
                                         .matchedGeometryEffect(id: "phase-surface", in: phaseSelection)
@@ -233,13 +275,13 @@ struct FocusView: View {
                                 }
                                 Text(phase == .focus ? "Focus" : phase == .shortBreak ? "Short rest" : "Long rest")
                                     .font(.system(size: 10, weight: .medium).monospacedDigit())
-                                    .foregroundStyle(model.phase == phase ? NonnaTheme.ink : NonnaTheme.secondaryInk)
+                                    .foregroundStyle(shownPhase == phase ? NonnaTheme.ink : NonnaTheme.secondaryInk)
                             }
                             .frame(maxWidth: .infinity)
                             .frame(height: 46)
                             .contentShape(Rectangle())
                             .overlay(alignment: .bottom) {
-                                if model.phase == phase {
+                                if shownPhase == phase {
                                     Capsule()
                                         .fill(NonnaTheme.accent(for: phase))
                                         .frame(width: 28, height: 1.5)
@@ -262,6 +304,16 @@ struct FocusView: View {
                                 accent: accent
                             )
                             .transition(.opacity.combined(with: .scale(scale: 0.94)))
+                        } else if let preview {
+                            // The break (or focus) as it would start now, still and unstarted.
+                            PremiumTimerDial(
+                                progress: min(1, Double(model.previewSeconds(for: preview)) / 3_600),
+                                accent: NonnaTheme.accent(for: preview),
+                                isActive: false,
+                                isPaused: false,
+                                reduceMotion: reduceMotion
+                            )
+                            .transition(.opacity)
                         } else {
                             TimelineView(.animation(minimumInterval: dialFrameInterval, paused: !shouldAnimateDial)) { context in
                                 PremiumTimerDial(
@@ -292,7 +344,10 @@ struct FocusView: View {
                     if !model.isBreathing {
                         // Its own view, so the once-a-second change redraws these three lines
                         // and not the whole screen around them.
-                        ClockReadout(accent: accent, isAlerting: isAlerting, isFlashing: isFlashing)
+                        ClockReadout(accent: preview.map { NonnaTheme.accent(for: $0) } ?? accent,
+                                     isAlerting: preview == nil && isAlerting,
+                                     isFlashing: preview == nil && isFlashing,
+                                     preview: preview)
                     }
 
                     timerControls
@@ -350,10 +405,46 @@ struct FocusView: View {
         .help("Save what you've tracked and stop, without starting anything new (⌘.)")
     }
 
+    /// The tab that looks chosen: one being looked at while a timer runs, or the timer's own.
+    private var shownPhase: TimerPhase { browsedPhase ?? model.phase }
+
+    /// A tab being looked at while a timer runs: the dial and clock show it, not the timer.
+    private var preview: TimerPhase? {
+        guard let browsedPhase, browsedPhase != model.phase, model.status != .idle || model.isBreathing else { return nil }
+        return browsedPhase
+    }
+
     @ViewBuilder
     private var timerControls: some View {
         HStack(spacing: 10) {
-            if model.isBreathing {
+            if case let .following(host) = StudyGroup.shared.role {
+                // The host leads; this timer follows, so its own buttons would only fight it.
+                Label("\(host) leads the timer", systemImage: "person.2.fill")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(NonnaTheme.secondaryInk)
+                Button("Leave Group") { StudyGroup.shared.leave() }
+                    .buttonStyle(NonnaButtonStyle(prominent: false))
+            } else if let browsed = browsedPhase, browsed != model.phase, model.status != .idle || model.isBreathing {
+                // Looking at another tab while a block runs: nothing has stopped. Starting it
+                // ends the current block (saving what was done) and begins this one.
+                Button {
+                    browsedPhase = nil
+                    model.selectPhase(browsed)
+                    model.start()
+                } label: {
+                    Label(browsed == .focus ? "Start focus" : browsed == .shortBreak ? "Start short break" : "Start long break",
+                          systemImage: "play.fill")
+                }
+                .buttonStyle(NonnaButtonStyle(color: NonnaTheme.accent(for: browsed)))
+                .help(model.phase == .focus ? "Ends this focus block, saving it, and starts the break" : "Ends this break and starts")
+
+                Button {
+                    withAnimation(reduceMotion ? nil : NonnaMotion.selection) { browsedPhase = nil }
+                } label: {
+                    Label(model.phase == .focus ? "Keep focusing" : "Keep resting", systemImage: "arrow.uturn.backward")
+                }
+                .buttonStyle(NonnaButtonStyle(prominent: false))
+            } else if model.isBreathing {
                 Button("Skip breaths") { model.skipBreathing() }
                     .buttonStyle(NonnaButtonStyle(color: accent))
                 Button("Cancel") { model.cancelBreathing() }
@@ -423,6 +514,10 @@ struct FocusView: View {
                 }
 
                 endSessionButton
+
+                if model.phase == .focus, !model.isOvertime {
+                    DriftingMenu { showsBrainDump = true }
+                }
 
                 Menu {
                     if model.phase == .focus {
@@ -999,9 +1094,14 @@ private struct ClockReadout: View {
     let accent: Color
     let isAlerting: Bool
     let isFlashing: Bool
-
+    /// A tab being looked at while the timer runs: shown here instead of the timer.
+    var preview: TimerPhase?
 
     private var seconds: Int { windowIsVisible ? model.displaySeconds : model.unobservedDisplaySeconds }
+    private var clockText: String {
+        if let preview { return model.previewSeconds(for: preview).clockString }
+        return (model.isOvertime ? "+" : "") + seconds.clockString
+    }
 
     var body: some View {
         VStack(spacing: 7) {
@@ -1025,8 +1125,8 @@ private struct ClockReadout: View {
                 }
                 .alertFlash(isFlashing)
             LayerRollingClock(
-                text: (model.isOvertime ? "+" : "") + seconds.clockString,
-                countsDown: !model.isOvertime,
+                text: clockText,
+                countsDown: preview != nil || !model.isOvertime,
                 travel: 22,
                 animated: !reduceMotion,
                 size: 56,
@@ -1035,7 +1135,7 @@ private struct ClockReadout: View {
                 flashes: isFlashing
             )
             .accessibilityElement()
-            .accessibilityLabel((model.isOvertime ? "Overtime " : "") + seconds.clockString)
+            .accessibilityLabel(preview != nil ? clockText : (model.isOvertime ? "Overtime " : "") + seconds.clockString)
             Text(timerRangeText)
                 .font(.system(size: 11, weight: .medium).monospacedDigit())
                 .foregroundStyle(NonnaTheme.secondaryInk)
@@ -1044,10 +1144,18 @@ private struct ClockReadout: View {
                 .background(NonnaTheme.pane(NonnaTheme.raisedPaper))
                 .clipShape(Capsule())
                 .overlay { Capsule().stroke(NonnaTheme.line, lineWidth: 0.8) }
+            if preview != nil {
+                // The block that's really running, so it's clear nothing has stopped.
+                Text("\(model.phase == .focus ? "Focus" : "Your break") is still running, \((model.isOvertime ? "+" : "") + seconds.clockString)\(model.isOvertime ? " over" : " left")")
+                    .font(.system(size: 11, weight: .medium).monospacedDigit())
+                    .foregroundStyle(NonnaTheme.accent(for: model.phase))
+                    .padding(.top, 2)
+            }
         }
     }
 
     private var timerStateLabel: String {
+        if let preview { return preview.compactTitle }
         if model.awaitingNextPhase != nil { return "Break complete" }
         if model.status == .overtime { return model.phase == .focus ? "Focus overtime" : "Break overtime" }
         if model.easedFocusReason != nil { return "Warm-up" }
@@ -1056,6 +1164,11 @@ private struct ClockReadout: View {
 
     private var timerRangeText: String {
         let now = Date()
+        if let preview {
+            // When it would run if started now.
+            let end = now.addingTimeInterval(TimeInterval(model.previewSeconds(for: preview)))
+            return (now..<end).formatted(date: .omitted, time: .shortened)
+        }
         let interval = model.activityIntervals.last
         let start = interval?.startedAt ?? model.activeTimerStartedAt ?? now
         let end: Date

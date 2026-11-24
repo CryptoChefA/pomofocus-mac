@@ -68,6 +68,9 @@ After installing, Pomofocus updates itself.
 - Insights with a 7, 30, 90-day or all-time range: week-over-week trend, six-month totals, daily goal hit rate, focus by hour and weekday, rating by task and start hour, completion rate, focus-to-break ratio, skipped breaks, and overtime trend
 - Read-only calendar overlay on the day timeline through EventKit, so any account added to macOS (Google included) appears behind your sessions, with a per-calendar picker and Start focus from an event
 - Intention for each focus block
+- Your peak hours on the Dashboard: the best two-hour stretch by blocks finished and how they felt, and the toughest stretch
+- Study together: friends in the same room join one group over Bluetooth and peer-to-peer Wi-Fi (no internet, account or server, encrypted), and everyone's timer follows the host's, breaks included; only the timer and a first name are shared
+- Help when focus slips: after a rough block, one matched suggestion (walk, brain dump, guided reset, or rest); mid-block, Drifting? offers a one-minute reset, parking thoughts as tasks, or finishing small
 - Hours by week on the Dashboard: the last 12 weeks, your weekly average, and this week against the same point last week
 - One-click session rating (Scattered, Restless, Steady, Focused, Flow, or ⌘1 to ⌘5) at the end of a whole session, or after every block if you prefer; it waits for any other sheet to close, sits beside the session in History and feeds Insights
 - Focus rebuild plan: eight questions build a research-based plan in four phases (Reset, Build, Extend, Sustain). Blocks climb five minutes per level once you finish 4 full blocks on 2+ days with a 70% completion rate, and step back a level if under 40% are finished. Weekly metrics (completion rate, longest unbroken stretch, pauses per block, start-time spread, active days), house rules from your distractions, a restorative break menu and an end-of-day reward; every recommendation cites peer-reviewed research, with a Sources page and an honest note on what the science doesn't say
@@ -88,7 +91,7 @@ After installing, Pomofocus updates itself.
 
 ## Privacy
 
-Pomofocus has no account system, telemetry, advertisements, analytics SDK, or networking code. The optional calendar overlay reads events that macOS already syncs to your Mac. macOS only offers full calendar access or none, so the system prompt says "full access", but the app contains no code that creates, edits, or deletes events. Its database lives at:
+Pomofocus has no account system, telemetry, advertisements, or analytics SDK. It goes online only to check GitHub for a new version, which you can switch off. Study together talks only to Macs in the same room, over an encrypted Multipeer Connectivity link, and only while you are in a group; it sends the timer (block, phase, length, time done) and the first name you enter, never tasks, notes or history. The optional calendar overlay reads events that macOS already syncs to your Mac. macOS only offers full calendar access or none, so the system prompt says "full access", but the app contains no code that creates, edits, or deletes events. Its database lives at:
 
 ```text
 ~/Library/Application Support/Pomofocus/pomofocus-data.json
@@ -132,7 +135,7 @@ The current command-line Swift installation does not bundle XCTest, so the core 
 
 ```sh
 mkdir -p .build/checks
-swiftc Sources/PomodoroNonna/Models.swift Sources/PomodoroNonna/MoodCheckIn.swift Sources/PomodoroNonna/TodoModels.swift Sources/PomodoroNonna/FocusPlan.swift Sources/PomodoroNonna/FocusScience.swift Sources/PomodoroNonna/ThemePalette.swift Sources/PomodoroNonna/Insights.swift Sources/PomodoroNonna/DeepDiveAnalytics.swift Sources/PomodoroNonna/WeeklyTotals.swift Tests/AnalyticsCheck/main.swift -o .build/checks/analytics-check
+swiftc Sources/PomodoroNonna/Models.swift Sources/PomodoroNonna/MoodCheckIn.swift Sources/PomodoroNonna/TodoModels.swift Sources/PomodoroNonna/FocusPlan.swift Sources/PomodoroNonna/FocusScience.swift Sources/PomodoroNonna/ThemePalette.swift Sources/PomodoroNonna/Insights.swift Sources/PomodoroNonna/DeepDiveAnalytics.swift Sources/PomodoroNonna/WeeklyTotals.swift Sources/PomodoroNonna/PeakHours.swift Tests/AnalyticsCheck/main.swift -o .build/checks/analytics-check
 .build/checks/analytics-check
 swiftc Sources/PomodoroNonna/Models.swift Sources/PomodoroNonna/MoodCheckIn.swift Sources/PomodoroNonna/TodoModels.swift Sources/PomodoroNonna/FocusPlan.swift Sources/PomodoroNonna/FocusScience.swift Sources/PomodoroNonna/ThemePalette.swift Sources/PomodoroNonna/WorkImport.swift Tests/FocusPlanCheck/main.swift -o .build/checks/focus-plan-check
 .build/checks/focus-plan-check
@@ -146,6 +149,8 @@ swiftc Sources/PomodoroNonna/MoodCheckIn.swift Sources/PomodoroNonna/WeekSummary
 .build/checks/replay-check
 swiftc Sources/PomodoroNonna/TodoModels.swift Tests/TodoCheck/main.swift -o .build/checks/todo-check
 .build/checks/todo-check
+swiftc Sources/PomodoroNonna/Models.swift Sources/PomodoroNonna/MoodCheckIn.swift Sources/PomodoroNonna/TodoModels.swift Sources/PomodoroNonna/FocusPlan.swift Sources/PomodoroNonna/FocusScience.swift Sources/PomodoroNonna/ThemePalette.swift Sources/PomodoroNonna/GroupSync.swift Tests/GroupCheck/main.swift -o .build/checks/group-check
+.build/checks/group-check
 swiftc Sources/PomodoroNonna/Models.swift Sources/PomodoroNonna/MoodCheckIn.swift Sources/PomodoroNonna/TodoModels.swift Sources/PomodoroNonna/FocusPlan.swift Sources/PomodoroNonna/FocusScience.swift Sources/PomodoroNonna/ThemePalette.swift Sources/PomodoroNonna/FocusScore.swift Tests/FocusScoreCheck/main.swift -o .build/checks/focus-score-check
 .build/checks/focus-score-check
 ```
@@ -173,6 +178,11 @@ swiftc Sources/PomodoroNonna/Models.swift Sources/PomodoroNonna/MoodCheckIn.swif
 - `LayerRollingClock.swift`: the big rolling clock, animated by Core Animation so the roll costs the app nothing per frame
 - `WeeklyTotals.swift`: focus per calendar week for the Dashboard's Hours by week chart
 - `ScreenGlow.swift`: the silent end-of-block glow around every screen
+- `PeakHours.swift`: when you focus best, hour by hour
+- `FocusCoach.swift`: break suggestions after a rough block, the brain dump and the Drifting? menu
+- `GroupSync.swift`: what a study group shares, and how a friend's timer follows the host (pure, checked by Tests/GroupCheck)
+- `StudyGroup.swift`: finds, hosts and joins study groups nearby with Multipeer Connectivity
+- `StudyTogetherView.swift`: the Study together sheet and the group banner on the Focus screen
 - `WindowVisibility.swift`: tells views whether their window can be seen, so hidden ones stop redrawing
 - `AppControl.swift`: runs widget, Shortcuts and `pomofocus://` requests when they fit the timer's state
 - `Scripts/appintents-metadata.py`: writes the App Intents metadata (actions and App Shortcuts) for the app and the widget, which Xcode would normally generate

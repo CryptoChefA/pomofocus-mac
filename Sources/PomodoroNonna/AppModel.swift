@@ -15,10 +15,10 @@ final class AppModel {
         didSet { invalidateDerivedData() }
     }
     var phase: TimerPhase = .focus {
-        didSet { if phase != oldValue { FocusQuiet.shared.update(quiet: isQuietTime) } }
+        didSet { if phase != oldValue { FocusQuiet.shared.update(quiet: isQuietTime); StudyGroup.shared.hostTimerChanged() } }
     }
     var status: TimerStatus = .idle {
-        didSet { if status != oldValue { FocusQuiet.shared.update(quiet: isQuietTime) } }
+        didSet { if status != oldValue { FocusQuiet.shared.update(quiet: isQuietTime); StudyGroup.shared.hostTimerChanged() } }
     }
     /// A focus block is counting, so notifications can be silenced (Settings → Experience).
     /// Notifications are silenced while a focus block runs, and back on the moment it ends:
@@ -209,6 +209,7 @@ final class AppModel {
 
     init() {
         Self.current = self
+        StudyGroup.shared.model = self
         Task { await load() }
     }
 
@@ -593,7 +594,7 @@ final class AppModel {
                 let parts = splitParts(of: session)
                 data.sessions.append(contentsOf: parts)
                 if resolved == .completed { completedFocusCycleCount += 1 }
-                evaluatePlanProgress()
+                evaluatePlanProgressUnlessRatingIsComing()
                 if showsReflection, settings.rateFocus == .everyBlock, let last = parts.last {
                     reflectionRunIDs = parts.map(\.id)
                     reflectionSession = last
@@ -601,7 +602,7 @@ final class AppModel {
             } else if elapsedSeconds > 0 {
                 data.sessions.append(session)
                 if resolved == .completed { completedFocusCycleCount += 1 }
-                evaluatePlanProgress()
+                evaluatePlanProgressUnlessRatingIsComing()
                 if showsReflection, settings.rateFocus == .everyBlock {
                     reflectionRunIDs = []
                     reflectionSession = session
@@ -906,6 +907,57 @@ final class AppModel {
     /// The focus reset filling the window, while one is under way.
     var activeReset: FocusResetSession?
 
+    // MARK: - When focus slips
+
+    /// One suggestion after a rough block, matched to what went wrong.
+    enum CoachSuggestion: Equatable {
+        /// Restless, or the block was cut short: the body wants to move.
+        case move
+        /// Scattered: the head is full; get it out of your head and onto the page.
+        case unload
+        /// Two rough blocks in a row: a real rest helps more than a third push.
+        case callIt
+    }
+
+    /// What to suggest on this break, and for which block, after a rough one. Nothing after a
+    /// block that went fine, so the suggestion means something when it appears.
+    var breakSuggestion: (kind: CoachSuggestion, blockID: UUID)? {
+        guard phase != .focus || awaitingNextPhase != nil else { return nil }
+        let today = FocusSession.mergedBlocks(data.sessions.filter { Calendar.current.isDateInToday($0.startedAt) })
+            .sorted { $0.startedAt < $1.startedAt }
+        guard let last = today.last, FocusPlan.wasRough(last),
+              Date().timeIntervalSince(last.endedAt) < 2 * 3600 else { return nil }
+        let roughInARow = today.reversed().prefix { FocusPlan.wasRough($0) }.count
+        if roughInARow >= 2 { return (.callIt, last.id) }
+        return (last.focusRating == 1 ? .unload : .move, last.id)
+    }
+
+    /// Shortens the running block so it ends `minutes` from now: finishing something small
+    /// beats abandoning something big.
+    func finishSmall(minutes: Int = 10) {
+        guard phase == .focus, status == .running || status == .paused, !isOvertime else { return }
+        let target = elapsedSeconds + minutes * 60
+        guard target < plannedSeconds else { return }
+        plannedSeconds = target
+        refreshTrackedDurations(at: Date())
+        persistActiveTimer()
+    }
+
+    /// Starts one of the guided resets straight away, with the ambience chosen last time.
+    func startQuickReset(_ reset: FocusReset) {
+        let audio = ResetAmbience(rawValue: settings.resetAmbience).flatMap { $0.isAvailable ? $0 : nil } ?? .rain
+        activeReset = FocusResetSession(reset: reset, ambience: audio)
+    }
+
+    /// Parks what's on your mind as to-dos, one per line, so it can wait until later.
+    func parkThoughts(_ text: String) -> Int {
+        let lines = text.split(whereSeparator: \.isNewline)
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+        for line in lines { addTodo(title: line, listID: nil, minutes: nil, due: nil) }
+        return lines.count
+    }
+
     func unlinkTodo() {
         selectedTodoID = nil
         if status == .idle { persistDraft() }
@@ -1016,6 +1068,25 @@ final class AppModel {
 
     /// After each recorded block: climb a rung once it has been earned, or step back one
     /// if the current length keeps beating you.
+    /// The plan judges a block on how it felt as well as whether it ran its length, so it
+    /// waits for the rating when one is going to be asked for, and decides once it's given or
+    /// skipped (`saveReflection`, `skipReflection`). Deciding first used to count every
+    /// block as a good one, and climb on blocks that were then rated Restless.
+    private func evaluatePlanProgressUnlessRatingIsComing() {
+        guard settings.rateFocus == .never else { return }
+        evaluatePlanProgress()
+    }
+
+    /// Moves the plan to a shorter length chosen on the ladder. Longer ones are earned.
+    func stepPlan(toLevel index: Int) {
+        guard var plan = data.focusPlan, index >= 0, index < plan.levelIndex else { return }
+        plan.levelIndex = index
+        plan.levelStartedAt = Date()
+        data.focusPlan = plan
+        applyPlanSettings(plan)
+        save()
+    }
+
     private func evaluatePlanProgress() {
         guard var plan = data.focusPlan, let adjustment = plan.adjustment(sessions: data.sessions) else { return }
         plan.levelIndex += adjustment == .levelUp ? 1 : -1
@@ -1230,6 +1301,8 @@ final class AppModel {
         reflectionRunIDs = []
         reflectionSession = nil
         save()
+        // Now the plan knows how the block felt, it can decide whether to climb or step back.
+        evaluatePlanProgress()
         // A Scattered or Restless rating can shorten the next block; show it straight away.
         if status == .idle, phase == .focus, awaitingNextPhase == nil, !isBreathing { applyIdleDuration() }
     }
@@ -1248,6 +1321,7 @@ final class AppModel {
     func skipReflection() {
         reflectionRunIDs = []
         reflectionSession = nil
+        evaluatePlanProgress()
     }
 
     /// Fixes a finished block's name or list, e.g. when it was started under the wrong one.
@@ -1553,6 +1627,9 @@ final class AppModel {
         lastTick = now
         syncAmbientPlayback()
     }
+
+    /// How long a phase would run if it started now, for showing a tab before it starts.
+    func previewSeconds(for phase: TimerPhase) -> Int { duration(for: phase) }
 
     private func duration(for phase: TimerPhase) -> Int {
         switch phase {
@@ -2019,5 +2096,93 @@ extension AppModel {
         let theme = SharedTheme(id: UUID(), name: name.isEmpty ? "Shared theme" : "\(name)\u{2019}s theme",
                                 note: nil, spec: settings.customTheme, isRare: false)
         return ThemeCodes.code(for: theme)
+    }
+}
+
+// MARK: - Studying together
+
+extension AppModel {
+    /// This Mac's timer as a group host shares it.
+    func groupTimer(hostName: String, members: [String]) -> GroupTimer {
+        let now = Date()
+        let state: GroupTimer.State = isBreathing || status == .idle ? .idle : (status == .paused ? .paused : .running)
+        return GroupTimer(
+            blockID: state == .idle ? nil : sessionStartedAt.map { String(Int($0.timeIntervalSince1970 * 1000)) },
+            phase: awaitingNextPhase ?? phase,
+            state: state,
+            planned: plannedSeconds,
+            elapsed: state == .idle ? 0 : exactActiveSeconds(at: now),
+            sentAt: now,
+            hostName: hostName,
+            members: members
+        )
+    }
+
+    /// This Mac's timer as a friend following a group sees it.
+    func groupLocal(following block: String?) -> GroupSync.Local {
+        let state: GroupTimer.State = isBreathing || status == .idle ? .idle : (status == .paused ? .paused : .running)
+        return GroupSync.Local(followingBlock: block, phase: phase, state: state, planned: plannedSeconds,
+                               elapsed: state == .idle ? 0 : exactActiveSeconds(at: Date()))
+    }
+
+    /// Follows the host: does what `GroupSync` decided. Blocks still save here as usual.
+    func applyGroup(_ action: GroupSync.Action) {
+        let now = Date()
+        switch action {
+        case .none:
+            return
+        case let .stop(nextPhase):
+            if isBreathing { cancelBreathing() }
+            if status != .idle { finish() }
+            awaitingNextPhase = nil
+            data.pendingPhase = nil
+            if phase != nextPhase { phase = nextPhase }
+            applyIdleDuration()
+            save()
+        case let .select(next):
+            selectPhase(next)
+        case let .start(_, nextPhase, planned, elapsed, paused):
+            if isBreathing { cancelBreathing() }
+            if status != .idle { finish() }
+            awaitingNextPhase = nil
+            data.pendingPhase = nil
+            if phase != nextPhase { phase = nextPhase }
+            if !hasOpenRun { data.runStartedAt = now }
+            let started = now.addingTimeInterval(-max(0, elapsed))
+            sessionStartedAt = started
+            lastTick = now
+            plannedSeconds = max(60, planned)
+            activityIntervals = [ActivityInterval(startedAt: started, endedAt: paused ? now : nil)]
+            pausedSeconds = 0
+            lastOvertimeReminderMark = 0
+            isOvertime = elapsed >= Double(plannedSeconds)
+            refreshTrackedDurations(at: now)
+            status = paused ? .paused : (isOvertime ? .overtime : .running)
+            play(.start)
+            syncAmbientPlayback()
+            persistActiveTimer()
+            ensureTicking()
+        case .pause:
+            if status == .running || status == .overtime { togglePause() }
+        case let .resume(elapsed):
+            if status == .paused { togglePause() }
+            alignGroup(planned: plannedSeconds, elapsed: elapsed)
+        case let .align(planned, elapsed):
+            alignGroup(planned: planned, elapsed: elapsed)
+        }
+    }
+
+    /// Moves the running stretch so this block's progress matches the host's.
+    private func alignGroup(planned: Int, elapsed: Double) {
+        let now = Date()
+        plannedSeconds = max(60, planned)
+        let difference = exactActiveSeconds(at: now) - elapsed
+        if let last = activityIntervals.indices.last {
+            activityIntervals[last].startedAt = activityIntervals[last].startedAt.addingTimeInterval(difference)
+        }
+        isOvertime = elapsed >= Double(plannedSeconds)
+        refreshTrackedDurations(at: now)
+        if status != .paused { status = isOvertime ? .overtime : .running }
+        persistActiveTimer()
     }
 }

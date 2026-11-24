@@ -286,7 +286,11 @@ struct MenuBarTimerView: View {
     @ViewBuilder
     private var controls: some View {
         HStack(spacing: 8) {
-            if model.isBreathing {
+            if case let .following(host) = StudyGroup.shared.role {
+                Label("\(host) leads the timer", systemImage: "person.2.fill")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(NonnaTheme.secondaryInk)
+            } else if model.isBreathing {
                 panelButton("Skip breaths", icon: "forward.fill", prominent: true) { model.skipBreathing() }
                 panelButton("Cancel", icon: "xmark", prominent: false) { model.cancelBreathing() }
             } else if model.canAdvanceCycle {
