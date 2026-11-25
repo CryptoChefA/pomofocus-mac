@@ -18,7 +18,7 @@ struct BrainDumpSheet: View {
             VStack(alignment: .leading, spacing: 5) {
                 Text("What's on your mind?")
                     .font(.system(size: 22, weight: .semibold))
-                Text("Write it all down, one thought per line: things to do, worries, ideas. Each one waits in Tasks, so you don't have to hold it.")
+                Text("One thought per line: things to do, worries, ideas. Each one goes to Tasks.")
                     .font(.system(size: 12))
                     .foregroundStyle(NonnaTheme.secondaryInk)
                     .fixedSize(horizontal: false, vertical: true)

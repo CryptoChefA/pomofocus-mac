@@ -104,7 +104,7 @@ struct FocusView: View {
                     if let suggestion = model.breakSuggestion, suggestion.blockID != dismissedCoach {
                         ResetNudge(text: suggestion.kind == .move ? "That block felt restless. A short walk might help."
                                    : suggestion.kind == .unload ? "That block felt scattered. Want to empty your head?"
-                                   : "Two tough blocks in a row. Maybe rest instead of pushing.",
+                                   : "Two tough blocks in a row. Maybe take a rest.",
                                    onOpen: { model.showsResetSheet = true }) {
                             withAnimation(reduceMotion ? nil : NonnaMotion.dismiss) { dismissedCoach = suggestion.blockID }
                         }
@@ -127,7 +127,7 @@ struct FocusView: View {
                     }
 
                     VStack(spacing: 13) {
-                        Text(isFocusing && model.settings.simpleTasks ? "Just this, for now" : "What's your focus?")
+                        Text(isFocusing && model.settings.simpleTasks ? "Right now" : "What's your focus?")
                             .font(.system(size: 28, weight: .semibold))
                         focusSetup
                     }
@@ -399,7 +399,7 @@ struct FocusView: View {
             Label("End session", systemImage: "stop.fill")
         }
         .buttonStyle(NonnaButtonStyle(prominent: false))
-        .help("Save what you've tracked and stop, without starting anything new (⌘.)")
+        .help("Save what you've tracked and stop (⌘.)")
     }
 
     /// The tab that looks chosen: one being looked at while a timer runs, or the timer's own.
@@ -433,7 +433,7 @@ struct FocusView: View {
                           systemImage: "play.fill")
                 }
                 .buttonStyle(NonnaButtonStyle(color: NonnaTheme.accent(for: browsed)))
-                .help(model.phase == .focus ? "Ends this focus block, saving it, and starts the break" : "Ends this break and starts")
+                .help(model.phase == .focus ? "Save this block and start the break" : "End this break and start focusing")
 
                 Button {
                     withAnimation(reduceMotion ? nil : NonnaMotion.selection) { browsedPhase = nil }
@@ -492,7 +492,7 @@ struct FocusView: View {
                     Label("Reset", systemImage: "wind")
                 }
                 .buttonStyle(NonnaButtonStyle(prominent: false))
-                .help("Get your focus back: a walk, a brain dump or a guided breath")
+                .help("Reset with a walk, a brain dump or a guided breath")
             } else {
                 Button {
                     model.togglePause()
@@ -519,7 +519,7 @@ struct FocusView: View {
                     }
                     .buttonStyle(.plain)
                     .foregroundStyle(NonnaTheme.secondaryInk)
-                    .help("Lost focus? Reset instead of quitting")
+                    .help("Lost focus? Try a reset")
                 }
 
                 Menu {
@@ -1021,7 +1021,7 @@ private struct AwayBanner: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Were you still focusing?")
                         .font(.system(size: 14, weight: .semibold))
-                    Text("You seemed to be away from your Mac, so the timer paused at \(pausedAt.formatted(date: .omitted, time: .shortened)). If you kept working away from the screen, count those \(minutes) min.")
+                    Text("The timer paused at \(pausedAt.formatted(date: .omitted, time: .shortened)) because you seemed away from your Mac. If you kept working, count those \(minutes) min.")
                         .font(.system(size: 12))
                         .foregroundStyle(NonnaTheme.secondaryInk)
                         .fixedSize(horizontal: false, vertical: true)

@@ -22,7 +22,7 @@ struct WorkImportSheet: View {
             VStack(alignment: .leading, spacing: 6) {
                 Text("Bring your work into Tasks")
                     .font(.system(size: 26, weight: .regular, design: .serif))
-                Text("Pomofocus found what you've been focusing on. Tick what you'd like as tasks; you can rename or delete them any time.")
+                Text("Pomofocus found what you've been focusing on. Tick what to add as tasks. You can rename or delete them later.")
                     .font(.system(size: 12))
                     .foregroundStyle(NonnaTheme.secondaryInk)
                     .fixedSize(horizontal: false, vertical: true)

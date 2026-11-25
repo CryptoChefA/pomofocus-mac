@@ -49,7 +49,7 @@ enum FocusScience {
         Citation(id: .selfEfficacy, authors: "Bandura, A.", year: 1977,
                  title: "Self-efficacy: Toward a unifying theory of behavioral change",
                  venue: "Psychological Review, 84(2), 191–215",
-                 finding: "Mastery experiences, actually succeeding, are the strongest source of belief in your ability. That is why the plan starts below your limit and steps back when blocks keep failing."),
+                 finding: "Mastery experiences (actually succeeding) are the strongest source of belief in your ability. So the plan starts below your limit and steps back when blocks keep failing."),
         Citation(id: .goalSetting, authors: "Locke, E. A., & Latham, G. P.", year: 2002,
                  title: "Building a practically useful theory of goal setting and task motivation: A 35-year odyssey",
                  venue: "American Psychologist, 57(9), 705–717",
@@ -57,7 +57,7 @@ enum FocusScience {
         Citation(id: .implementationIntentions, authors: "Gollwitzer, P. M.", year: 1999,
                  title: "Implementation intentions: Strong effects of simple plans",
                  venue: "American Psychologist, 54(7), 493–503",
-                 finding: "Deciding in advance when and where you'll act ('at 7 pm at my desk, I start a block') makes people far more likely to actually start."),
+                 finding: "Deciding in advance when and where you'll act ('at 7 pm at my desk, I start a block') makes people far more likely to start."),
         Citation(id: .habitFormation, authors: "Lally, P., van Jaarsveld, C. H. M., Potts, H. W. W., & Wardle, J.", year: 2010,
                  title: "How are habits formed: Modelling habit formation in the real world",
                  venue: "European Journal of Social Psychology, 40(6), 998–1009",
@@ -69,7 +69,7 @@ enum FocusScience {
         Citation(id: .notificationCost, authors: "Stothart, C., Mitchum, A., & Yehnert, C.", year: 2015,
                  title: "The attentional cost of receiving a cell phone notification",
                  venue: "Journal of Experimental Psychology: Human Perception and Performance, 41(4), 893–897",
-                 finding: "Just receiving a notification, without looking at it, disrupted performance on an attention task about as much as using the phone."),
+                 finding: "Receiving a notification, even one you didn't look at, disrupted performance on an attention task about as much as using the phone."),
         Citation(id: .interruptionCost, authors: "Mark, G., Gudith, D., & Klocke, U.", year: 2008,
                  title: "The cost of interrupted work: More speed and stress",
                  venue: "Proceedings of CHI 2008, 107–110",
@@ -101,7 +101,7 @@ enum FocusScience {
         Citation(id: .vigilanceWork, authors: "Warm, J. S., Parasuraman, R., & Matthews, G.", year: 2008,
                  title: "Vigilance requires hard mental work and is stressful",
                  venue: "Human Factors, 50(3), 433–441",
-                 finding: "Sustaining attention is effortful and tiring, and performance declines over time. Rest is part of the work, not a reward for it."),
+                 finding: "Sustaining attention is tiring, and performance declines over time. Rest is part of the work."),
         Citation(id: .natureAttention, authors: "Berman, M. G., Jonides, J., & Kaplan, S.", year: 2008,
                  title: "The cognitive benefits of interacting with nature",
                  venue: "Psychological Science, 19(12), 1207–1212",
@@ -134,9 +134,9 @@ enum FocusScience {
 
     /// Where the evidence stops. Shown at the bottom of the sources sheet.
     static let limits: [String] = [
-        "No study shows that one block length, 25, 45 or 90 minutes, is best for everyone. The plan uses your own completion rate to decide when you're ready for longer blocks.",
-        "\"Dopamine detox\" is a popular idea, not a literal effect: breaks won't lower your dopamine. What the research supports is removing cues and interruptions, rewarding effort after it happens, and choosing breaks that don't hijack your attention.",
-        "Most studies measure averages over weeks, not individual people. Treat the plan as a well-founded starting point and adjust it to how you actually respond.",
+        "No study shows that one block length (25, 45 or 90 minutes) is best for everyone. The plan uses your completion rate to decide when you're ready for longer blocks.",
+        "\"Dopamine detox\" isn't a literal effect: breaks won't lower your dopamine. The research supports removing cues and interruptions, rewarding effort after it's done, and picking breaks that don't grab your attention.",
+        "Most studies measure averages over weeks, not individual people. Treat the plan as a starting point and adjust it to how you respond.",
         "This is not medical advice. If focus problems are severe or persistent, an assessment by a doctor or psychologist (for example, for ADHD, sleep problems or depression) can help more than any timer."
     ]
 }

@@ -79,12 +79,12 @@ enum AmbientSound: String, Codable, CaseIterable, Identifiable, Sendable {
 
     var subtitle: String {
         switch self {
-        case .off: "Silence while you focus"
-        case .ticking: "An old wall clock, steady and slow"
+        case .off: "No sound"
+        case .ticking: "A ticking wall clock"
         case .rain: "Rain against a window"
-        case .ocean: "Slow waves on a beach"
-        case .brownNoise: "Deep and soft, like distant wind"
-        case .whiteNoise: "A gentle hush, never hissy"
+        case .ocean: "Waves on a beach"
+        case .brownNoise: "Low rumble, like distant wind"
+        case .whiteNoise: "A steady hush"
         }
     }
 

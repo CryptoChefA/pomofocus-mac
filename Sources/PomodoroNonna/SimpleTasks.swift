@@ -125,9 +125,9 @@ struct PlanningNudge: View {
                 .font(.system(size: 15))
                 .foregroundStyle(NonnaTheme.terracotta)
             VStack(alignment: .leading, spacing: 3) {
-                Text("Ready when you are")
+                Text("Time to start")
                     .font(.system(size: 13, weight: .semibold))
-                Text(suggestion.map { "Your list is good enough. Start with “\($0.title)”?" } ?? "Your list is good enough. Time to start one.")
+                Text(suggestion.map { "Your list is good enough. Start with “\($0.title)”?" } ?? "Your list is good enough. Start a block?")
                     .font(.system(size: 12))
                     .foregroundStyle(NonnaTheme.secondaryInk)
                     .lineLimit(2)

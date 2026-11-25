@@ -42,7 +42,7 @@ struct YearReadyBanner: View {
                 Text("Your \(String(year)) in focus is ready")
                     .font(.system(size: 12, weight: .medium))
                 Spacer()
-                Button("Take a look") {
+                Button("Open") {
                     model.yearSheet = year
                     withAnimation(reduceMotion ? nil : NonnaMotion.dismiss) { seenYear = year }
                 }
@@ -54,8 +54,8 @@ struct YearReadyBanner: View {
                 }
                 .buttonStyle(.plain)
                 .foregroundStyle(NonnaTheme.secondaryInk)
-                .help("Not now. It's always in Progress")
-                .accessibilityLabel("Not now")
+                .help("Hide. It stays in Progress.")
+                .accessibilityLabel("Hide")
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 10)
@@ -86,7 +86,7 @@ struct YearDashboardRow: View {
                         .font(.system(size: 15, weight: .semibold))
                     Text(replay.hasFocus
                          ? "\(replay.totalSeconds.yearHoursString) of focus across \(replay.daysFocused == 1 ? "one day" : "\(replay.daysFocused) days") this year."
-                         : "Your year in focus fills in as you go.")
+                         : "This fills in as you focus.")
                         .font(.system(size: 12))
                         .foregroundStyle(NonnaTheme.secondaryInk)
                 }
@@ -213,7 +213,7 @@ struct YearSheet: View {
                     .help("Back")
                     .accessibilityLabel("Back")
                 Spacer()
-                Text(index == 0 && count > 1 ? "Click or press → to keep going" : " ")
+                Text(index == 0 && count > 1 ? "Click or press → for the next card" : " ")
                     .font(.system(size: 11))
                     .foregroundStyle(NonnaTheme.secondaryInk)
                 Spacer()
@@ -419,7 +419,7 @@ private struct YearCardView: View {
             }
             .padding(.top, 8)
             if replay.listCount > replay.topLists.count {
-                line("Out of \(replay.listCount) lists in all.").modifier(reveal(5))
+                line("Out of \(replay.listCount) lists.").modifier(reveal(5))
             }
         }
     }
@@ -429,7 +429,7 @@ private struct YearCardView: View {
             (.morning, "Morning", "sunrise"), (.afternoon, "Afternoon", "sun.max"), (.evening, "Evening", "moon"),
         ]
         return VStack(spacing: 18) {
-            label("Your rhythm").modifier(reveal(0))
+            label("Time of day").modifier(reveal(0))
             big(rhythmTitle, size: 40).modifier(reveal(1))
             line(replay.rhythm).modifier(reveal(2))
             HStack(spacing: 10) {
@@ -474,13 +474,13 @@ private struct YearCardView: View {
 
     private var streak: some View {
         VStack(spacing: 14) {
-            label("Showing up").modifier(reveal(0))
+            label("Longest streak").modifier(reveal(0))
             big(replay.longestStreak == 1 ? "1 day" : "\(replay.longestStreak) days in a row", size: replay.longestStreak == 1 ? 80 : 56)
                 .modifier(reveal(1))
             if let end = replay.streakEnd, replay.longestStreak > 1 {
-                line("Your longest streak, ending \(end.formatted(.dateTime.day().month(.wide))).").modifier(reveal(2))
+                line("Ending \(end.formatted(.dateTime.day().month(.wide))).").modifier(reveal(2))
             } else {
-                line("Your longest streak so far. Two days in a row is a good next goal.").modifier(reveal(2))
+                line("Try two days in a row next.").modifier(reveal(2))
             }
             if let block = replay.longestBlock {
                 VStack(spacing: 4) {
@@ -537,12 +537,12 @@ private struct YearCardView: View {
             .foregroundStyle(NonnaTheme.secondaryInk)
             .modifier(reveal(3))
             if !replay.topFeelings.isEmpty {
-                line("The words you reached for most: \(ListFormatter.localizedString(byJoining: replay.topFeelings)).")
+                line("Words you picked most: \(ListFormatter.localizedString(byJoining: replay.topFeelings)).")
                     .padding(.top, 6)
                     .modifier(reveal(4))
             }
             if let month = replay.brightestMonth {
-                line("\(month.formatted(.dateTime.month(.wide))) felt the brightest.").modifier(reveal(5))
+                line("\(month.formatted(.dateTime.month(.wide))) was your most pleasant month.").modifier(reveal(5))
             }
         }
     }
@@ -551,7 +551,7 @@ private struct YearCardView: View {
         VStack(spacing: 14) {
             label("Your year in focus").modifier(reveal(0))
             big(String(replay.year), size: 96).modifier(reveal(1))
-            line("This fills in as you go. Finish a block or two and it'll show your hours, your best month and your rhythm.")
+            line("Finish a block or two to see your hours, best month and time of day.")
                 .modifier(reveal(2))
         }
     }
@@ -594,7 +594,7 @@ private struct YearShareCard: View {
                     .buttonStyle(NonnaButtonStyle(prominent: false))
             }
             .padding(.top, 4)
-            Text("Only the numbers go on the image. Your list names and moods stay on this Mac.")
+            Text("Only numbers go on the image. List names and moods stay on this Mac.")
                 .font(.system(size: 11))
                 .foregroundStyle(NonnaTheme.secondaryInk)
                 .multilineTextAlignment(.center)

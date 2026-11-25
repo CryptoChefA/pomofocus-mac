@@ -388,7 +388,7 @@ private struct PomofocusTimerWidget: Widget {
             PomofocusWidgetView(entry: entry)
         }
         .configurationDisplayName("Pomofocus")
-        .description("Your current focus block, kept private and local.")
+        .description("Your current focus block.")
         .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
         .containerBackgroundRemovable(false)
     }

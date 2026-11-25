@@ -59,9 +59,9 @@ struct YearReplay {
         let percent = Int((share * 100).rounded())
         if share < 0.45 { return "You spread your focus across the day. No time of day had more than \(percent)%." }
         switch time {
-        case .morning: return "You're a morning person. \(percent)% of your focus happened before noon."
-        case .afternoon: return "You did your best work after lunch. \(percent)% of your focus happened in the afternoon."
-        case .evening: return "You're a night owl. \(percent)% of your focus happened after 5 pm."
+        case .morning: return "You're a morning person. \(percent)% of your focus was before noon."
+        case .afternoon: return "You're an afternoon person. \(percent)% of your focus was in the afternoon."
+        case .evening: return "You're a night owl. \(percent)% of your focus was after 5 pm."
         }
     }
 

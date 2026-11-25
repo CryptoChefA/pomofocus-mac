@@ -40,7 +40,7 @@ struct InsightsSection: View {
                     EmptyState(
                         icon: "chart.xyaxis.line",
                         title: "Nothing in this range yet",
-                        message: "Finish a focus session, or widen the range, to see patterns here."
+                        message: "Finish a session or pick a wider range."
                     )
                 }
             } else {
@@ -67,7 +67,7 @@ private struct TrendsCard: View {
     var body: some View {
         NonnaCard {
             VStack(alignment: .leading, spacing: 18) {
-                InsightCardTitle(title: "How the work is moving")
+                InsightCardTitle(title: "Focus time")
 
                 HStack(alignment: .top, spacing: 14) {
                     InsightTile(
@@ -295,7 +295,7 @@ private struct QualityCard: View {
     var body: some View {
         NonnaCard {
             VStack(alignment: .leading, spacing: 18) {
-                InsightCardTitle(title: "How the sessions felt")
+                InsightCardTitle(title: "How sessions went")
 
                 HStack(alignment: .top, spacing: 14) {
                     InsightTile(
@@ -316,7 +316,7 @@ private struct QualityCard: View {
                 }
 
                 if insights.taskRatings.isEmpty {
-                    Text("Rate a session in the reflection sheet and ratings by task and hour show up here.")
+                    Text("Rate your sessions to see ratings by task and hour here.")
                         .font(.system(size: 11))
                         .foregroundStyle(NonnaTheme.secondaryInk)
                         .fixedSize(horizontal: false, vertical: true)
@@ -436,7 +436,7 @@ private struct BreaksCard: View {
     var body: some View {
         NonnaCard {
             VStack(alignment: .leading, spacing: 18) {
-                InsightCardTitle(title: "Rest and run-over")
+                InsightCardTitle(title: "Breaks and overtime")
 
                 HStack(alignment: .top, spacing: 14) {
                     InsightTile(
@@ -571,16 +571,16 @@ private struct InsightTile: View {
     /// What each number means, in plain words, for the small "?".
     private static let explanations: [String: String] = [
         "This week": "Focus time since Monday, compared with the same days last week.",
-        "Average session": "How long a focus block usually lasts, counting only time actually focused.",
-        "Per active day": "Average focus on the days you used Pomofocus. Days off don't pull it down.",
+        "Average session": "Average length of a focus block, counting only focused time.",
+        "Per active day": "Average focus on days you used Pomofocus. Days off aren't counted.",
         "Daily goal hit": "How often you reached your daily focus goal, on days you focused.",
         "Average rating": "The average of your focus ratings, from 1 (scattered) to 5 (flow).",
-        "Completion": "The share of focus blocks you ran to their planned length instead of ending early.",
-        "Paused": "How long a block is usually paused in total.",
-        "Focus to break": "Focus time for every minute of break. Around 3 to 5 is a healthy rhythm.",
-        "Skipped breaks": "Breaks you ended early or skipped. Skipping often makes later blocks harder.",
-        "Break overtime": "How far breaks usually run past their planned length.",
-        "Focus overtime": "How far finished blocks usually run past their planned length.",
+        "Completion": "Share of focus blocks you ran to their planned length.",
+        "Paused": "Average total pause time per block.",
+        "Focus to break": "Minutes of focus per minute of break. Around 3 to 5 is a good balance.",
+        "Skipped breaks": "Breaks you skipped or ended early.",
+        "Break overtime": "Average time breaks run past their planned length.",
+        "Focus overtime": "Average time finished blocks run past their planned length.",
     ]
 
     var body: some View {

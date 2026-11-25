@@ -72,7 +72,7 @@ struct DashboardView: View {
                         icon: "hourglass",
                         label: "Focused in total",
                         value: analytics.totalFocusSeconds.focusDurationString,
-                        help: "Every minute you've spent focusing, across all your lists, since you started using Pomofocus. It includes time you kept going after the bell and blocks you ended early, so it's usually more than your completed sessions times their length. Paused time isn't counted.",
+                        help: "All your focus time across every list, including time past the bell and blocks you ended early. Paused time isn't counted.",
                         detail: analytics.overtimeSeconds >= 60
                             ? "Includes \(analytics.overtimeSeconds.focusDurationString) past the bell"
                             : "Across every list",
@@ -84,8 +84,8 @@ struct DashboardView: View {
                         icon: "cup.and.saucer.fill",
                         label: "Break time",
                         value: totalBreakSeconds.focusDurationString,
-                        help: "All the time you've spent on breaks between focus blocks.",
-                        detail: "Recorded rest periods",
+                        help: "Total time on breaks.",
+                        detail: "All recorded breaks",
                         tint: NonnaTheme.sage
                     ),
                     DashboardStat(
@@ -94,8 +94,8 @@ struct DashboardView: View {
                         icon: "clock.badge.exclamationmark",
                         label: "Break overtime",
                         value: breakOvertimeSeconds.focusDurationString,
-                        help: "Time your breaks ran past their planned length. A little is normal; a lot means breaks are turning into long stops.",
-                        detail: "Beyond planned breaks",
+                        help: "Time your breaks ran past their planned length.",
+                        detail: "Past planned length",
                         tint: NonnaTheme.gold
                     ),
                     DashboardStat(
@@ -104,17 +104,17 @@ struct DashboardView: View {
                         icon: "calendar.badge.checkmark",
                         label: "Days used",
                         value: "\(analytics.usedDays)",
-                        help: "How many different days you've focused on, for any amount of time.",
-                        detail: "Days with focused time",
+                        help: "Days you focused, for any amount of time.",
+                        detail: "Days with any focus",
                         tint: NonnaTheme.gold
                     ),
                     DashboardStat(
                         metric: .rhythm,
                         trends: trends[.rhythm] ?? [],
                         icon: "flame.fill",
-                        label: "Current rhythm",
+                        label: "Current streak",
                         value: "\(analytics.currentStreak) \(analytics.currentStreak == 1 ? "day" : "days")",
-                        help: "How many days in a row you've focused, up to today. \"Best\" is your longest run so far.",
+                        help: "Days in a row you've focused, up to today. Best is your longest run.",
                         detail: "Best: \(analytics.longestStreak) \(analytics.longestStreak == 1 ? "day" : "days")",
                         tint: NonnaTheme.sage
                     ),
@@ -125,7 +125,7 @@ struct DashboardView: View {
                         icon: "checkmark.seal.fill",
                         label: "Completed sessions",
                         value: "\(analytics.completedSessions)",
-                        help: "Focus blocks you ran all the way to their planned length. Blocks you ended early aren't counted here, but their minutes are in your focus time. A block that switched lists part-way counts once.",
+                        help: "Focus blocks you ran to their planned length. Blocks ended early don't count here, but their minutes count toward focus time. A block that switched lists counts once.",
                         detail: analytics.endedEarlySessions > 0
                             ? "Plus \(analytics.endedEarlySessions) ended early"
                             : "Full planned intervals",
@@ -176,9 +176,9 @@ struct DashboardView: View {
             VStack(alignment: .leading, spacing: 18) {
                 VStack(alignment: .leading, spacing: 8) {
                     HStack(spacing: 7) {
-                        Text("Focus rhythm")
+                        Text("Daily focus")
                             .font(.system(size: 18, weight: .semibold))
-                        InfoButton(title: "Focus rhythm", text: "How long you focused on each of the last 14 days. The large number is the total; the badge beside it compares that with the 14 days before. Hover a bar to see that day.")
+                        InfoButton(title: "Daily focus", text: "Focus time on each of the last 14 days. The big number is the total; the badge compares it with the 14 days before.")
                     }
                     HStack(alignment: .center, spacing: 10) {
                         Text(total.focusDurationString)
@@ -197,7 +197,7 @@ struct DashboardView: View {
                     EmptyState(
                         icon: "chart.bar",
                         title: "No focus data",
-                        message: "Complete a focus session to populate this chart."
+                        message: "Finish a focus session to fill this in."
                     )
                 } else {
                     let days = snapshot.recentDays
@@ -286,7 +286,7 @@ struct DashboardView: View {
                     HStack(spacing: 7) {
                         Text("Time by list")
                             .font(.system(size: 18, weight: .semibold))
-                        InfoButton(title: "Time by list", text: "Where your focus time has gone, by list, since you started. Each bar is in that list's colour; change a colour from the dot on the list in Tasks.")
+                        InfoButton(title: "Time by list", text: "Focus time by list since you started. To change a list's colour, use the dot next to it in Tasks.")
                     }
                 }
 
@@ -294,7 +294,7 @@ struct DashboardView: View {
                     EmptyState(
                         icon: "list.bullet.rectangle",
                         title: "No task totals yet",
-                        message: "Your lifetime task hours will appear here."
+                        message: "Finish a focus session to see hours by list."
                     )
                 } else {
                     let maximum = max(1, analytics.taskTotals.first?.seconds ?? 1)
@@ -338,7 +338,7 @@ struct DashboardView: View {
                     Text("last 12 weeks")
                         .font(.system(size: 12))
                         .foregroundStyle(NonnaTheme.secondaryInk)
-                    InfoButton(title: "Consistency", text: "Each square is one day; each column is a week, oldest on the left. Darker squares mean more focus: under 25m, 25m–1h, 1–2h, and 2h or more. Hover a day to see it, or click to keep it shown.")
+                    InfoButton(title: "Consistency", text: "Each square is a day and each column a week, oldest on the left. Darker means more focus: under 25m, 25m–1h, 1–2h, 2h or more. Click a day to keep it shown.")
                 }
                 UsageHeatmap(sessions: model.sessions)
             }
@@ -613,7 +613,7 @@ private struct UsageHeatmap: View {
                     .foregroundStyle(NonnaTheme.secondaryInk)
                     .lineLimit(1)
             } else {
-                Text("Hover a day to see it. Darker squares mean more focus.")
+                Text("Hover a day to see it.")
                     .font(.system(size: 12))
                     .foregroundStyle(NonnaTheme.secondaryInk)
             }
@@ -683,7 +683,7 @@ private struct WeeklyHoursCard: View {
                     HStack(spacing: 7) {
                         Text("Hours by week")
                             .font(.system(size: 18, weight: .semibold))
-                        InfoButton(title: "Hours by week", text: "How long you focused in each of the last 12 weeks, counting every minute of focus: full blocks, time past the bell and blocks you ended early. The badge compares this week so far with last week up to the same point. The dashed line is your average over the weeks you focused. Hover a bar to see that week.")
+                        InfoButton(title: "Hours by week", text: "Focus time in each of the last 12 weeks, including time past the bell and blocks you ended early. The badge compares this week so far with last week at the same point. The dashed line is your average across weeks you focused.")
                     }
                     HStack(alignment: .center, spacing: 10) {
                         Text((thisWeek?.seconds ?? 0).focusDurationString)
@@ -714,7 +714,7 @@ private struct WeeklyHoursCard: View {
                     EmptyState(
                         icon: "chart.bar",
                         title: "No focus yet",
-                        message: "Your weekly hours show here once you've focused."
+                        message: "Finish a focus session to see weekly hours."
                     )
                 } else {
                     chart(totals, average: average)
@@ -845,7 +845,7 @@ struct PeakHoursCard: View {
                 HStack(spacing: 7) {
                     Text("Your peak hours")
                         .font(.system(size: 18, weight: .semibold))
-                    InfoButton(title: "Your peak hours", text: "When your focus goes best, from the last 60 days. Each hour is judged by how its blocks went: how often you finished them, and how they felt when you rated them. Minutes alone would only show when you happened to study. The highlighted stretch is your best two hours; plan your hardest work there.")
+                    InfoButton(title: "Your peak hours", text: "Based on the last 60 days. Each hour is scored by how often you finished its blocks and how you rated them, not by minutes. The highlighted stretch is your best two hours.")
                 }
                 if peak.hasEnoughData, let best = peak.best {
                     VStack(alignment: .leading, spacing: 6) {
@@ -862,7 +862,7 @@ struct PeakHoursCard: View {
                     EmptyState(
                         icon: "clock",
                         title: "Not enough blocks yet",
-                        message: "After \(PeakHours.minimumBlocks) blocks at different times, this shows when you focus best. You have \(peak.blockCount) so far."
+                        message: "This needs \(PeakHours.minimumBlocks) blocks at different times. You have \(peak.blockCount) so far."
                     )
                 }
             }
@@ -870,11 +870,11 @@ struct PeakHoursCard: View {
     }
 
     private func summary(best: PeakHours.Window, hardest: PeakHours.Window?) -> String {
-        var text = "You finish \(Int((best.finishRate * 100).rounded()))% of the blocks you start then"
-        if let feel = feeling(best.averageRating) { text += ", and you usually rate them \(feel)" }
-        text += ". Put your hardest work there."
+        var text = "You finish \(Int((best.finishRate * 100).rounded()))% of blocks you start then"
+        if let feel = feeling(best.averageRating) { text += " and usually rate them \(feel)" }
+        text += ". Do your hardest work there."
         if let hardest {
-            text += " Your toughest stretch is \(range(hardest)), so keep lighter work for then."
+            text += " Your weakest stretch is \(range(hardest)); keep lighter work for that."
         }
         return text
     }

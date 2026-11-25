@@ -158,10 +158,10 @@ struct TasksView: View {
 
     private var subtitle: String {
         switch scope {
-        case .board: "Every list and what’s left in it"
+        case .board: "What’s left in every list"
         case .today: Date().formatted(.dateTime.weekday(.wide).month(.wide).day())
         case .upcoming: "Everything due in the next week"
-        case .completed: "Done and dusted"
+        case .completed: "Tasks you’ve checked off"
         case .list(let id):
             if let total = model.analytics.taskTotals.first(where: { $0.taskID == id }), total.seconds > 0 {
                 "\((total.seconds / 60).minutesString) focused across \(total.sessionCount) \(total.sessionCount == 1 ? "session" : "sessions"), all time"
@@ -212,8 +212,8 @@ struct TasksView: View {
         let placed = model.planDay(today, busy: busy)
         if placed == 0 {
             planMessage = due.isEmpty
-                ? "Nothing due today is waiting for a time. Give a task today's date, or drag one onto the timeline."
-                : "Couldn't find a free stretch long enough today. Try a shorter length, or drag it onto the timeline."
+                ? "Nothing due today needs a time. Give a task today's date, or drag one onto the timeline."
+                : "No free slot today is long enough. Try a shorter length, or drag it onto the timeline."
             return
         }
         planMessage = "Planned \(placed) \(placed == 1 ? "task" : "tasks") into today's free time."
@@ -250,7 +250,7 @@ struct TasksView: View {
             Label("Plan my day", systemImage: "calendar.badge.clock")
         }
         .buttonStyle(NonnaButtonStyle(prominent: false))
-        .help("Fit what's due today into your free time on the timeline")
+        .help("Fit what's due today into your free time")
         Button {
             model.showsWrapUp = true
         } label: {
@@ -264,7 +264,7 @@ struct TasksView: View {
             Label("Paste a list", systemImage: "doc.on.clipboard")
         }
         .buttonStyle(NonnaButtonStyle(prominent: false))
-        .help("Paste or type a whole list from your notes and add it all at once")
+        .help("Add a whole list from your notes at once")
     }
 
     private var scopeMenu: some View {
@@ -429,7 +429,7 @@ struct TasksView: View {
             NonnaCard {
                 EmptyState(
                     icon: scope == .completed ? "checkmark.circle" : "checklist",
-                    title: scope == .completed ? "Nothing finished yet" : "A clear slate",
+                    title: scope == .completed ? "Nothing finished yet" : "No tasks yet",
                     message: scope == .completed ? "Tasks you check off land here." : "Type a task above and press Return."
                 )
             }
@@ -504,7 +504,7 @@ struct TasksView: View {
         let candidates = upNextCandidates
         if let first = candidates.first {
             UpNextCard(todo: first,
-                       heading: hasSomethingDueToday ? "Up next" : "Nothing's due today. If you feel like getting ahead:",
+                       heading: hasSomethingDueToday ? "Up next" : "Nothing's due today. To get ahead:",
                        // Two passes, then pick from the list; skipping shouldn't become the new sorting.
                        canSkip: candidates.count > 1 && skippedIDs.count < 2) {
                 withAnimation(reduceMotion ? nil : NonnaMotion.selection) {
@@ -539,7 +539,7 @@ struct TasksView: View {
             }
         } else {
             NonnaCard {
-                EmptyState(icon: "checkmark.circle", title: "All clear", message: "Nothing left to do. Add a task above when something comes up.")
+                EmptyState(icon: "checkmark.circle", title: "All clear", message: "Add a task above when something comes up.")
             }
         }
         doneToday
@@ -1514,7 +1514,7 @@ private struct BoardView: View {
         let empty = model.tasks.filter { list in !model.todos.contains { !$0.isDone && $0.listID == list.id } }
         VStack(alignment: .leading, spacing: 26) {
             if active.isEmpty && !hasLoose {
-                Text("Nothing to do yet. Add a task to any list below, or start a new list.")
+                Text("No tasks yet. Add one to a list below, or start a new list.")
                     .font(.system(size: 13))
                     .foregroundStyle(NonnaTheme.secondaryInk)
             } else {
@@ -1684,7 +1684,7 @@ private struct BoardCard: View {
                     }
                 }
                 if open.isEmpty {
-                    Text(doneToday > 0 ? "Nothing left. Nice work." : "Nothing here yet.")
+                    Text(doneToday > 0 ? "Nothing left." : "Nothing here yet.")
                         .font(.system(size: 13, design: .serif))
                         .italic()
                         .foregroundStyle(NonnaTheme.secondaryInk)
@@ -1866,7 +1866,7 @@ private struct WriteItOutSheet: View {
             VStack(alignment: .leading, spacing: 6) {
                 Text("Paste a list")
                     .font(.system(size: 26, weight: .regular, design: .serif))
-                Text("One task per line. A line ending in a colon, like “Chemistry:”, starts a list. Add “1h” or “30m” for how long, and “today”, “tomorrow” or a weekday for when it’s due.")
+                Text("One task per line. A line ending in a colon, like “Chemistry:”, starts a list. Add “1h” or “30m” for length, and “today”, “tomorrow” or a weekday for the due date.")
                     .font(.system(size: 12))
                     .foregroundStyle(NonnaTheme.secondaryInk)
                     .fixedSize(horizontal: false, vertical: true)
@@ -1894,7 +1894,7 @@ private struct WriteItOutSheet: View {
 
                 ScrollView {
                     VStack(alignment: .leading, spacing: 8) {
-                        Text(parsed.isEmpty ? "Your tasks will show up here" : "\(parsed.count) \(parsed.count == 1 ? "task" : "tasks") to add")
+                        Text(parsed.isEmpty ? "Tasks show up here" : "\(parsed.count) \(parsed.count == 1 ? "task" : "tasks") to add")
                             .font(.system(size: 11, weight: .medium))
                             .foregroundStyle(NonnaTheme.secondaryInk)
                         ForEach(Array(parsed.enumerated()), id: \.offset) { _, item in
@@ -2062,7 +2062,7 @@ struct LinkedTodoControl: View {
         .menuStyle(.borderlessButton)
         .menuIndicator(.hidden)
         .fixedSize()
-        .help("Link this focus block to a task so its time counts toward it")
+        .help("Count this block's time toward a task")
     }
 
     private func item(_ todo: TodoItem) -> some View {
@@ -2148,7 +2148,7 @@ private struct SubtaskList: View {
                     .font(.system(size: 10, weight: .semibold))
                     .foregroundStyle(NonnaTheme.terracotta)
                     .frame(width: 16)
-                TextField(todo.steps.isEmpty ? "Break it into a first small step" : "Add a step", text: $newStep)
+                TextField(todo.steps.isEmpty ? "Add a first step" : "Add a step", text: $newStep)
                     .textFieldStyle(.plain)
                     .font(.system(size: 12))
                     .focused($adding)

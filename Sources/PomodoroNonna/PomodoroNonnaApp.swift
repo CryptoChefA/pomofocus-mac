@@ -6,6 +6,10 @@ struct PomodoroNonnaApp: App {
     @StateObject private var calendarStore = CalendarStore()
     @Environment(\.scenePhase) private var scenePhase
 
+    init() {
+        ThinScrollBars.apply()
+    }
+
     var body: some Scene {
         WindowGroup("Pomofocus") {
             RootView()

@@ -32,7 +32,7 @@ enum ThemeCodes {
             switch self {
             case .notACode: "That doesn't look like a Pomofocus theme code."
             case .damaged: "That code is incomplete. Copy the whole thing and try again."
-            case .notGenuine: "That rare code isn't genuine, so it can't be added."
+            case .notGenuine: "That rare code isn't genuine."
             }
         }
     }

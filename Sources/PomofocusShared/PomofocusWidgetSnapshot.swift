@@ -116,7 +116,7 @@ public struct PomofocusWidgetSnapshot: Codable, Equatable, Sendable {
         phase: .focus,
         status: .running,
         taskName: "Deep work",
-        intention: "One meaningful thing",
+        intention: "Read chapter 4",
         updatedAt: Date(),
         plannedSeconds: 25 * 60,
         remainingSeconds: 18 * 60 + 42,

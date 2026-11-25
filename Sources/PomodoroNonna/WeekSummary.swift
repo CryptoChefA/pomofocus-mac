@@ -89,20 +89,20 @@ struct WeekSummary {
     static func suggest(total: Int, previous: Int, blocks: Int, daysFocused: Int, bestTime: TimeOfDay?,
                         share: Double, moodAverage: Double?, moodCount: Int) -> String {
         if let mood = moodAverage, moodCount >= 3, mood <= 3.2 {
-            return "It was a heavier week. Next week, a smaller goal and shorter blocks are a good place to start."
+            return "A heavier week. Try a smaller goal and shorter blocks next week."
         }
         if total == 0 {
-            return "A quiet week. One short block is all it takes to get going again."
+            return "A quiet week. One short block gets you going again."
         }
         if let time = bestTime, blocks >= 4, share >= 0.5 {
-            return "Most of your focus happened in the \(time.rawValue). Try giving your hardest task that time next week."
+            return "Most of your focus was in the \(time.rawValue). Give your hardest task that time next week."
         }
         if daysFocused <= 2 {
-            return "You focused on \(daysFocused == 1 ? "one day" : "two days"). A short block on one more day next week is a good next step."
+            return "You focused on \(daysFocused == 1 ? "one day" : "two days"). Try adding one more day next week."
         }
         if previous > 0, Double(total) >= Double(previous) * 1.2 {
-            return "That's more than the week before. Keep the same rhythm; there's no need to push further."
+            return "That's more than the week before. Hold that pace; you don't need to push further."
         }
-        return "A steady week. The days and times that worked this week make a good plan for the next."
+        return "A steady week. Reuse the days and times that worked."
     }
 }

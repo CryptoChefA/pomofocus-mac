@@ -22,9 +22,9 @@ enum FocusReset: String, CaseIterable, Identifiable {
     /// When to pick this one, so it's obvious which to follow.
     var whenToUse: String {
         switch self {
-        case .oneMinute: "You've drifted, or you're about to start and need a moment first."
-        case .settle: "Your head's full, you feel scattered, or the work feels like too much."
-        case .comingBack: "You've been away a few days and starting again feels heavy."
+        case .oneMinute: "You've drifted, or need a moment before you start."
+        case .settle: "Your head's full or the work feels like too much."
+        case .comingBack: "You've been away a few days."
         }
     }
 
@@ -130,7 +130,7 @@ enum ResetAmbience: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .none: "Just the voice"
+        case .none: "Voice only"
         case .rain: "Rain"
         case .binaural: "Binaural beats"
         case .music: "Meditation music"
@@ -139,10 +139,10 @@ enum ResetAmbience: String, CaseIterable, Identifiable {
 
     var subtitle: String {
         switch self {
-        case .none: "Nothing underneath"
+        case .none: "No background sound"
         case .rain: "Rain against a window"
         case .binaural: "A slow 6 Hz beat. Use headphones"
-        case .music: "Soft and slow, no beat"
+        case .music: "Slow, with no beat"
         }
     }
 
@@ -347,7 +347,7 @@ struct FocusResetSessionView: View {
                 Spacer()
                 if session.finished {
                     VStack(spacing: 14) {
-                        Text("Nicely done.")
+                        Text("Done.")
                             .font(.system(size: 24, weight: .regular, design: .serif))
                         Button {
                             leave(toTimer: true)

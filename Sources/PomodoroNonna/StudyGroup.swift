@@ -301,7 +301,7 @@ extension StudyGroup: MCNearbyServiceAdvertiserDelegate {
 
     nonisolated func advertiser(_ advertiser: MCNearbyServiceAdvertiser, didNotStartAdvertisingPeer error: Error) {
         Task { @MainActor in
-            self.lastProblem = "Couldn't start the group. Check that Pomofocus may find devices on your network in System Settings → Privacy & Security → Local Network."
+            self.lastProblem = "Couldn't start the group. Allow Pomofocus in System Settings → Privacy & Security → Local Network."
             self.leave()
         }
     }
@@ -318,7 +318,7 @@ extension StudyGroup: MCNearbyServiceBrowserDelegate {
 
     nonisolated func browser(_ browser: MCNearbyServiceBrowser, didNotStartBrowsingForPeers error: Error) {
         Task { @MainActor in
-            self.lastProblem = "Couldn't look for groups. Check that Pomofocus may find devices on your network in System Settings → Privacy & Security → Local Network."
+            self.lastProblem = "Couldn't look for groups. Allow Pomofocus in System Settings → Privacy & Security → Local Network."
         }
     }
 }

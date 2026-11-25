@@ -217,7 +217,6 @@ private struct CelebrationView: View {
         if summary.reachedGoalNow { return "Goal reached." }
         switch summary.blocks.count {
         case 4...: return "Brava."
-        case 2...3: return "Beautifully done."
         default: return "Well done."
         }
     }
@@ -351,13 +350,13 @@ private struct CelebrationView: View {
                 statTile("Paused", summary.pausedSeconds >= 60 ? summary.pausedSeconds.focusDurationString : "None",
                          detail: summary.pausedSeconds >= 60 ? "stepped away" : "unbroken", delay: 0.75)
                 divider
-                statTile("Overtime", summary.overtimeSeconds >= 60 ? "+" + summary.overtimeSeconds.focusDurationString : "—",
+                statTile("Overtime", summary.overtimeSeconds >= 60 ? "+" + summary.overtimeSeconds.focusDurationString : "None",
                          detail: summary.overtimeSeconds >= 60 ? "past the bell" : "on time", delay: 0.85)
                 divider
                 todayTile.reveal(shown, delay: 0.95, reduceMotion: reduceMotion)
                 divider
                 statTile("Streak", "\(summary.streakDays) \(summary.streakDays == 1 ? "day" : "days")",
-                         detail: "keep it going", delay: 1.05)
+                         detail: "in a row", delay: 1.05)
             }
 
             VStack(spacing: 10) {

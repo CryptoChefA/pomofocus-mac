@@ -38,10 +38,10 @@ struct WeekReadyBanner: View {
             HStack(spacing: 12) {
                 Image(systemName: "calendar")
                     .foregroundStyle(NonnaTheme.terracotta)
-                Text("Your week in focus is ready")
+                Text("Your weekly summary is ready")
                     .font(.system(size: 12, weight: .medium))
                 Spacer()
-                Button("Take a look") {
+                Button("Open") {
                     model.weekSheetStart = start
                     withAnimation(reduceMotion ? nil : NonnaMotion.dismiss) { seenStart = start.timeIntervalSinceReferenceDate }
                 }
@@ -53,8 +53,8 @@ struct WeekReadyBanner: View {
                 }
                 .buttonStyle(.plain)
                 .foregroundStyle(NonnaTheme.secondaryInk)
-                .help("Not now. It's always in Progress")
-                .accessibilityLabel("Not now")
+                .help("Hide. It stays in Progress.")
+                .accessibilityLabel("Hide")
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 10)
@@ -85,7 +85,7 @@ struct WeekDashboardRow: View {
                         .font(.system(size: 15, weight: .semibold))
                     Text(summary.hasFocus
                          ? "Last week: \(summary.totalSeconds.focusDurationString) across \(summary.daysFocused == 1 ? "one day" : "\(summary.daysFocused) days")."
-                         : "A look back at each week, with one suggestion for the next.")
+                         : "Each week's totals and one suggestion for the next.")
                         .font(.system(size: 12))
                         .foregroundStyle(NonnaTheme.secondaryInk)
                 }
@@ -199,7 +199,7 @@ struct WeekSheet: View {
         if abs(change) < 600 { return "of focus in \(blocks), about the same as the week before" }
         return change > 0
             ? "of focus in \(blocks), \(change.focusDurationString) more than the week before"
-            : "of focus in \(blocks), a lighter week than the one before"
+            : "of focus in \(blocks), less than the week before"
     }
 
     private func dayBars(_ summary: WeekSummary) -> some View {

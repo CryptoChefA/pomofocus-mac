@@ -12,7 +12,7 @@ struct StudyTogetherSheet: View {
             VStack(alignment: .leading, spacing: 5) {
                 Text("Study together")
                     .font(.system(size: 22, weight: .semibold))
-                Text("For friends in the same room. One of you starts a group; the others join, and everyone's timer follows: the same blocks, breaks at the same moment. It works without internet, and only the timer is shared. Your tasks, notes and history stay on your Mac.")
+                Text("For friends in the same room. One of you starts a group, the others join, and everyone's timer follows. Only the timer and your first name are shared.")
                     .font(.system(size: 12))
                     .foregroundStyle(NonnaTheme.secondaryInk)
                     .fixedSize(horizontal: false, vertical: true)
@@ -80,7 +80,7 @@ struct StudyTogetherSheet: View {
             if group.nearby.isEmpty {
                 HStack(spacing: 8) {
                     ProgressView().controlSize(.small)
-                    Text("Looking for friends' groups. Ask one of them to start a group.")
+                    Text("Looking for groups. Ask a friend to start one.")
                         .font(.system(size: 12))
                         .foregroundStyle(NonnaTheme.secondaryInk)
                 }
@@ -117,7 +117,7 @@ struct StudyTogetherSheet: View {
                 .foregroundStyle(NonnaTheme.terracotta)
             Text(group.members.count <= 1
                  ? "Waiting for friends to join. They open Study together on their Mac and choose your group."
-                 : "With \(group.members.dropFirst().joined(separator: ", ")). Your timer is everyone's: start, pause and breaks happen for all of you.")
+                 : "With \(group.members.dropFirst().joined(separator: ", ")). When you start, pause or take a break, so do they.")
                 .font(.system(size: 12))
                 .foregroundStyle(NonnaTheme.secondaryInk)
                 .fixedSize(horizontal: false, vertical: true)
@@ -157,7 +157,7 @@ struct StudyTogetherSheet: View {
             Label("In \(host)'s group", systemImage: "person.2.fill")
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(NonnaTheme.terracotta)
-            Text("\(host) leads the timer, so blocks and breaks start for you when they do. Your blocks still save on your Mac as usual.")
+            Text("\(host) leads the timer, so your blocks and breaks start when theirs do. Your blocks still save on your Mac.")
                 .font(.system(size: 12))
                 .foregroundStyle(NonnaTheme.secondaryInk)
                 .fixedSize(horizontal: false, vertical: true)
@@ -270,7 +270,7 @@ struct TogetherButton: View {
         .buttonStyle(.plain)
         .onHover { hovering = $0 }
         .animation(NonnaMotion.quick, value: hovering)
-        .help(active ? "Your study group" : "Study together with friends nearby, timers in step")
+        .help(active ? "Your study group" : "Study with friends nearby on the same timer")
         .accessibilityLabel("Study together")
     }
 }

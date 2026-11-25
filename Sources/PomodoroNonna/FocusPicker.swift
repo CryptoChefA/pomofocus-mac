@@ -109,7 +109,7 @@ struct FocusPicker: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .help("Work on this task: its time counts toward it")
+        .help("Count this block toward this task")
     }
 
     private func suggestionChip(_ todo: TodoItem) -> some View {
@@ -200,7 +200,7 @@ struct FocusPicker: View {
         .menuStyle(.borderlessButton)
         .menuIndicator(.hidden)
         .fixedSize()
-        .help("Link this focus block to any open task")
+        .help("Link this block to an open task")
     }
 
     private func item(_ todo: TodoItem) -> some View {

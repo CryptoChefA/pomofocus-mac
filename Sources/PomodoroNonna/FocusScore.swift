@@ -72,7 +72,7 @@ struct FocusScore: Equatable, Sendable {
             kind: .time, title: "Time focused",
             points: 40 * timeFraction, maxPoints: 40,
             detail: "\((counted / 60).minutesString) of your \(goalMinutes.minutesString) goal",
-            tip: timeFraction >= 1 ? "Goal reached. Keep the same rhythm tomorrow."
+            tip: timeFraction >= 1 ? "Goal reached. Same again tomorrow."
                 : "Another \(((blocks.last?.plannedSeconds ?? 1500) / 60).minutesString) block would take you to \(min(100, Int(((Double(counted) + Double(blocks.last?.plannedSeconds ?? 1500)) / Double(goal) * 100).rounded())))% of your goal."
         )
 
@@ -90,8 +90,8 @@ struct FocusScore: Equatable, Sendable {
             kind: .followThrough, title: "Follow-through",
             points: 25 * followFraction, maxPoints: 25,
             detail: "\(finished) of \(blocks.count) \(blocks.count == 1 ? "block" : "blocks") finished",
-            tip: followFraction >= 0.9 ? "You finish what you start. Nice."
-                : "Try a shorter block you know you can finish; finishing builds the habit."
+            tip: followFraction >= 0.9 ? "You finish what you start."
+                : "Try a shorter block you know you can finish."
         )
 
         // 3. Few interruptions: pauses per block (15). Each pause per block costs a third.
@@ -102,7 +102,7 @@ struct FocusScore: Equatable, Sendable {
             kind: .interruptions, title: "Few interruptions",
             points: 15 * calmFraction, maxPoints: 15,
             detail: pauses == 0 ? "No pauses" : "\(pauses) \(pauses == 1 ? "pause" : "pauses") across \(blocks.count) \(blocks.count == 1 ? "block" : "blocks")",
-            tip: calmFraction >= 0.9 ? "Hardly any pauses. Your setup is working."
+            tip: calmFraction >= 0.9 ? "Hardly any pauses."
                 : "Put the phone in another room and close extra tabs before you start."
         )
 
@@ -112,12 +112,12 @@ struct FocusScore: Equatable, Sendable {
         let breakFraction = expected == 0 ? 1 : min(1, Double(onTime) / Double(expected))
         let late = rests.filter { $0.overtimeSeconds > 5 * 60 }.count
         let breaksPart = Part(
-            kind: .breaks, title: "Breaks that recharge",
+            kind: .breaks, title: "Breaks",
             points: 10 * breakFraction, maxPoints: 10,
             detail: expected == 0 ? "Not needed yet with one block"
                 : "\(onTime) of \(expected) \(expected == 1 ? "break" : "breaks") taken and back on time\(late > 0 ? ", \(late) ran long" : "")",
-            tip: breakFraction >= 0.9 ? "Good breaks make the next block easier."
-                : "Take the break, step away from the screen, and come back when it ends."
+            tip: breakFraction >= 0.9 ? "You take your breaks and come back on time."
+                : "Step away from the screen and come back when the break ends."
         )
 
         // 5. Depth: the longest unbroken stretch, against your block length (10).
@@ -135,7 +135,7 @@ struct FocusScore: Equatable, Sendable {
             points: 10 * depthFraction, maxPoints: 10,
             detail: "Longest unbroken stretch: \((Int(stretch) / 60).minutesString)",
             tip: depthFraction >= 0.9 ? "You held a full block without stopping."
-                : "Aim for one block today with no pauses at all."
+                : "Try one block today with no pauses."
         )
 
         let parts = [time, follow, calm, breaksPart, depth]

@@ -21,7 +21,7 @@ struct FocusCanvasView: View {
                     Label("Paste", systemImage: "doc.on.clipboard")
                 }
                 .buttonStyle(CanvasToolButtonStyle())
-                .help("Paste the image currently copied to your clipboard")
+                .help("Paste the image on your clipboard")
 
                 Button {
                     model.chooseImages()
@@ -133,7 +133,7 @@ private struct SessionImageEditor: View {
                 .padding(8)
             }
 
-            TextField("Write a caption under this image…", text: Binding(
+            TextField("Add a caption…", text: Binding(
                 get: { model.noteImages.first(where: { $0.id == attachment.id })?.caption ?? "" },
                 set: { model.updateImageCaption($0, for: attachment.id) }
             ))

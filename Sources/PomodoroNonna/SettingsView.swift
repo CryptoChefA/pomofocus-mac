@@ -14,7 +14,7 @@ struct SettingsView: View {
             VStack(alignment: .leading, spacing: 22) {
                 SectionHeading(
                     title: "Settings",
-                    subtitle: "You're on Pomofocus \(Updater.shared.currentVersion). No account, telemetry, cloud service, or hidden data collection."
+                    subtitle: "Pomofocus \(Updater.shared.currentVersion). No account, no tracking."
                 )
 
                 UpdateBanner()
@@ -94,12 +94,12 @@ struct SettingsView: View {
             )
             ToggleRow(
                 title: "Start breaks automatically",
-                subtitle: "Useful for a strict Pomodoro cycle",
+                subtitle: "As soon as a focus block ends",
                 binding: settingsBinding(\.autoStartBreaks)
             )
             ToggleRow(
                 title: "Start focus automatically",
-                subtitle: "Begin after a break ends",
+                subtitle: "As soon as a break ends",
                 binding: settingsBinding(\.autoStartFocus)
             )
         }
@@ -170,7 +170,7 @@ struct SettingsView: View {
             )
             ToggleRow(
                 title: "Pause when I'm away",
-                subtitle: "Stop counting when your Mac is locked or asleep for a while, or nobody touches it while a timer runs over. A block still counts up to its bell, and you can count the rest when you're back. Turn this off if you often study away from the screen.",
+                subtitle: "Stop counting when your Mac is locked or asleep, or sits idle while a timer runs over. A block still counts up to its bell, and you can count the rest when you're back.",
                 binding: settingsBinding(\.pauseWhenAway)
             )
             if model.settings.pauseWhenAway {
@@ -189,13 +189,13 @@ struct SettingsView: View {
             )
             ToggleRow(
                 title: "Glow when time's up",
-                subtitle: "A soft glow around your screen when a block or break ends, and again with each overtime reminder. Silent, and it shows over full-screen apps.",
+                subtitle: "The screen edges glow when a block or break ends and at each overtime reminder. No sound. Shows over full-screen apps.",
                 binding: settingsBinding(\.screenGlow)
             )
             if model.settings.screenGlow {
                 HStack {
                     Spacer()
-                    Button("Try the Glow") {
+                    Button("Preview") {
                         var color: NSColor?
                         if model.settings.menuBarColor != "auto" {
                             let rgb = RGB(hex: model.settings.menuBarColor)
@@ -210,7 +210,7 @@ struct SettingsView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Notifications that stay")
                         .font(.system(size: 12, weight: .medium))
-                    Text("In macOS, set Pomofocus's notifications to Persistent so \"time to rest\" waits until you've seen it.")
+                    Text("In macOS, set Pomofocus notifications to Persistent so they stay until you close them.")
                         .font(.system(size: 10))
                         .foregroundStyle(NonnaTheme.secondaryInk)
                         .fixedSize(horizontal: false, vertical: true)
@@ -227,7 +227,7 @@ struct SettingsView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Rate your focus")
                         .font(.system(size: 12, weight: .medium, design: .default))
-                    Text("Asks how focused you felt. Once per session means one quick rating for the whole sitting.")
+                    Text("Asks how focused you felt")
                         .font(.system(size: 10, design: .default))
                         .foregroundStyle(NonnaTheme.secondaryInk)
                 }
@@ -240,7 +240,7 @@ struct SettingsView: View {
             }
             ToggleRow(
                 title: "Celebrate sessions",
-                subtitle: "A little show and a breakdown of the sitting when you end a session",
+                subtitle: "A short animation and a summary when you end a session",
                 binding: settingsBinding(\.celebrateSessions)
             )
             if model.settings.celebrateSessions {
@@ -262,35 +262,35 @@ struct SettingsView: View {
             }
             ToggleRow(
                 title: "Keep tasks simple",
-                subtitle: "Tasks shows what's next, not everything at once, and nudges you to start after a few minutes of planning",
+                subtitle: "Tasks shows only what's next, and nudges you to start after a few minutes of planning",
                 binding: settingsBinding(\.simpleTasks)
             )
             ToggleRow(
                 title: "Show the time",
-                subtitle: "A small clock at the top of the timer, in a soft grey",
+                subtitle: "A clock above the timer",
                 binding: $showsClock
             )
             FocusQuietSettingsRow()
             ToggleRow(
                 title: "Daily check-in",
-                subtitle: "Ask how you're feeling once a day. Check in any time from Progress. Your mood shows in Progress → Mood and stays on this Mac",
+                subtitle: "Ask how you're feeling once a day. Your mood shows in Progress → Mood, and you can check in there too",
                 binding: $dailyCheckIn
             )
             ToggleRow(
                 title: "Timer cues",
-                subtitle: "Gentle cues for starts, pauses, and endings",
+                subtitle: "Sounds when a block starts, pauses or ends",
                 binding: settingsBinding(\.playSounds)
             )
             ToggleRow(
                 title: "Reset captions",
-                subtitle: "Show what the voice says, for following along without sound",
+                subtitle: "Show what the voice says",
                 binding: settingsBinding(\.resetCaptions)
             )
             HStack(spacing: 12) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Under a reset")
                         .font(.system(size: 12, weight: .medium))
-                    Text("What plays beneath the voice in Breathe, Settle and Ease back in")
+                    Text("What plays under the voice in Breathe, Settle and Ease back in")
                         .font(.system(size: 10))
                         .foregroundStyle(NonnaTheme.secondaryInk)
                 }
@@ -305,7 +305,7 @@ struct SettingsView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Setup")
                         .font(.system(size: 12, weight: .medium))
-                    Text("Answer the first-launch question again: how you like to work")
+                    Text("Choose again how you like to work")
                         .font(.system(size: 10))
                         .foregroundStyle(NonnaTheme.secondaryInk)
                 }
@@ -321,7 +321,7 @@ struct SettingsView: View {
             calendarConnectionStatus
             ToggleRow(
                 title: "Calendar overlay",
-                subtitle: "Read-only overlay on the day timeline",
+                subtitle: "Show your events on the day timeline",
                 binding: Binding(
                     get: { model.settings.showCalendarEvents },
                     set: { enabled in
@@ -342,10 +342,10 @@ struct SettingsView: View {
                 Image(systemName: "square.grid.2x2")
                     .foregroundStyle(NonnaTheme.ink)
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Small, medium, and large")
+                    Text("Small, medium and large")
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundStyle(NonnaTheme.ink)
-                    Text("A live black-and-white timer with one gold progress band. Your focus data stays on this Mac.")
+                    Text("A live timer with a progress band.")
                         .font(.system(size: 11))
                         .foregroundStyle(NonnaTheme.secondaryInk)
                         .fixedSize(horizontal: false, vertical: true)
@@ -408,7 +408,7 @@ struct SettingsView: View {
 
     private var calendarStatusSubtitle: String {
         switch calendarStore.access {
-        case .notDetermined: "Allow access once to keep the timeline populated"
+        case .notDetermined: "Allow access to show events on the timeline"
         case .denied: "Reconnect in macOS Privacy & Security"
         case .granted:
             calendarStore.calendars.isEmpty
@@ -437,7 +437,7 @@ struct SettingsView: View {
     private var calendarAccessDetail: some View {
         switch calendarStore.access {
         case .notDetermined:
-            calendarNote("macOS only offers full calendar access or none, so its prompt says \"full access\". Pomofocus only reads events. It has no code that creates, edits, or deletes them.")
+            calendarNote("macOS asks for full access because it has no read-only option. Pomofocus only reads events.")
             Button {
                 calendarStore.requestAccess()
             } label: {
@@ -451,7 +451,7 @@ struct SettingsView: View {
                     .foregroundStyle(NonnaTheme.alert)
             }
         case .denied:
-            calendarNote("Calendar access is off. Turn on full access for Pomofocus under Privacy & Security, then come back. Events are only ever read.")
+            calendarNote("Turn on full access for Pomofocus under Privacy & Security, then come back.")
             Button {
                 calendarStore.openPrivacySettings()
             } label: {
@@ -461,9 +461,9 @@ struct SettingsView: View {
             .buttonStyle(NonnaButtonStyle(prominent: false))
         case .granted:
             if calendarStore.calendars.isEmpty {
-                calendarNote("No calendars found. Add your Google account in System Settings under Internet Accounts and it will appear here.")
+                calendarNote("Add an account, like Google, in System Settings under Internet Accounts.")
             } else {
-                calendarNote("Any account added to macOS shows up here, Google included. Events are read from your Mac and never leave it.")
+                calendarNote("Calendars from every account on this Mac show here, Google included.")
                 ForEach(calendarStore.calendars) { info in
                     CalendarToggleRow(info: info, isVisible: calendarVisibilityBinding(for: info.id))
                 }
@@ -498,7 +498,7 @@ struct SettingsView: View {
             HStack(alignment: .top, spacing: 11) {
                 Image(systemName: "checkmark.shield.fill")
                     .foregroundStyle(NonnaTheme.sage)
-                Text("Sessions are written to one readable JSON file in your Application Support folder and never leave this Mac. The only network request is the update check, which asks GitHub for the newest version number and sends nothing about you. Calendar events are only read, never changed.")
+                Text("Sessions are saved in one readable JSON file in Application Support. Nothing leaves this Mac. The only network request is the update check, which asks GitHub for the newest version number. Calendar events are only read.")
                     .font(.system(size: 12, design: .default))
                     .foregroundStyle(NonnaTheme.secondaryInk)
                     .fixedSize(horizontal: false, vertical: true)
@@ -669,7 +669,7 @@ private struct NameSettingsRow: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text("What should we call you?")
                     .font(.system(size: 12, weight: .medium))
-                Text("Shown as a greeting on the timer. Stays on this Mac.")
+                Text("Shown as a greeting on the timer")
                     .font(.system(size: 10))
                     .foregroundStyle(NonnaTheme.secondaryInk)
             }
@@ -691,12 +691,12 @@ private struct ShareSettingsCard: View {
 
     var body: some View {
         SettingsCard(title: "Share Pomofocus", icon: "square.and.arrow.up") {
-            Text("Send friends the website. It has the download and a simple install guide, and Pomofocus keeps itself up to date after that.")
+            Text("Send friends the website. It has the download and install steps.")
                 .font(.system(size: 11))
                 .foregroundStyle(NonnaTheme.secondaryInk)
                 .fixedSize(horizontal: false, vertical: true)
             HStack {
-                ShareLink(item: Self.site, subject: Text("Pomofocus"), message: Text("A calm focus timer for Mac. Free:")) {
+                ShareLink(item: Self.site, subject: Text("Pomofocus"), message: Text("A free focus timer for Mac:")) {
                     Label("Share…", systemImage: "square.and.arrow.up")
                 }
                 .buttonStyle(NonnaButtonStyle())
@@ -735,7 +735,7 @@ private struct MenuBarSettingsCard: View {
                      summary: settings.showInMenuBar ? style.title : "Hidden") {
             ToggleRow(
                 title: "Show in the menu bar",
-                subtitle: "The timer at the top of your screen. Click it for the timer panel.",
+                subtitle: "Click it to open the timer panel",
                 binding: binding(\.showInMenuBar)
             )
             if settings.showInMenuBar {
@@ -784,7 +784,7 @@ private struct MenuBarSettingsCard: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(style == .minimal ? "Show" : "Beside it")
                     .font(.system(size: 12, weight: .medium))
-                Text(textMode == "percent" ? "How far through the block, like 62%" : textMode == "time" ? "Time left, like 18:42" : "Just the \(style == .icon ? "icon" : "bars")")
+                Text(textMode == "percent" ? "How far through the block, like 62%" : textMode == "time" ? "Time left, like 18:42" : "Only the \(style == .icon ? "icon" : "bars")")
                     .font(.system(size: 10))
                     .foregroundStyle(NonnaTheme.secondaryInk)
             }
@@ -903,7 +903,7 @@ private struct MenuBarSettingsCard: View {
                 Text("Icon")
                     .font(.system(size: 12, weight: .medium))
                 Text(iconError ?? (MenuBarIconStore.image == nil
-                    ? "A PNG, JPEG, HEIC or PDF. Until you choose one, the bars stand in."
+                    ? "A PNG, JPEG, HEIC or PDF. The bars show until you choose one."
                     : "Shown at menu bar size. Square pictures work best."))
                     .font(.system(size: 10))
                     .foregroundStyle(iconError == nil ? NonnaTheme.secondaryInk : NonnaTheme.alert)

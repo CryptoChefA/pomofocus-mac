@@ -742,7 +742,7 @@ private struct CalendarEventBlock: View {
             }
             .buttonStyle(NonnaButtonStyle())
             .disabled(!canStartFocus)
-            Text(canStartFocus ? "Read-only. Nothing is written to your calendar." : "Finish the current timer first.")
+            Text(canStartFocus ? "Read-only" : "Finish the current timer first.")
                 .font(.system(size: 11))
                 .foregroundStyle(NonnaTheme.secondaryInk)
         }

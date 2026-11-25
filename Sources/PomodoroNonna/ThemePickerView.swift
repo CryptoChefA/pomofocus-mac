@@ -190,7 +190,7 @@ struct ThemeSwatchButton: View {
                                 .frame(height: 18)
                                 .background(Color(hex: "B4501E"), in: Capsule())
                                 .padding(7)
-                                .help("A limited edition, here for the fall")
+                                .help("Limited edition, here for the fall")
                         }
                     }
                 HStack(spacing: 6) {
@@ -332,7 +332,7 @@ private struct CustomThemeEditor: View {
                 }
                 .buttonStyle(.plain)
                 .foregroundStyle(NonnaTheme.terracotta)
-                .help("Copy a code anyone can paste into Settings to get this theme")
+                .help("Copy a code others can paste into Settings to get this theme")
                 Menu {
                     ForEach(ThemeChoice.allCases.filter { $0.palette != nil }) { choice in
                         Button(choice.title) {
@@ -378,7 +378,7 @@ private struct CustomThemeEditor: View {
                     .font(.system(size: 11))
                     .foregroundStyle(NonnaTheme.alert)
             } else {
-                Text("Surfaces, lines and text are derived for you, so every combination stays readable.")
+                Text("Surfaces, lines and text adjust to stay readable.")
                     .font(.system(size: 11))
                     .foregroundStyle(NonnaTheme.secondaryInk)
             }
@@ -421,7 +421,7 @@ struct AppearanceSettingsCard: View {
     var body: some View {
         SettingsCard(title: "Appearance", icon: "paintpalette",
                      summary: ThemeChoice(rawValue: ThemeManager.shared.themeID)?.title ?? "Your own theme") {
-            Text("Changes apply instantly, everywhere: windows, menu bar panel, Cinema and celebrations.")
+            Text("Applies to every window, the menu bar panel, Cinema and celebrations.")
                 .font(.system(size: 11))
                 .foregroundStyle(NonnaTheme.secondaryInk)
             ThemePicker()
@@ -468,8 +468,8 @@ private struct LondonWeatherSettings: View {
         VStack(alignment: .leading, spacing: 12) {
             Text("London weather")
                 .font(.system(size: 13, weight: .semibold))
-            row("Rain", "Rain falling over the river, rings on the water.", $rain)
-            row("Storm", rain ? "Heavier, windier rain, with lightning in the clouds." : "Needs rain on.", $storm)
+            row("Rain", "Rain over the river", $rain)
+            row("Storm", rain ? "Heavier rain and lightning" : "Turn on rain first", $storm)
                 .disabled(!rain)
                 .opacity(rain ? 1 : 0.5)
         }
@@ -561,7 +561,7 @@ struct QuickSetupView: View {
             Text("How do you like to work?")
                 .font(.system(size: 40, weight: .regular, design: .serif))
                 .tracking(-0.6)
-            Text("You can change this any time. Everything else can wait.")
+            Text("You can change this later in Settings.")
                 .font(.system(size: 15))
                 .foregroundStyle(NonnaTheme.secondaryInk)
             HStack(spacing: 14) {
@@ -628,8 +628,8 @@ enum WorkStyle: CaseIterable {
 
     var detail: String {
         switch self {
-        case .classic: "25 minutes of focus, 5 minutes off. The original Pomodoro."
-        case .longer: "50 minutes of focus, 10 off. For when you get into a rhythm."
+        case .classic: "25 minutes of focus, 5 off. The original Pomodoro."
+        case .longer: "50 minutes of focus, 10 off."
         case .buildUp: "Start where you are today and add five minutes as you go."
         }
     }

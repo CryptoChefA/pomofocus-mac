@@ -39,7 +39,7 @@ struct HistoryView: View {
             HStack(alignment: .bottom) {
                 SectionHeading(
                     title: "History",
-                    subtitle: "Click a session to fix its name or list. Search, or take your data with you."
+                    subtitle: "Click a session to fix its name or list."
                 )
                 Spacer()
                 TextField("Search history", text: $search)
@@ -66,7 +66,7 @@ struct HistoryView: View {
                 EmptyState(
                     icon: "clock.arrow.circlepath",
                     title: search.isEmpty ? "Nothing here yet" : "No matching sessions",
-                    message: search.isEmpty ? "Finish your first focus session and its story will appear here." : "Try a different task, intention, or note."
+                    message: search.isEmpty ? "Finished focus sessions show up here." : "Search matches tasks, intentions and notes."
                 )
                 Spacer()
             } else {

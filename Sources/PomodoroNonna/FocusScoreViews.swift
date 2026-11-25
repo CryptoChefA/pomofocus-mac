@@ -229,7 +229,7 @@ struct FocusScoreDetail: View {
                             .foregroundStyle(NonnaTheme.terracotta)
                             .fixedSize(horizontal: false, vertical: true)
                         } else if score == nil {
-                            Text(isToday ? "Start a focus block and your score builds as you go." : "Nothing was started this day.")
+                            Text(isToday ? "Start a focus block to get a score." : "Nothing was started this day.")
                                 .font(.system(size: 12))
                                 .foregroundStyle(NonnaTheme.secondaryInk)
                         }
@@ -254,9 +254,9 @@ struct FocusScoreDetail: View {
                 }
 
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("How it's worked out")
+                    Text("How it's scored")
                         .font(.system(size: 12, weight: .semibold))
-                    Text("Up to 40 points for time focused against your daily goal (overtime past 15 minutes doesn't count), 25 for finishing the blocks you start, 15 for few pauses, 10 for breaks taken and back on time, and 10 for your longest unbroken stretch. It's a mirror for your own habits, not a clinical measure.")
+                    Text("Up to 40 points for time focused against your daily goal (overtime past 15 minutes doesn't count), 25 for finishing the blocks you start, 15 for few pauses, 10 for breaks taken and back on time, and 10 for your longest unbroken stretch. It isn't a clinical measure.")
                         .font(.system(size: 11))
                         .foregroundStyle(NonnaTheme.secondaryInk)
                         .fixedSize(horizontal: false, vertical: true)

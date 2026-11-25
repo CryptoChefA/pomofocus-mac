@@ -315,7 +315,7 @@ struct MenuBarTimerView: View {
             } else if model.awayPausedAt != nil {
                 // Paused because the Mac was locked or asleep: the same choice as the banner.
                 panelButton("Count it", icon: "checkmark", prominent: true) { model.countAwayTime() }
-                    .help("You were away. Count the time since the timer paused, and keep going")
+                    .help("Count the time you were away and keep going")
                 panelButton("Don't count", icon: "play.fill", prominent: false) { model.togglePause() }
                     .help("Resume from where the timer paused")
             } else {
@@ -345,7 +345,7 @@ struct MenuBarTimerView: View {
         }
         .buttonStyle(NonnaButtonStyle(prominent: false))
         .fixedSize()
-        .help("End session: keep what's tracked and stop")
+        .help("Save what's tracked and stop")
         .accessibilityLabel("End session")
     }
 

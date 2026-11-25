@@ -276,10 +276,10 @@ final class Updater {
         var message: String {
             switch self {
             case .unreachable: "Couldn't reach GitHub. Check your connection and try again."
-            case .notPomofocus: "The download didn't check out, so nothing was changed. Try again later."
-            case .noPermission: "Pomofocus needs your Mac's password to update in this folder. Try again and enter it when asked, or download the new version from the website."
-            case .translocated: "Pomofocus is running from your Downloads folder, so it can't update itself. Drag Pomofocus into Applications, open it from there, and try again."
-            case .notSaved: "Your latest changes couldn't be saved, so Pomofocus didn't update. Nothing was changed."
+            case .notPomofocus: "The download failed its check, so nothing was changed. Try again later."
+            case .noPermission: "Pomofocus needs your Mac's password to update here. Try again and enter it, or download the new version from the website."
+            case .translocated: "Pomofocus can't update itself from Downloads. Drag it into Applications, open it from there and try again."
+            case .notSaved: "Your latest changes couldn't be saved, so Pomofocus didn't update."
             }
         }
     }
@@ -294,8 +294,8 @@ struct UpdateSheet: View {
             switch updater.phase {
             case .available(let release):
                 header("Pomofocus \(release.version) is ready", updater.timerIsRunning?() == true
-                       ? "You have \(updater.currentVersion). Your timer keeps running through the update, and your sessions, tasks and settings stay exactly as they are."
-                       : "You have \(updater.currentVersion). Your sessions, tasks and settings stay exactly as they are.")
+                       ? "You have \(updater.currentVersion). Your timer keeps running, and your sessions, tasks and settings are kept."
+                       : "You have \(updater.currentVersion). Your sessions, tasks and settings are kept.")
                 if !release.notes.isEmpty {
                     ScrollView {
                         Text(Self.markdown(release.notes))
@@ -321,8 +321,8 @@ struct UpdateSheet: View {
                 ProgressView().controlSize(.small)
             case .downloading, .installing:
                 header(updater.phase == .downloading ? "Downloading…" : "Installing…", updater.timerIsRunning?() == true
-                       ? "Pomofocus will close and reopen on its own in a moment. Your timer keeps counting."
-                       : "Pomofocus will close and reopen on its own in a moment.")
+                       ? "Pomofocus will close and reopen in a moment. Your timer keeps counting."
+                       : "Pomofocus will close and reopen in a moment.")
                 ProgressView().controlSize(.small)
             case .upToDate:
                 header("You're up to date", "Pomofocus \(updater.currentVersion) is the newest version.")
@@ -403,7 +403,7 @@ struct UpdateSettingsCard: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Check automatically")
                         .font(.system(size: 12, weight: .medium))
-                    Text("Once a day, asks GitHub for the newest version number. Nothing about you is sent.")
+                    Text("Asks GitHub for the newest version number once a day")
                         .font(.system(size: 10))
                         .foregroundStyle(NonnaTheme.secondaryInk)
                 }
@@ -471,6 +471,6 @@ struct UpdateBanner: View {
     static func summary(_ notes: String) -> String {
         let plain = notes.replacingOccurrences(of: "**", with: "").replacingOccurrences(of: "#", with: "")
         let line = plain.split(whereSeparator: \.isNewline).map { $0.trimmingCharacters(in: .whitespaces) }.first { !$0.isEmpty } ?? ""
-        return line.isEmpty ? "Your sessions and settings stay as they are." : line
+        return line.isEmpty ? "Your sessions and settings are kept." : line
     }
 }

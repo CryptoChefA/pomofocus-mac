@@ -80,7 +80,7 @@ final class FocusQuiet {
                 if FileManager.default.fileExists(atPath: output.path) { signed.append(output) }
             }
             guard signed.count == 2 else {
-                problem = "The shortcuts couldn't be prepared. Shortcuts needs you to be signed in to iCloud to add them. You can also make them yourself: in Shortcuts, add a Set Focus action that turns Do Not Disturb on, name it \"\(Self.onName)\", and a second that turns it off, named \"\(Self.offName)\"."
+                problem = "Couldn't prepare the shortcuts. Shortcuts needs you signed in to iCloud to add them. Or make them yourself in Shortcuts: a Set Focus action that turns Do Not Disturb on, named \"\(Self.onName)\", and one that turns it off, named \"\(Self.offName)\"."
                 installing = false
                 return
             }
@@ -168,7 +168,7 @@ struct FocusQuietSettingsRow: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Silence notifications during focus")
                         .font(.system(size: 12, weight: .medium))
-                    Text("Turns on Do Not Disturb while a block runs, and back off for breaks")
+                    Text("Do Not Disturb on during blocks, off for breaks")
                         .font(.system(size: 10))
                         .foregroundStyle(NonnaTheme.secondaryInk)
                 }
@@ -183,7 +183,7 @@ struct FocusQuietSettingsRow: View {
                         Image(systemName: "moon.fill")
                             .foregroundStyle(NonnaTheme.terracotta)
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("Pomofocus does this with two small shortcuts. Click Add Shortcut for each one when the Shortcuts app opens.")
+                            Text("This uses two shortcuts. When Shortcuts opens, click Add Shortcut for each.")
                                 .font(.system(size: 11))
                                 .fixedSize(horizontal: false, vertical: true)
                             if let problem = quiet.problem {

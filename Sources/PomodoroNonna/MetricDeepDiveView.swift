@@ -13,12 +13,12 @@ enum DashboardMetric: String, Identifiable, CaseIterable {
 
     var title: String {
         switch self {
-        case .focus: "Focus intelligence"
-        case .breakTime: "Recovery intelligence"
-        case .breakOvertime: "Break discipline"
-        case .daysUsed: "Activity intelligence"
-        case .rhythm: "Consistency intelligence"
-        case .completed: "Session quality"
+        case .focus: "Focus time"
+        case .breakTime: "Break time"
+        case .breakOvertime: "Break overtime"
+        case .daysUsed: "Days used"
+        case .rhythm: "Streaks"
+        case .completed: "Completed sessions"
         }
     }
 
@@ -35,12 +35,12 @@ enum DashboardMetric: String, Identifiable, CaseIterable {
 
     var subtitle: String {
         switch self {
-        case .focus: "Volume, momentum, work shape, peak windows and task concentration."
-        case .breakTime: "How deliberately you recover between demanding blocks."
-        case .breakOvertime: "Where planned rest turns into drift—and how often it happens."
-        case .daysUsed: "Your active-day density, goal attainment and long-term adherence."
-        case .rhythm: "A measured view of consistency, momentum and repeatable working patterns."
-        case .completed: "Completion, interruption, pause cost and perceived session quality."
+        case .focus: "Totals, peak hours and time by task."
+        case .breakTime: "How long your breaks are and how they end."
+        case .breakOvertime: "How often breaks run past plan, and by how much."
+        case .daysUsed: "How many days you focused and how many hit your goal."
+        case .rhythm: "Your streaks and how steady your focus is."
+        case .completed: "How blocks ended, how often you paused, and your ratings."
         }
     }
 
@@ -391,7 +391,7 @@ struct MetricDeepDiveView: View {
         case .daysUsed:
             DetailLegend(items: [("Active", NonnaTheme.gold), ("Goal line", NonnaTheme.secondaryInk)])
         case .rhythm:
-            DetailLegend(items: [("Daily", NonnaTheme.darkTerracotta), ("7-day rhythm", NonnaTheme.sage)])
+            DetailLegend(items: [("Daily", NonnaTheme.darkTerracotta), ("7-day average", NonnaTheme.sage)])
         case .completed:
             DetailLegend(items: [("Completed", NonnaTheme.sage), ("Early", NonnaTheme.gold), ("Abandoned", NonnaTheme.alert)])
         }
@@ -408,7 +408,7 @@ struct MetricDeepDiveView: View {
     private var timePatternCard: some View {
         NonnaCard {
             VStack(alignment: .leading, spacing: 14) {
-                DetailSectionTitle(title: "Where your focus lands")
+                DetailSectionTitle(title: "By hour")
                 Chart(snapshot.hours) { item in
                     BarMark(
                         x: .value("Hour", hourLabel(item.hour)),
@@ -460,9 +460,9 @@ struct MetricDeepDiveView: View {
     private var taskAllocationCard: some View {
         NonnaCard {
             VStack(alignment: .leading, spacing: 14) {
-                DetailSectionTitle(title: "What received your attention")
+                DetailSectionTitle(title: "By task")
                 if snapshot.tasks.isEmpty {
-                    DetailEmpty(message: "Task distribution will appear after your first focused block in this range.")
+                    DetailEmpty(message: "No focus in this range yet.")
                 } else {
                     let maximum = max(1, snapshot.tasks.first?.seconds ?? 1)
                     ForEach(snapshot.tasks.prefix(6)) { task in
@@ -487,7 +487,7 @@ struct MetricDeepDiveView: View {
                         }
                     }
                     Spacer(minLength: 0)
-                    Text("Top task holds \(percent(snapshot.topTaskShare)) of focus time.")
+                    Text("Your top task has \(percent(snapshot.topTaskShare)) of focus time.")
                         .font(.system(size: 10))
                         .foregroundStyle(NonnaTheme.secondaryInk)
                 }
@@ -505,9 +505,9 @@ struct MetricDeepDiveView: View {
         ]
         return NonnaCard {
             VStack(alignment: .leading, spacing: 14) {
-                DetailSectionTitle(title: "How rest periods ended")
+                DetailSectionTitle(title: "How breaks ended")
                 if snapshot.breakCount == 0 {
-                    DetailEmpty(message: "Break behavior will appear after you record rest periods.")
+                    DetailEmpty(message: "No breaks in this range yet.")
                 } else {
                     HStack(spacing: 20) {
                         Chart(values) { item in
@@ -547,7 +547,7 @@ struct MetricDeepDiveView: View {
             VStack(alignment: .leading, spacing: 14) {
                 DetailSectionTitle(title: "How focus blocks ended")
                 if snapshot.recordedSessionCount == 0 {
-                    DetailEmpty(message: "Session outcomes will appear after your first focus block.")
+                    DetailEmpty(message: "No focus blocks in this range yet.")
                 } else {
                     HStack(spacing: 20) {
                         Chart(values) { item in
@@ -580,12 +580,12 @@ struct MetricDeepDiveView: View {
     private var methodologyCard: some View {
         NonnaCard(padding: 17) {
             HStack(alignment: .top, spacing: 22) {
-                DetailSectionTitle(title: "Metrics you can trust")
+                DetailSectionTitle(title: "How these are calculated")
                     .frame(width: 180, alignment: .leading)
-                MethodNote(title: "Rhythm score", text: "62% active-day frequency + 38% consistency of volume on active days.")
-                MethodNote(title: "Deep-work share", text: "The share of finished focus blocks lasting at least 50 minutes.")
+                MethodNote(title: "Consistency score", text: "62% how often you focus + 38% how even your totals are on days you focus.")
+                MethodNote(title: "Deep-work share", text: "Share of finished focus blocks lasting at least 50 minutes.")
                 MethodNote(title: "Pause cost", text: "Paused time divided by focus time plus paused time.")
-                MethodNote(title: "Goal rate", text: "Days reaching your configured daily focus goal, including inactive days.")
+                MethodNote(title: "Goal rate", text: "Share of days that reached your daily goal, counting days you didn't focus.")
             }
         }
     }
@@ -595,90 +595,90 @@ struct MetricDeepDiveView: View {
         case .focus:
             [
                 DetailStat(label: "Focused", value: snapshot.totalFocusSeconds.focusDurationString, detail: "Across \(snapshot.sessionCount) finished blocks"),
-                DetailStat(label: "Active-day average", value: snapshot.averageActiveDaySeconds.focusDurationString, detail: "Only days with focused time"),
-                DetailStat(label: "Median block", value: snapshot.medianSessionSeconds.focusDurationString, detail: "Less distorted by long sessions"),
-                DetailStat(label: "Goal attainment", value: percent(snapshot.goalHitRate), detail: "\(snapshot.goalHitDays) of \(snapshot.dayCount) days")
+                DetailStat(label: "Active-day average", value: snapshot.averageActiveDaySeconds.focusDurationString, detail: "Days you focused"),
+                DetailStat(label: "Median block", value: snapshot.medianSessionSeconds.focusDurationString, detail: "Less skewed by long blocks"),
+                DetailStat(label: "Goal rate", value: percent(snapshot.goalHitRate), detail: "\(snapshot.goalHitDays) of \(snapshot.dayCount) days")
             ]
         case .breakTime:
             [
-                DetailStat(label: "Recovery time", value: snapshot.totalBreakSeconds.focusDurationString, detail: "\(snapshot.breakCount) recorded breaks"),
-                DetailStat(label: "Focus : break", value: ratioText, detail: "Focused hours per recovery hour"),
-                DetailStat(label: "Average break", value: snapshot.averageBreakSeconds.focusDurationString, detail: "Across this range"),
-                DetailStat(label: "Skipped", value: "\(snapshot.skippedBreakCount)", detail: percent(breakSkipRate) + " of break outcomes")
+                DetailStat(label: "Break time", value: snapshot.totalBreakSeconds.focusDurationString, detail: "\(snapshot.breakCount) breaks"),
+                DetailStat(label: "Focus : break", value: ratioText, detail: "Hours of focus per hour of break"),
+                DetailStat(label: "Average break", value: snapshot.averageBreakSeconds.focusDurationString, detail: "In this range"),
+                DetailStat(label: "Skipped", value: "\(snapshot.skippedBreakCount)", detail: percent(breakSkipRate) + " of breaks")
             ]
         case .breakOvertime:
             [
-                DetailStat(label: "Break overtime", value: snapshot.totalBreakOvertimeSeconds.focusDurationString, detail: "Beyond planned recovery"),
-                DetailStat(label: "Average overrun", value: snapshot.averageBreakOvertimeSeconds.focusDurationString, detail: "Per overtime break"),
+                DetailStat(label: "Break overtime", value: snapshot.totalBreakOvertimeSeconds.focusDurationString, detail: "Past planned length"),
+                DetailStat(label: "Average overrun", value: snapshot.averageBreakOvertimeSeconds.focusDurationString, detail: "Per break that ran over"),
                 DetailStat(label: "Overtime share", value: percent(snapshot.breakOvertimeRate), detail: "Of all break time"),
-                DetailStat(label: "Largest day", value: snapshot.largestBreakOvertimeSeconds.focusDurationString, detail: "Combined break overtime")
+                DetailStat(label: "Largest day", value: snapshot.largestBreakOvertimeSeconds.focusDurationString, detail: "Break overtime in one day")
             ]
         case .daysUsed:
             [
                 DetailStat(label: "Active days", value: "\(snapshot.activeDays)", detail: "Of \(snapshot.dayCount) days in range"),
-                DetailStat(label: "Activity rate", value: percent(snapshot.activeRate), detail: "Days containing focused work"),
+                DetailStat(label: "Activity rate", value: percent(snapshot.activeRate), detail: "Share of days you focused"),
                 DetailStat(label: "Goal days", value: "\(snapshot.goalHitDays)", detail: "At least \(dailyGoalMinutes)m focused"),
-                DetailStat(label: "Lifetime days", value: "\(snapshot.lifetimeUsedDays)", detail: "Since your first recorded block")
+                DetailStat(label: "Lifetime days", value: "\(snapshot.lifetimeUsedDays)", detail: "Since your first block")
             ]
         case .rhythm:
             [
-                DetailStat(label: "Current streak", value: "\(snapshot.currentStreak)d", detail: "Today or yesterday anchored"),
-                DetailStat(label: "Best streak", value: "\(snapshot.longestStreak)d", detail: "Lifetime consecutive days"),
-                DetailStat(label: "Rhythm score", value: "\(snapshot.consistencyScore)", detail: "Frequency + volume regularity"),
-                DetailStat(label: "7-day momentum", value: momentumValue, detail: momentumDetail)
+                DetailStat(label: "Current streak", value: "\(snapshot.currentStreak)d", detail: "Ending today or yesterday"),
+                DetailStat(label: "Best streak", value: "\(snapshot.longestStreak)d", detail: "Longest run of days"),
+                DetailStat(label: "Consistency score", value: "\(snapshot.consistencyScore)", detail: "How often and how evenly you focus"),
+                DetailStat(label: "7-day change", value: momentumValue, detail: momentumDetail)
             ]
         case .completed:
             [
                 DetailStat(label: "Completed", value: "\(snapshot.completedCount)", detail: "Full planned intervals"),
-                DetailStat(label: "Completion rate", value: percent(snapshot.completionRate), detail: "Across every recorded outcome"),
+                DetailStat(label: "Completion rate", value: percent(snapshot.completionRate), detail: "Of all recorded blocks"),
                 DetailStat(label: "Pause cost", value: percent(snapshot.pauseRatio), detail: snapshot.totalPausedSeconds.focusDurationString + " paused"),
-                DetailStat(label: "Focus quality", value: snapshot.averageRating.map { String(format: "%.1f / 5", $0) } ?? "–", detail: "\(snapshot.ratedCount) rated sessions")
+                DetailStat(label: "Average rating", value: snapshot.averageRating.map { String(format: "%.1f / 5", $0) } ?? "–", detail: "\(snapshot.ratedCount) rated sessions")
             ]
         }
     }
 
     private var narratives: [NarrativeInsight] {
         let bestDay = snapshot.bestDay.map {
-            "\($0.date.formatted(.dateTime.weekday(.wide))) led with \($0.focusSeconds.focusDurationString)."
-        } ?? "More sessions are needed before a strongest day emerges."
-        let peak = snapshot.peakHour.map { "Your strongest window is \(hourSpanLabel($0.hour)), with \($0.seconds.focusDurationString) recorded." }
-            ?? "A prime focus window will emerge as you record more sessions."
+            "\($0.date.formatted(.dateTime.weekday(.wide))), with \($0.focusSeconds.focusDurationString)."
+        } ?? "Not enough sessions yet."
+        let peak = snapshot.peakHour.map { "\(hourSpanLabel($0.hour)), with \($0.seconds.focusDurationString) of focus." }
+            ?? "Not enough sessions yet."
         switch metric {
         case .focus:
             return [
-                NarrativeInsight(icon: "chart.line.uptrend.xyaxis", title: "Momentum", text: momentumSentence),
-                NarrativeInsight(icon: "clock", title: "Prime window", text: peak),
-                NarrativeInsight(icon: "rectangle.compress.vertical", title: "Work shape", text: "Median block: \(snapshot.medianSessionSeconds.focusDurationString). \(percent(snapshot.deepWorkShare)) qualify as 50+ minute deep-work blocks.")
+                NarrativeInsight(icon: "chart.line.uptrend.xyaxis", title: "This week vs last", text: momentumSentence),
+                NarrativeInsight(icon: "clock", title: "Peak hour", text: peak),
+                NarrativeInsight(icon: "rectangle.compress.vertical", title: "Block length", text: "Median block: \(snapshot.medianSessionSeconds.focusDurationString). \(percent(snapshot.deepWorkShare)) of finished blocks ran 50 minutes or more.")
             ]
         case .breakTime:
             return [
-                NarrativeInsight(icon: "scalemass", title: "Recovery balance", text: snapshot.focusToBreakRatio.map { String(format: "You focus %.1f hours for every recovery hour.", $0) } ?? "Record breaks to establish your focus-to-recovery balance."),
-                NarrativeInsight(icon: "forward.end", title: "Break completion", text: "\(snapshot.skippedBreakCount) skipped and \(snapshot.breakEarlyCount) ended early in this range."),
-                NarrativeInsight(icon: "clock.arrow.2.circlepath", title: "Average reset", text: "A typical recorded break lasts \(snapshot.averageBreakSeconds.focusDurationString).")
+                NarrativeInsight(icon: "scalemass", title: "Focus to break", text: snapshot.focusToBreakRatio.map { String(format: "%.1f hours of focus for every hour of break.", $0) } ?? "Take a break to see this."),
+                NarrativeInsight(icon: "forward.end", title: "Skipped breaks", text: "\(snapshot.skippedBreakCount) skipped and \(snapshot.breakEarlyCount) ended early in this range."),
+                NarrativeInsight(icon: "clock.arrow.2.circlepath", title: "Average break", text: "Your average break is \(snapshot.averageBreakSeconds.focusDurationString).")
             ]
         case .breakOvertime:
             return [
-                NarrativeInsight(icon: "exclamationmark.arrow.triangle.2.circlepath", title: "Drift rate", text: "\(percent(snapshot.breakOvertimeRate)) of all recovery time happened beyond the plan."),
-                NarrativeInsight(icon: "calendar", title: "Largest overrun", text: "Your heaviest single-day break overrun was \(snapshot.largestBreakOvertimeSeconds.focusDurationString)."),
-                NarrativeInsight(icon: "timer", title: "Typical overrun", text: "An overtime break runs \(snapshot.averageBreakOvertimeSeconds.focusDurationString) beyond plan on average.")
+                NarrativeInsight(icon: "exclamationmark.arrow.triangle.2.circlepath", title: "Overtime share", text: "\(percent(snapshot.breakOvertimeRate)) of break time ran past plan."),
+                NarrativeInsight(icon: "calendar", title: "Most in a day", text: "Most break overtime in one day: \(snapshot.largestBreakOvertimeSeconds.focusDurationString)."),
+                NarrativeInsight(icon: "timer", title: "Average overrun", text: "Breaks that run over go \(snapshot.averageBreakOvertimeSeconds.focusDurationString) past plan on average.")
             ]
         case .daysUsed:
             return [
-                NarrativeInsight(icon: "calendar.badge.checkmark", title: "Adherence", text: "You were active on \(snapshot.activeDays) of \(snapshot.dayCount) days—\(percent(snapshot.activeRate))."),
-                NarrativeInsight(icon: "target", title: "Goal conversion", text: "\(snapshot.goalHitDays) days reached the \(dailyGoalMinutes)-minute target."),
-                NarrativeInsight(icon: "crown", title: "Strongest day", text: bestDay)
+                NarrativeInsight(icon: "calendar.badge.checkmark", title: "Active days", text: "You focused on \(snapshot.activeDays) of \(snapshot.dayCount) days (\(percent(snapshot.activeRate)))."),
+                NarrativeInsight(icon: "target", title: "Goal days", text: "\(snapshot.goalHitDays) days hit your \(dailyGoalMinutes)-minute goal."),
+                NarrativeInsight(icon: "crown", title: "Best day", text: bestDay)
             ]
         case .rhythm:
             return [
-                NarrativeInsight(icon: "waveform.path.ecg", title: "Rhythm score", text: "\(snapshot.consistencyScore) / 100, blending active-day frequency with steadiness of daily volume."),
-                NarrativeInsight(icon: "flame", title: "Streak", text: "Current: \(snapshot.currentStreak) days. Lifetime best: \(snapshot.longestStreak) days."),
-                NarrativeInsight(icon: "chart.line.uptrend.xyaxis", title: "Direction", text: momentumSentence)
+                NarrativeInsight(icon: "waveform.path.ecg", title: "Consistency score", text: "\(snapshot.consistencyScore) / 100, based on how often you focus and how even your daily totals are."),
+                NarrativeInsight(icon: "flame", title: "Streak", text: "Current: \(snapshot.currentStreak) days. Best: \(snapshot.longestStreak) days."),
+                NarrativeInsight(icon: "chart.line.uptrend.xyaxis", title: "This week vs last", text: momentumSentence)
             ]
         case .completed:
             return [
-                NarrativeInsight(icon: "checkmark.seal", title: "Execution", text: "\(percent(snapshot.completionRate)) of recorded focus blocks reached their planned finish."),
-                NarrativeInsight(icon: "pause.circle", title: "Interruption cost", text: "Paused time consumed \(percent(snapshot.pauseRatio)) of focus-plus-pause time."),
-                NarrativeInsight(icon: "star", title: "Perceived quality", text: snapshot.averageRating.map { String(format: "Your average rating is %.1f / 5 across %d rated blocks.", $0, snapshot.ratedCount) } ?? "Rate sessions after completion to connect time spent with perceived quality.")
+                NarrativeInsight(icon: "checkmark.seal", title: "Completion", text: "\(percent(snapshot.completionRate)) of focus blocks ran to their planned length."),
+                NarrativeInsight(icon: "pause.circle", title: "Pause cost", text: "Pauses took up \(percent(snapshot.pauseRatio)) of focus plus pause time."),
+                NarrativeInsight(icon: "star", title: "Ratings", text: snapshot.averageRating.map { String(format: "Average %.1f / 5 across %d rated blocks.", $0, snapshot.ratedCount) } ?? "Rate your sessions to see this.")
             ]
         }
     }
@@ -686,15 +686,15 @@ struct MetricDeepDiveView: View {
     private func tooltipLines(for day: DeepDiveDay) -> [String] {
         switch metric {
         case .focus:
-            return ["\(day.focusSeconds.focusDurationString) focus", "\(day.rollingFocusSeconds.focusDurationString) 7-day average", "\(day.sessionCount) recorded blocks"]
+            return ["\(day.focusSeconds.focusDurationString) focus", "\(day.rollingFocusSeconds.focusDurationString) 7-day average", "\(day.sessionCount) blocks"]
         case .breakTime:
-            return ["\(day.breakSeconds.focusDurationString) recovery", "\(day.breakOvertimeSeconds.focusDurationString) overtime"]
+            return ["\(day.breakSeconds.focusDurationString) break", "\(day.breakOvertimeSeconds.focusDurationString) overtime"]
         case .breakOvertime:
             return ["\(day.breakOvertimeSeconds.focusDurationString) break overtime", "\(day.focusOvertimeSeconds.focusDurationString) focus overtime"]
         case .daysUsed:
             return [day.focusSeconds > 0 ? "Active day" : "Inactive day", "\(day.focusSeconds.focusDurationString) focus"]
         case .rhythm:
-            return ["\(day.focusSeconds.focusDurationString) focus", "\(day.rollingFocusSeconds.focusDurationString) rolling rhythm"]
+            return ["\(day.focusSeconds.focusDurationString) focus", "\(day.rollingFocusSeconds.focusDurationString) 7-day average"]
         case .completed:
             return ["\(day.completedCount) completed", "\(day.earlyCount) early, \(day.abandonedCount) abandoned"]
         }
@@ -702,12 +702,12 @@ struct MetricDeepDiveView: View {
 
     private var primaryChartTitle: String {
         switch metric {
-        case .focus: "Daily focus and rolling momentum"
-        case .breakTime: "Planned recovery versus overtime"
-        case .breakOvertime: "Where time runs beyond plan"
-        case .daysUsed: "Active days and goal attainment"
-        case .rhythm: "Your seven-day working rhythm"
-        case .completed: "Daily session outcomes"
+        case .focus: "Daily focus and 7-day average"
+        case .breakTime: "Planned break time and overtime"
+        case .breakOvertime: "Overtime by day"
+        case .daysUsed: "Daily focus against your goal"
+        case .rhythm: "7-day average"
+        case .completed: "How blocks ended each day"
         }
     }
 
@@ -742,13 +742,13 @@ struct MetricDeepDiveView: View {
     }
 
     private var momentumDetail: String {
-        snapshot.weekChange == nil ? "Needs a prior seven-day baseline" : "Latest 7 days vs previous 7"
+        snapshot.weekChange == nil ? "Needs focus in the 7 days before" : "Last 7 days vs the 7 before"
     }
 
     private var momentumSentence: String {
-        guard let change = snapshot.weekChange else { return "A second full week will establish a meaningful momentum baseline." }
-        if abs(change) < 0.05 { return "Your last seven days are essentially level with the previous seven." }
-        return "Focus volume is \(percent(abs(change))) \(change > 0 ? "higher" : "lower") than the previous seven days."
+        guard let change = snapshot.weekChange else { return "No focus in the 7 days before to compare with." }
+        if abs(change) < 0.05 { return "About the same as the 7 days before." }
+        return "\(change > 0 ? "Up" : "Down") \(percent(abs(change))) on the 7 days before."
     }
 
     private func percent(_ value: Double) -> String { "\(Int((value * 100).rounded()))%" }

@@ -132,9 +132,9 @@ struct WrapUpSheet: View {
     }
 
     private func headline(_ wrap: AppModel.DayWrapUp) -> String {
-        if wrap.blocks == 0 && wrap.finished.isEmpty { return "A quiet day. Tomorrow starts with one block." }
-        if wrap.leftovers.isEmpty { return "Everything you planned is done. Nice work." }
-        return "Here's your day. Pick what carries over, then you're done."
+        if wrap.blocks == 0 && wrap.finished.isEmpty { return "No blocks or tasks done today." }
+        if wrap.leftovers.isEmpty { return "Everything you planned is done." }
+        return "Pick what carries over to tomorrow."
     }
 
     private var divider: some View {

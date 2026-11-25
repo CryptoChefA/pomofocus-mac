@@ -1103,7 +1103,7 @@ final class AppModel {
         guard adjustment == .levelUp else {
             let content = UNMutableNotificationContent()
             content.title = "Consolidating at \(plan.level.focusMinutes) minutes"
-            content.body = "The last level was a stretch. A few wins at \(plan.level.focusMinutes)-minute blocks will set you up to climb again."
+            content.body = "The last level was a stretch. A few wins at \(plan.level.focusMinutes)-minute blocks and you'll climb again."
             UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil))
             return
         }
@@ -1111,8 +1111,8 @@ final class AppModel {
         let content = UNMutableNotificationContent()
         content.title = plan.isFinalLevel ? "Target reached" : "Level up"
         content.body = plan.isFinalLevel
-            ? "\(plan.level.focusMinutes)-minute blocks are yours now. That's the focus you set out to rebuild."
-            : "You've earned \(plan.level.focusMinutes)-minute blocks with \(plan.level.breakMinutes)-minute breaks. Your next block uses them."
+            ? "\(plan.level.focusMinutes)-minute blocks are yours now."
+            : "You're up to \(plan.level.focusMinutes)-minute blocks with \(plan.level.breakMinutes)-minute breaks, starting with your next block."
         UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil))
     }
 
@@ -1316,7 +1316,7 @@ final class AppModel {
     /// Why the next focus block is shorter than the plan's level, if it is.
     var easedFocusReason: String? {
         guard let plan = focusPlan, phase == .focus, status == .idle else { return nil }
-        if plan.easing(sessions: data.sessions) > 0 { return "Shorter after a tough block. Finish it and the usual length comes back." }
+        if plan.easing(sessions: data.sessions) > 0 { return "Shorter after a tough block. Finish it to get your usual length back." }
         if let reentry = plan.reentry(sessions: data.sessions) {
             return "Easing back in after \(reentry.daysAway) days away. Each block you finish adds five minutes."
         }
@@ -1914,10 +1914,10 @@ final class AppModel {
 
     private func sendCompletionNotification() {
         let content = UNMutableNotificationContent()
-        content.title = phase == .focus ? "Brava — time to rest" : "Ready when you are"
+        content.title = phase == .focus ? "Time for a break" : "Break's over"
         content.body = phase == .focus
-            ? "Your focus block is complete. Choose Next when you are ready for a break."
-            : "Your break is complete. Choose Next to begin a fresh focus block."
+            ? "Your focus block is done. Choose Next when you're ready."
+            : "Choose Next to start your next focus block."
         // The ding already marks the moment, so the banner stays silent unless cues are off.
         content.sound = settings.playSounds ? nil : .default
         UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil))
@@ -2094,7 +2094,7 @@ extension AppModel {
                 settings.savedThemes.append(theme)
                 settings.themeID = theme.themeID
             }
-            return (true, theme.isRare ? "A rare theme: \(theme.name). Enjoy it." : "Added \(theme.name).")
+            return (true, theme.isRare ? "A rare theme: \(theme.name)." : "Added \(theme.name).")
         }
     }
 

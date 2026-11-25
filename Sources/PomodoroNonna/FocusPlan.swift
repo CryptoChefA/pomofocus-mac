@@ -347,25 +347,25 @@ struct FocusPlan: Codable, Equatable, Sendable {
             return PhaseInfo(
                 phase: .sustain, title: "Sustain",
                 focus: left > 0
-                    ? "You've reached your target. Keep the same time and place: around \(left) more days of repetition and starting becomes automatic."
-                    : "Your focus routine has had time to become a habit. Keep it light and regular, and missing a day won't undo it.",
+                    ? "You've reached your target. Keep the same time and place for about \(left) more days and starting becomes automatic."
+                    : "Your routine should be a habit by now. Keep it regular. Missing a day won't undo it.",
                 sources: [.habitFormation, .implementationIntentions])
         }
         if day < 7 {
             return PhaseInfo(
                 phase: .reset, title: "Reset",
-                focus: "Week one is about starting, not stamina. Begin at the same time each day, take the phone out of the room, and let short blocks feel easy.",
+                focus: "Week one is about starting, not stamina. Start at the same time each day and keep your phone in another room.",
                 sources: [.implementationIntentions, .phonePresence, .selfEfficacy])
         }
         if Double(levelIndex) >= Double(levels.count - 1) * 0.6 {
             return PhaseInfo(
                 phase: .extend, title: "Extend",
-                focus: "Your blocks are getting long. Protect your breaks: step away from screens, get outside or move, so the next block starts fresh.",
+                focus: "Your blocks are getting long. Take real breaks: away from screens, outside or moving.",
                 sources: [.vigilanceWork, .natureAttention, .exerciseCognition])
         }
         return PhaseInfo(
             phase: .build, title: "Build",
-            focus: "Climb one five-minute step at a time. Finish blocks at full length on different days, and the plan moves you up when your numbers show you're ready.",
+            focus: "You climb five minutes at a time. Finish full-length blocks on different days and the plan moves you up.",
             sources: [.proximalGoals, .goalSetting, .progressMonitoring])
     }
 
@@ -374,19 +374,19 @@ struct FocusPlan: Codable, Equatable, Sendable {
     /// House rules that follow from what pulls you away.
     var rules: [PlanGuidance] {
         var rules = [
-            PlanGuidance(title: "Start is the whole job",
-                         detail: "On hard days, the only goal is beginning one block. Small wins build the belief that you can do the next one.",
+            PlanGuidance(title: "Starting is the whole job",
+                         detail: "On hard days, aim to start one block. Each small win makes the next one feel doable.",
                          sources: [.selfEfficacy, .proximalGoals])
         ]
         let d = Set(answers.distractions)
         if d.contains(.phone) {
             rules.append(PlanGuidance(title: "Phone out of the room",
-                                      detail: "Not face down, not on silent: in another room. Its mere presence measurably lowers working memory.",
+                                      detail: "In another room, not face down or on silent. Having it nearby lowers working memory.",
                                       sources: [.phonePresence, .notificationCost]))
         }
         if d.contains(.socialMedia) || d.contains(.video) {
             rules.append(PlanGuidance(title: "No feeds until the reward",
-                                      detail: "Short-form feeds impair your ability to hold onto what you meant to do, and leave attention residue behind.",
+                                      detail: "Short-form feeds make it harder to remember what you meant to do, and part of your attention stays on them.",
                                       sources: [.shortFormVideo, .attentionResidue]))
         }
         if d.contains(.games) {
@@ -405,10 +405,10 @@ struct FocusPlan: Codable, Equatable, Sendable {
                                       sources: [.planMaking, .mindWandering]))
         }
         rules.append(PlanGuidance(title: "Same time, same place",
-                                  detail: "Start at \(answers.energy.window). A fixed when-and-where makes starting far more likely, and repeating it builds the habit.",
+                                  detail: "Start at \(answers.energy.window). A set time and place makes starting far more likely and builds the habit.",
                                   sources: [.implementationIntentions, .habitFormation, .circadianCognition]))
         rules.append(PlanGuidance(title: "Let the numbers decide",
-                                  detail: "Pomofocus records every block. Watching your own progress is one of the most reliable ways to reach a goal.",
+                                  detail: "Pomofocus records every block. Tracking your progress is one of the most reliable ways to reach a goal.",
                                   sources: [.progressMonitoring]))
         return rules
     }
@@ -420,7 +420,7 @@ struct FocusPlan: Codable, Equatable, Sendable {
                          sources: [.restorationTheory, .natureAttention]),
             PlanGuidance(title: "Step outside for a few minutes", detail: "Time outdoors improves directed attention afterwards.",
                          sources: [.natureAttention]),
-            PlanGuidance(title: "Walk to another room and back", detail: "Even brief movement supports attention.",
+            PlanGuidance(title: "Walk to another room and back", detail: "Brief movement helps attention.",
                          sources: [.exerciseCognition, .microBreaks]),
             PlanGuidance(title: "Stand up and stretch your back and shoulders", detail: "Physical micro-breaks reduce fatigue.",
                          sources: [.microBreaks]),
@@ -435,7 +435,7 @@ struct FocusPlan: Codable, Equatable, Sendable {
                                      detail: "Feeds on a break carry over into the next block.",
                                      sources: [.shortFormVideo, .exerciseCognition]), at: 0)
         case .snack:
-            menu.insert(PlanGuidance(title: "Have some fruit or a few nuts, slowly, away from the screen",
+            menu.insert(PlanGuidance(title: "Have some fruit or nuts away from the screen",
                                      detail: "Rest without a screen.", sources: [.microBreaks]), at: 0)
         case .move:
             menu.insert(PlanGuidance(title: "Ten squats or a quick walk around the block",
@@ -454,19 +454,19 @@ struct FocusPlan: Codable, Equatable, Sendable {
         let reward = answers.reward.trimmingCharacters(in: .whitespacesAndNewlines)
         return PlanGuidance(
             title: reward.isEmpty ? "Something you enjoy, after the last block of the day" : reward,
-            detail: "Only after the day's last block. Something you enjoy reinforces the effort that comes before it.",
+            detail: "Only after the day's last block. A reward that follows the work reinforces it.",
             sources: [.premackPrinciple])
     }
 
     /// Why the ladder works the way it does.
     static let ladderGuidance = PlanGuidance(
         title: "How levels work",
-        detail: "Small, specific steps beat one distant goal. You move up after \(blocksPerLevel) full blocks on \(daysPerLevel)+ days with at least \(Int(levelUpCompletion * 100))% of blocks finished, and step back a level if under \(Int(stepBackCompletion * 100))% are, so you keep succeeding.",
+        detail: "Small, specific steps beat one distant goal. You move up after \(blocksPerLevel) full blocks on \(daysPerLevel)+ days with at least \(Int(levelUpCompletion * 100))% of blocks finished, and step back a level if under \(Int(stepBackCompletion * 100))% are.",
         sources: [.proximalGoals, .goalSetting, .selfEfficacy])
 
     static let breakGuidance = PlanGuidance(
         title: "Why breaks are a third of the block",
-        detail: "Holding attention is hard work and fades without rest. Regular breaks restore vigour and protect the next block.",
+        detail: "Holding attention is hard work and fades without rest. Regular breaks restore it for the next block.",
         sources: [.vigilanceWork, .breaksVigilance, .microBreaks])
 }
 

@@ -15,107 +15,109 @@ enum WhatsNew {
     /// Newest first. Add an entry with every release.
     static let releases: [(version: String, items: [Item])] = [
         ("0.23.0", [
-            Item(icon: "sidebar.left", title: "A calmer window", detail: "Four places instead of seven: Focus, Tasks, Progress and Settings. The sidebar tucks itself away, so the timer has the window to itself. Move the pointer to the left edge to bring it back."),
-            Item(icon: "chart.bar.xaxis", title: "Progress", detail: "The Dashboard, History, your plan and your mood now live together in Progress. Overview shows your week, your plan, your peak hours and your recaps. See more, at the bottom, opens every detail."),
-            Item(icon: "wind", title: "One Reset", detail: "Drifting mid-block, or after a rough one? Reset offers the one thing that fits: a walk, writing it out, a guided breath or a proper rest. The others are a click away. Pick what plays under a reset in Settings."),
-            Item(icon: "paintpalette", title: "Four looks to start", detail: "Match system, Black Ice, London and Layla sit up front. More themes, in Settings, has the rest."),
-            Item(icon: "checklist", title: "A quicker setup", detail: "First launch asks one thing, how you like to work, then starts your first block."),
+            Item(icon: "sidebar.left", title: "A shorter sidebar", detail: "Four places instead of seven: Focus, Tasks, Progress and Settings. The sidebar hides until you move the pointer to the window's left edge."),
+            Item(icon: "chart.bar.xaxis", title: "Progress", detail: "The Dashboard, History, your plan and your mood are now in Progress. Overview shows your week, plan, peak hours and recaps, and See more at the bottom has the full details."),
+            Item(icon: "wind", title: "One Reset", detail: "When you're drifting mid-block or after a rough block, Reset suggests one thing: a walk, writing it out, a guided breath or a proper rest, and you can pick another. Choose what plays during it in Settings."),
+            Item(icon: "paintpalette", title: "Four themes up front", detail: "Match system, Black Ice, London and Layla are listed first. More themes in Settings has the rest."),
+            Item(icon: "checklist", title: "A shorter setup", detail: "First launch asks how you like to work, then starts your first block."),
+            Item(icon: "text.alignleft", title: "Plainer words", detail: "Text across the app is shorter and says only what you need."),
+            Item(icon: "scroll", title: "Slim scroll bars", detail: "Scroll bars are a thin line with no track, even with a mouse connected."),
         ]),
         ("0.22.15", [
-            Item(icon: "wind", title: "Breathe together", detail: "In a study group, when the leader starts a block with the opening breaths, everyone breathes along in step, and the block begins for all of you at the same moment."),
-            Item(icon: "person.2", title: "A steadier group", detail: "Groups no longer depend on everyone's clock agreeing, which could keep a friend's timer from following. The Together window now shows the leader's timer and when you last heard from it."),
+            Item(icon: "wind", title: "Breathe together", detail: "When a study group's leader starts a block with the opening breaths, everyone breathes in step and the block starts for all of you at once."),
+            Item(icon: "person.2", title: "Group timers follow reliably", detail: "A friend's timer now follows the group even when your Macs' clocks disagree. The Together window shows the leader's timer and when you last heard from it."),
         ]),
         ("0.22.14", [
-            Item(icon: "person.2", title: "Joining a group works", detail: "Friends can now join your study group. Before, a join failed every time. If two of you start a group by mistake, the one nobody has joined shows the other group, so you can join it instead."),
+            Item(icon: "person.2", title: "Joining a group fixed", detail: "Before, every attempt to join a study group failed. If two of you start a group by mistake, the one nobody joined shows the other group to join instead."),
         ]),
         ("0.22.13", [
-            Item(icon: "person.2", title: "Study together", detail: "Studying with friends in the same room? One of you starts a group from Together on the Focus screen and the others join it. Everyone's timer then follows: the same blocks, and breaks at the same moment. It works over Bluetooth and Wi-Fi without the internet, and only the timer and your first name are shared."),
-            Item(icon: "figure.walk", title: "Help when focus slips", detail: "After a rough block, your break suggests one thing that fits: a walk when you felt restless, a brain dump or a guided reset when you felt scattered, and a proper rest after two tough blocks in a row. Mid-block, Drifting? offers a one-minute reset, a place to park what's on your mind, or finishing small with ten more minutes."),
-            Item(icon: "clock", title: "Your peak hours", detail: "The Dashboard now shows when you focus best: the two hours where you finish the most blocks and rate them highest, and your toughest stretch, so you can plan hard work for the right time."),
-            Item(icon: "chart.line.downtrend.xyaxis", title: "A focus plan that listens", detail: "Your plan now waits for how a block felt before deciding anything. Two Restless or Scattered blocks in a row step it back a level, and it won't climb right after a rough one. Feeling stretched? Click a shorter bar on the ladder to step down yourself."),
+            Item(icon: "person.2", title: "Study together", detail: "One of you starts a group from Together on the Focus screen, friends in the same room join, and everyone's timer runs the same blocks and breaks. It uses Bluetooth and Wi-Fi, not the internet, and shares only the timer and your first name."),
+            Item(icon: "figure.walk", title: "Help when focus slips", detail: "After a rough block, your break suggests a walk if you felt restless, a brain dump or guided reset if you felt scattered, or a proper rest after two tough blocks in a row. Mid-block, Drifting? offers a one-minute reset, a place to park what's on your mind, or ten more minutes to finish small."),
+            Item(icon: "clock", title: "Your peak hours", detail: "The Dashboard shows your best two hours, where you finish the most blocks and rate them highest, and your toughest stretch."),
+            Item(icon: "chart.line.downtrend.xyaxis", title: "The plan waits for your rating", detail: "Two Restless or Scattered blocks in a row step your plan back a level, and it won't climb right after a rough one. Click a shorter bar on the ladder to step down yourself."),
             Item(icon: "rectangle.on.rectangle", title: "Look before you switch", detail: "Clicking Short rest or Long rest while a block runs no longer stops it. The timer keeps going until you press Start short break or Start long break."),
         ]),
         ("0.22.12", [
-            Item(icon: "light.max", title: "A glow when time's up", detail: "When a block or break ends, a soft glow breathes around the edges of your screen, even over a full-screen app and with the sound off. It comes back with each overtime reminder. Turn it off or try it in Settings. Notifications also stay on now when a block runs into overtime, instead of being silenced with it."),
-            Item(icon: "menubar.rectangle", title: "Your menu bar, your way", detail: "In Settings → Menu bar, swap the timer chip for three simple bars that empty as your block runs, your own picture, or Minimal: just the time left or a percentage. Pick the menu bar's own colour or red, white, black or any colour you like. You can also hide Pomofocus from the menu bar there."),
-            Item(icon: "book", title: "Study away from the screen", detail: "If your Mac locks or sleeps while you read or write on paper, the block now keeps counting up to its bell. Before, it paused when the screen locked and the time after that was lost. If you're away past the bell, Pomofocus asks whether you were still focusing, and Count it adds that time."),
-            Item(icon: "sun.max", title: "Today includes the block you're in", detail: "The Today total on the Focus screen now counts the block that's running, like the menu bar and Cinema already did."),
+            Item(icon: "light.max", title: "A glow when time's up", detail: "When a block or break ends, and at each overtime reminder, the edges of your screen glow, even over a full-screen app and with the sound off. Try it or turn it off in Settings. Notifications also no longer stop when a block runs into overtime."),
+            Item(icon: "menubar.rectangle", title: "Menu bar styles", detail: "In Settings → Menu bar, swap the timer chip for three bars that empty as the block runs, your own picture, or Minimal (the time left or a percentage), in the menu bar's colour or any other. You can also hide Pomofocus from the menu bar there."),
+            Item(icon: "book", title: "Study away from the screen", detail: "If your Mac locks or sleeps while you work on paper, the block keeps counting to the bell instead of pausing. If you're away past the bell, Pomofocus asks whether you were still focusing, and Count it adds that time."),
+            Item(icon: "sun.max", title: "Today includes the block you're in", detail: "The Today total on the Focus screen now counts the running block, as the menu bar and Cinema already did."),
         ]),
         ("0.22.11", [
-            Item(icon: "magnifyingglass", title: "Pomofocus in Spotlight", detail: "Search Spotlight for Pomofocus to start a focus block, pause, resume, skip a break or end a session without opening the app. Siri knows them too: try \"Start focus in Pomofocus\"."),
-            Item(icon: "menubar.rectangle", title: "A lighter menu bar timer", detail: "The clock in the menu bar panel now rolls the same way using almost no power, like the big clock on the Focus screen."),
+            Item(icon: "magnifyingglass", title: "Pomofocus in Spotlight", detail: "Search Spotlight for Pomofocus to start a block, pause, resume, skip a break or end a session. Siri knows them too: say \"Start focus in Pomofocus\"."),
+            Item(icon: "menubar.rectangle", title: "A lighter menu bar timer", detail: "The clock in the menu bar panel now uses almost no power, like the big clock on the Focus screen."),
         ]),
         ("0.22.10", [
-            Item(icon: "rectangle.stack", title: "Your year in focus", detail: "Your year as a few cards: your hours, your biggest month, where the time went, your rhythm, your longest streak and how it felt. It ends with an image you can share, which only shows numbers. Open it from the Dashboard any time; in December it's waiting for you."),
-            Item(icon: "playpause", title: "Buttons on the widget and in Control Center", detail: "Start, pause, resume, skip a break or end a session right from the desktop widget, without opening Pomofocus. Add the Pomofocus buttons to Control Center or the menu bar too. The same actions work in Shortcuts, or as links like pomofocus://pause."),
-            Item(icon: "chart.bar", title: "Hours by week", detail: "A new chart on the Dashboard shows how many hours you focused in each of the last 12 weeks, with your weekly average and how this week compares with the same point last week. Your total focus time now also shows how much of it ran past the bell, and Completed sessions shows how many blocks you ended early, so the two add up."),
-            Item(icon: "leaf", title: "Lighter on your Mac", detail: "A running timer now uses a fraction of the power it did: about a third while you're looking at it, and almost nothing when the window is hidden. The clock still rolls the same way. The menu bar and the widget also tick over on the same second now."),
-            Item(icon: "calendar", title: "Your week", detail: "At the start of each week, a calm look back: your focus, best day and time, top list, how your mood went, and one suggestion for the week ahead. Open it any time from the Dashboard."),
-            Item(icon: "moon", title: "Quiet while you focus", detail: "Turn on Silence notifications during focus in Settings → Experience and Do Not Disturb comes on with each block, then off for your break."),
-            Item(icon: "checklist", title: "Set it up your way", detail: "A short setup on first launch: how you like to work, your daily goal, a look, a sound and a few extras, all optional. Run it again any time from Settings → Experience."),
-            Item(icon: "clock", title: "The time, quietly", detail: "A small clock at the top of the timer, so you can see if you're running late without leaving Pomofocus. Turn it off in Settings → Experience."),
+            Item(icon: "rectangle.stack", title: "Your year in focus", detail: "A few cards on your year: hours, biggest month, where the time went, rhythm, longest streak and how it felt, ending with a shareable image that shows only numbers. Open it from the Dashboard, and in December it's offered to you."),
+            Item(icon: "playpause", title: "Buttons on the widget and in Control Center", detail: "Start, pause, resume, skip a break or end a session from the desktop widget, or add the buttons to Control Center or the menu bar. The same actions work in Shortcuts and as links like pomofocus://pause."),
+            Item(icon: "chart.bar", title: "Hours by week", detail: "A Dashboard chart of your focus hours for each of the last 12 weeks, with your weekly average and this week against the same point last week. Total focus time now shows how much ran past the bell, and Completed sessions shows how many blocks you ended early."),
+            Item(icon: "leaf", title: "Lighter on your Mac", detail: "A running timer uses about a third of the power it did while the window is in view, and almost nothing when it's hidden. The menu bar and widget now tick on the same second."),
+            Item(icon: "calendar", title: "Your week", detail: "Each week starts with a look back at your focus, best day and time, top list and mood, plus one suggestion for the week ahead. Open it from the Dashboard."),
+            Item(icon: "moon", title: "Do Not Disturb during focus", detail: "Turn on Silence notifications during focus in Settings → Experience and Do Not Disturb comes on with each block, then off for your break."),
+            Item(icon: "checklist", title: "A short setup", detail: "First launch asks how you like to work, your daily goal, a theme, a sound and a few extras, all optional. Run it again from Settings → Experience."),
+            Item(icon: "clock", title: "The time of day", detail: "A clock at the top of the timer shows the current time. Turn it off in Settings → Experience."),
         ]),
         ("0.22.9", [
-            Item(icon: "heart.text.square", title: "How are you feeling?", detail: "A quick daily check-in, like State of Mind on iPhone: slide to how today feels and watch the shape change, then pick a word or two, what's behind it and a line of your own. The Dashboard shows your mood over the last 30 days and five weeks, and it all stays on this Mac."),
+            Item(icon: "heart.text.square", title: "Daily mood check-in", detail: "Like State of Mind on iPhone: slide to how today feels, then add a word or two, what's behind it and a note. The Dashboard shows your mood over 30 days and five weeks, and it stays on this Mac."),
         ]),
         ("0.22.8", [
-            Item(icon: "building.columns", title: "Skyline in Cinema", detail: "With a dark theme, press Skyline (or S) in Cinema to put Westminster at night along the bottom of the screen, with open sky for the clock."),
-            Item(icon: "square.on.square.dashed", title: "Glass", detail: "A Glass slider in Settings, under Appearance, turns the timer, cards and panels from solid to glass, so your theme shows through."),
-            Item(icon: "cloud.rain", title: "London", detail: "A new theme: Westminster across the Thames on a rainy night, with Big Ben at the real time and the Eye turning at its real speed. Turn the rain or a storm on in Settings."),
-            Item(icon: "wind", title: "Focus reset", detail: "Pick a short guided session and what plays under it: rain, binaural beats, meditation music or just the voice. The window goes quiet, with a breathing flower that moves with the voice."),
+            Item(icon: "building.columns", title: "Skyline in Cinema", detail: "With a dark theme, press Skyline (or S) in Cinema to put Westminster at night along the bottom of the screen."),
+            Item(icon: "square.on.square.dashed", title: "Glass", detail: "The Glass slider in Settings → Appearance turns the timer, cards and panels from solid to see-through."),
+            Item(icon: "cloud.rain", title: "London", detail: "A theme of Westminster across the Thames on a rainy night, with Big Ben at the real time and the Eye turning at its real speed. Turn on rain or a storm in Settings."),
+            Item(icon: "wind", title: "Focus reset", detail: "Short guided sessions over rain, binaural beats, meditation music or the voice alone. The window clears to a breathing flower that follows the voice."),
             Item(icon: "captions.bubble", title: "Captions", detail: "Turn on Focus reset captions in Settings to follow along without sound."),
             Item(icon: "calendar", title: "Up next in Cinema", detail: "Under the clock, Cinema shows your next calendar event, how soon it starts and when."),
-            Item(icon: "chevron.down.circle", title: "Tidier Settings", detail: "Each section folds to its heading, with a summary like your timer lengths, so there's far less scrolling."),
-            Item(icon: "calendar.day.timeline.left", title: "A cleaner timeline", detail: "The running block keeps its lined shading to show where it ends, without extra blocks stacked underneath."),
+            Item(icon: "chevron.down.circle", title: "Settings fold up", detail: "Each section folds to its heading and a summary, like your timer lengths."),
+            Item(icon: "calendar.day.timeline.left", title: "Fewer blocks on the timeline", detail: "The running block shows where it ends with lined shading, and extra blocks no longer stack underneath."),
         ]),
         ("0.22.7", [
-            Item(icon: "calendar.day.timeline.left", title: "Your day stays in view", detail: "The timeline stays open while you focus, and shows your break and next block ahead, so you can see where the time is going."),
+            Item(icon: "calendar.day.timeline.left", title: "Timeline during focus", detail: "The timeline stays open while you focus and shows your next break and block."),
         ]),
         ("0.22.6", [
             Item(icon: "figure.stairs", title: "Easing back in", detail: "After a few days off, blocks start shorter and add five minutes each time you finish one, until you're back at your level."),
-            Item(icon: "arrow.down.right", title: "A tough block, a shorter next one", detail: "Give up on a block, cut it short or rate it Scattered, and the next one is five minutes shorter. A good block puts it back."),
+            Item(icon: "arrow.down.right", title: "Shorter after a tough block", detail: "Give up on a block, cut it short or rate it Scattered, and the next one is five minutes shorter. A good block puts it back."),
             Item(icon: "circle.inset.filled", title: "Your rating counts", detail: "Flow blocks count twice toward your next level. Scattered or Restless ones don't count as held."),
             Item(icon: "cup.and.saucer", title: "Breaks that fit the block", detail: "After a block full of pauses, or one you kept going long past the end, the break is five minutes longer."),
         ]),
         ("0.22.5", [
-            Item(icon: "arrow.down.app", title: "Updates that just work", detail: "If Pomofocus is in a folder it can't change, your Mac asks for its password instead of sending you to the website."),
+            Item(icon: "arrow.down.app", title: "Updates from protected folders", detail: "If Pomofocus is in a folder it can't change, your Mac asks for its password instead of sending you to the website."),
             Item(icon: "hand.point.up.left", title: "Click away to close", detail: "Your focus score, the dashboard details and the plan's sources close when you click outside them."),
-            Item(icon: "tv", title: "Calmer Cinema", detail: "Cinema mode's small labels read plainly now, without the wide letter spacing."),
+            Item(icon: "tv", title: "Cinema labels", detail: "Cinema's small labels no longer use wide letter spacing."),
         ]),
         ("0.22.4", [
-            Item(icon: "tray.and.arrow.down", title: "Your work, now in Tasks", detail: "Pomofocus offers to turn what you've been focusing on, and your lists, into tasks. You pick which."),
-            Item(icon: "circle.inset.filled", title: "Rate a session in one click", detail: "When you end a session, just pick how it felt, from Scattered to Flow. No writing."),
+            Item(icon: "tray.and.arrow.down", title: "Turn past work into tasks", detail: "Pomofocus offers to turn what you've been focusing on, and your lists, into tasks. You pick which."),
+            Item(icon: "circle.inset.filled", title: "Quick session rating", detail: "When you end a session, pick how it felt, from Scattered to Flow."),
             Item(icon: "rectangle.on.rectangle", title: "The widget is back", detail: "Pomofocus shows up in Edit Widgets again, with your timer in three sizes."),
             Item(icon: "timer", title: "Update mid-pomodoro", detail: "Your timer keeps running through an update, and nothing pops up until the block ends."),
-            Item(icon: "snowflake", title: "Black Ice, lighter", detail: "The frost grows and thaws on the graphics side now, so the theme leaves the processor alone while it moves."),
+            Item(icon: "snowflake", title: "Black Ice, lighter", detail: "The frost now runs on the graphics chip instead of the processor."),
         ]),
         ("0.22.3", [
-            Item(icon: "leaf", title: "Tasks, kept simple", detail: "Tasks opens on one thing to do now, with a Start button. The rest of today folds away until you want it."),
-            Item(icon: "text.cursor", title: "Add a task, then get going", detail: "Type it and press Return. No length, colour or list to choose unless you want to."),
+            Item(icon: "leaf", title: "Simpler Tasks", detail: "Tasks opens on one task with a Start button, and the rest of today is folded away."),
+            Item(icon: "text.cursor", title: "Add a task by name", detail: "Type it and press Return. Length, colour and list are optional."),
             Item(icon: "play.circle", title: "A nudge to begin", detail: "After a few minutes of planning, Pomofocus suggests a task to start with. Not yet puts it away."),
-            Item(icon: "slider.horizontal.3", title: "Everything's still there", detail: "Turn off Keep tasks simple in Settings for the full board, stats and planning tools."),
+            Item(icon: "slider.horizontal.3", title: "The full board", detail: "Turn off Keep tasks simple in Settings for the full board, stats and planning tools."),
         ]),
         ("0.22.2", [
-            Item(icon: "circle.fill", title: "Updates you won't miss", detail: "When a new version is out, a red dot appears on Settings and a banner there lets you update with one click."),
-            Item(icon: "textformat", title: "A cleaner Bespoke", detail: "Bespoke now greets you with just your handwritten note."),
+            Item(icon: "circle.fill", title: "Update banner", detail: "When a new version is out, Settings shows a red dot and a banner with Update now."),
+            Item(icon: "textformat", title: "Bespoke greeting", detail: "Bespoke now greets you with only your handwritten note."),
         ]),
         ("0.22.1", [
             Item(icon: "calendar.day.timeline.left", title: "Plan your day", detail: "Drag tasks onto the timeline, or press Plan my day to fit them into your free time."),
-            Item(icon: "checklist", title: "Steps inside tasks", detail: "Break a task into small steps. The next one shows on the timer while you work."),
-            Item(icon: "moon.stars", title: "Wrap up the day", detail: "See what got done and move the rest to tomorrow in one click."),
-            Item(icon: "figure.stairs", title: "A plan that adapts", detail: "After time off you start with shorter warm-up blocks, and a missed day shrinks the goal to one block."),
-            Item(icon: "person.crop.circle", title: "A personal welcome", detail: "Tell Pomofocus your name and it greets you when you open it."),
-            Item(icon: "arrow.down.circle", title: "One-click updates", detail: "Pomofocus now tells you when a new version is out and installs it for you."),
-            Item(icon: "pencil", title: "Fix a session", detail: "Click any session in History to rename it or move it to another list."),
+            Item(icon: "checklist", title: "Steps inside tasks", detail: "Break a task into steps, and the next one shows on the timer while you work."),
+            Item(icon: "moon.stars", title: "Wrap up the day", detail: "See what got done and move the rest to tomorrow."),
+            Item(icon: "figure.stairs", title: "Warm-up after time off", detail: "After time off you start with shorter warm-up blocks, and a missed day shrinks the goal to one block."),
+            Item(icon: "person.crop.circle", title: "Greeting by name", detail: "Tell Pomofocus your name and it greets you when you open it."),
+            Item(icon: "arrow.down.circle", title: "In-app updates", detail: "Pomofocus tells you when a new version is out and installs it."),
+            Item(icon: "pencil", title: "Edit a session", detail: "Click any session in History to rename it or move it to another list."),
             Item(icon: "arrow.triangle.branch", title: "Switch lists mid-block", detail: "Change list part-way through and the time is split between the two."),
             Item(icon: "star.leadinghalf.filled", title: "Rate once per session", detail: "By default you rate your focus when you end a session, not after every block. Change it in Settings."),
-            Item(icon: "calendar.badge.plus", title: "Faster task adding", detail: "Start typing a task to pick its date, length and list right there."),
-            Item(icon: "paintpalette", title: "Your colours", detail: "Pick any colour for a list. It's used everywhere, including the dashboard."),
+            Item(icon: "calendar.badge.plus", title: "Faster task adding", detail: "Set a task's date, length and list as you type it."),
+            Item(icon: "paintpalette", title: "List colours", detail: "Pick any colour for a list. It's used everywhere, including the dashboard."),
             Item(icon: "arrow.up.arrow.down", title: "Arrange the sidebar", detail: "Drag the icons into the order you like. Settings now lives at the bottom."),
-            Item(icon: "questionmark.circle", title: "What the numbers mean", detail: "Click the small ? next to any dashboard number for a plain explanation."),
-            Item(icon: "waveform", title: "Real sounds", detail: "A real wall clock, rain on a window and ocean waves, plus softer brown and white noise that loop without a seam."),
-            Item(icon: "camera.macro", title: "A new breathing flower", detail: "The breaths before a block bloom and fold in your theme's colours."),
-            Item(icon: "text.cursor", title: "Your intention carries on", detail: "What you're working on stays for the next block until you change it."),
+            Item(icon: "questionmark.circle", title: "What the numbers mean", detail: "Click the ? next to any dashboard number for an explanation."),
+            Item(icon: "waveform", title: "Recorded sounds", detail: "Recordings of a wall clock, rain on a window and ocean waves, plus softer brown and white noise, all looping seamlessly."),
+            Item(icon: "camera.macro", title: "Breathing flower", detail: "The breaths before a block show a flower that opens and closes in your theme's colours."),
+            Item(icon: "text.cursor", title: "Your intention carries over", detail: "What you're working on stays for the next block until you change it."),
         ]),
     ]
 
@@ -142,7 +144,7 @@ struct WhatsNewSheet: View {
                 Text("What's new in \(Updater.shared.currentVersion)")
                     .font(.system(size: 10, weight: .semibold).monospacedDigit())
                     .foregroundStyle(NonnaTheme.terracotta)
-                Text(name.isEmpty ? "Fresh from the workshop." : "Fresh for you, \(name).")
+                Text(name.isEmpty ? "What's new" : "What's new, \(name)")
                     .font(.system(size: 32, weight: .regular, design: .serif))
             }
 
@@ -183,7 +185,7 @@ struct WhatsNewSheet: View {
 
             HStack {
                 Spacer()
-                Button("Lovely", action: onDone)
+                Button("Done", action: onDone)
                     .buttonStyle(NonnaButtonStyle())
                     .keyboardShortcut(.defaultAction)
             }

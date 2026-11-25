@@ -46,7 +46,7 @@ struct FocusPlanView: View {
             Button("Remove plan", role: .destructive) { model.removePlan() }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("Your timer keeps its current lengths and your history stays. You can build a new plan any time.")
+            Text("Your timer keeps its current lengths and your history stays.")
         }
     }
 
@@ -55,17 +55,17 @@ struct FocusPlanView: View {
     /// What today asks of you, in a sentence, adapting to how the last few days went.
     private func todayMessage(plan: FocusPlan, done: Int, target: Int, reentry: FocusPlan.Reentry?, missedYesterday: Bool) -> String {
         if done >= target {
-            return done > target ? "Past today's goal. Anything more is a bonus." : "Done for today. Go enjoy your reward."
+            return done > target ? "You're past today's goal." : "Done for today. Enjoy your reward."
         }
         let next = plan.nextFocusMinutes(sessions: model.sessions)
         if plan.easing(sessions: model.sessions) > 0 {
-            return "That last block was a tough one, so the next is \(next) minutes. Finish it and the usual length comes back."
+            return "That last block was hard, so the next one is \(next) minutes. Finish it to get your usual length back."
         }
         if let reentry {
-            return "\(reentry.daysAway) days away, so you'll ease back in. This block is \(next) minutes, and each one you finish adds five until you're back at \(plan.level.focusMinutes)."
+            return "You've been away \(reentry.daysAway) days. This block is \(next) minutes, and each one you finish adds five until you're back at \(plan.level.focusMinutes)."
         }
         if missedYesterday {
-            return "Yesterday was a day off, and that's fine. One block today keeps the habit going."
+            return "Yesterday was a day off. One block today keeps the habit going."
         }
         return "Each block is \(plan.level.focusMinutes) minutes. Starting is the hard part."
     }
@@ -141,7 +141,7 @@ struct FocusPlanView: View {
                         if plan.isFinalLevel {
                             Text("\(plan.level.focusMinutes)-minute blocks are yours.")
                                 .font(.system(size: 20, weight: .semibold))
-                            Text("Keep the rhythm. Consistency now protects what you rebuilt.")
+                            Text("Keep the same time and place.")
                                 .font(.system(size: 12))
                                 .foregroundStyle(NonnaTheme.secondaryInk)
                         } else {
@@ -204,7 +204,7 @@ struct FocusPlanView: View {
                 PlanLadder(plan: plan) { model.stepPlan(toLevel: $0) }
                     .frame(height: 150)
                 if plan.levelIndex > 0 {
-                    Text("Feeling stretched? Click a shorter bar to step down to it.")
+                    Text("Click a shorter bar to step down.")
                         .font(.system(size: 11))
                         .foregroundStyle(NonnaTheme.secondaryInk)
                 }
@@ -233,7 +233,7 @@ struct FocusPlanView: View {
             VStack(spacing: 18) {
                 CollapsibleCard(title: "Break menu", icon: "cup.and.saucer", storageKey: "plan.breaksOpen") {
                     VStack(alignment: .leading, spacing: 12) {
-                        Text("Breaks that let attention recover instead of spending it.")
+                        Text("Breaks that rest your attention.")
                             .font(.system(size: 12))
                             .foregroundStyle(NonnaTheme.secondaryInk)
                         ForEach(Array(plan.breakMenu.enumerated()), id: \.offset) { _, idea in
@@ -266,7 +266,7 @@ struct FocusPlanView: View {
         Button {
             showsSources = true
         } label: {
-            Text("Built on \(FocusScience.all.count) peer-reviewed studies. Read the sources, and what the science doesn't say →")
+            Text("Built on \(FocusScience.all.count) peer-reviewed studies. Read them, and where the evidence stops →")
                 .font(.system(size: 11))
                 .foregroundStyle(NonnaTheme.secondaryInk)
                 .underline()
@@ -354,14 +354,14 @@ private struct MetricsCard: View {
                            "Share of blocks you finished at full length.", [.selfEfficacy, .goalSetting])
                     divider
                     metric("Longest unbroken", minutes(current.unbrokenMinutes), delta(current.unbrokenMinutes, previous.unbrokenMinutes, scale: 1, unit: " min", higherIsBetter: true),
-                           "Median longest stretch per block without a pause. This is the attention span you're rebuilding.", [.vigilanceWork, .interruptionCost])
+                           "Median longest stretch per block without a pause.", [.vigilanceWork, .interruptionCost])
                     divider
                     metric("Pauses per block", decimal(current.pausesPerBlock), delta(current.pausesPerBlock, previous.pausesPerBlock, scale: 1, unit: "", higherIsBetter: false),
                            "Fewer pauses means fewer interruptions and less attention residue.", [.attentionResidue, .interruptionCost])
                     divider
                     metric("Start time spread", current.startSpreadMinutes.map { "±\(Int($0.rounded())) min" } ?? "–",
                            delta(current.startSpreadMinutes, previous.startSpreadMinutes, scale: 1, unit: " min", higherIsBetter: false),
-                           "How close to the same time your first block starts. A steadier start builds the habit.", [.implementationIntentions, .habitFormation])
+                           "How much your first block's start time varies. A steadier start builds the habit.", [.implementationIntentions, .habitFormation])
                     divider
                     metric("Active days", "\(current.activeDays) of 7", delta(Double(current.activeDays), Double(previous.activeDays), scale: 1, unit: "", higherIsBetter: true),
                            "Days with at least one block.", [.habitFormation])
@@ -541,7 +541,7 @@ struct SourcesSheet: View {
                         .foregroundStyle(NonnaTheme.terracotta)
                     Text("Sources")
                         .font(.system(size: 30, weight: .regular, design: .serif))
-                    Text("Every rule, break idea, phase and measurement in your plan traces back to these studies. The numbers next to each piece of advice point here.")
+                    Text("Every part of your plan comes from these studies. The numbers next to each piece of advice point here.")
                         .font(.system(size: 12))
                         .foregroundStyle(NonnaTheme.secondaryInk)
                         .fixedSize(horizontal: false, vertical: true)
@@ -671,7 +671,7 @@ private struct PlanLadder: View {
             }
             Button("Cancel", role: .cancel) { stepDownTo = nil }
         } message: {
-            Text("Your next blocks will be this length. Climb back up the usual way, by finishing blocks that feel steady.")
+            Text("Your next blocks will be this long. Finish steady blocks to climb back.")
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Ladder from \(plan.levels.first?.focusMinutes ?? 0) to \(plan.levels.last?.focusMinutes ?? 0) minutes, currently at \(plan.level.focusMinutes)")
@@ -693,8 +693,8 @@ struct PlanChangeBanner: View {
                     .font(.system(size: 14, weight: .semibold))
                 Text(up
                      ? (change.isFinal ? "\(change.level.focusMinutes)-minute blocks are yours now."
-                        : "You've earned \(change.level.focusMinutes)-minute blocks with \(change.level.breakMinutes)-minute breaks. Your next block uses them.")
-                     : "The last level was a stretch. A few wins at \(change.level.focusMinutes)-minute blocks rebuild confidence, then you'll climb again.")
+                        : "You're up to \(change.level.focusMinutes)-minute blocks with \(change.level.breakMinutes)-minute breaks, starting with your next block.")
+                     : "The last level was a stretch, so you're back to \(change.level.focusMinutes)-minute blocks. A few wins here and you'll climb again.")
                     .font(.system(size: 12))
                     .foregroundStyle(NonnaTheme.secondaryInk)
             }
@@ -726,16 +726,16 @@ private struct PlanIntro: View {
                 Text("Rebuild your focus,\none block at a time.")
                     .font(.system(size: 46, weight: .regular, design: .serif))
                     .tracking(-0.8)
-                Text("Answer eight quick questions. Pomofocus builds a research-based plan that starts where your attention is today, measures how it responds, and climbs, five minutes at a time, to 45-minute blocks with 15-minute breaks, or whatever you're aiming for.")
+                Text("Answer eight questions and Pomofocus builds a plan that starts where your focus is today and climbs five minutes at a time to 45-minute blocks with 15-minute breaks, or whatever you're aiming for.")
                     .font(.system(size: 15))
                     .foregroundStyle(NonnaTheme.secondaryInk)
                     .frame(maxWidth: 640, alignment: .leading)
             }
 
             HStack(alignment: .top, spacing: 16) {
-                principle("1", "Start where you are", "The plan begins just under your real limit. Early wins build the belief that drives the next block.", [.selfEfficacy, .proximalGoals])
-                principle("2", "Earn every minute", "Five-minute steps, unlocked by your own numbers: full blocks, on different days, finished at a good rate.", [.goalSetting, .progressMonitoring])
-                principle("3", "Rest that restores", "Breaks away from screens and feeds, outside or moving, so attention recovers instead of being spent.", [.natureAttention, .shortFormVideo])
+                principle("1", "Start where you are", "The plan begins just under your limit. Early wins make the next block easier to start.", [.selfEfficacy, .proximalGoals])
+                principle("2", "Earn every minute", "Five-minute steps, unlocked by full blocks on different days and a good finish rate.", [.goalSetting, .progressMonitoring])
+                principle("3", "Real breaks", "Breaks away from screens and feeds, outside or moving.", [.natureAttention, .shortFormVideo])
             }
 
             HStack(spacing: 14) {
@@ -886,24 +886,24 @@ private struct PlanQuestionnaire: View {
                 }
             }
         case 1:
-            question("Be honest: how long can you focus right now?", "Before your hand drifts to your phone or another tab. There's no wrong answer; the plan starts here.") {
+            question("How long can you focus right now?", "Before you reach for your phone or another tab. The plan starts here.") {
                 choices(FocusPlanAnswers.Capacity.allCases, selected: [answers.capacity]) { answers.capacity = $0 } label: {
                     switch $0 {
                     case .underTen: ("Under 10 minutes", "It's been rough lately", "tortoise")
                     case .tenToTwenty: ("10 to 20 minutes", "I get going, then drift", "figure.walk")
                     case .twentyToThirty: ("20 to 30 minutes", "Decent, but not deep", "figure.run")
-                    case .overThirty: ("Over 30 minutes", "I just want it steadier", "hare")
+                    case .overThirty: ("Over 30 minutes", "I want it steadier", "hare")
                     }
                 }
             }
         case 2:
-            question("What pulls you away most?", "Choose everything that applies. Your house rules come from these.") {
+            question("What pulls you away most?", "Pick all that apply. Your house rules come from these.") {
                 choices(FocusPlanAnswers.Distraction.allCases, selected: answers.distractions, multiple: true) { item in
                     if let index = answers.distractions.firstIndex(of: item) { answers.distractions.remove(at: index) }
                     else { answers.distractions.append(item) }
                 } label: {
                     switch $0 {
-                    case .phone: ("My phone", "Just checking, constantly", "iphone")
+                    case .phone: ("My phone", "Checking it constantly", "iphone")
                     case .socialMedia: ("Social media", "Feeds and stories", "bubble.left.and.bubble.right")
                     case .video: ("Videos", "YouTube, shorts, streams", "play.rectangle")
                     case .games: ("Games", "One more round", "gamecontroller")
@@ -913,7 +913,7 @@ private struct PlanQuestionnaire: View {
                 }
             }
         case 3:
-            question("What do your breaks usually look like?", "Breaks decide whether the next block feels possible.") {
+            question("What do your breaks usually look like?", "Your break menu comes from this.") {
                 choices(FocusPlanAnswers.BreakHabit.allCases, selected: [answers.breakHabit]) { answers.breakHabit = $0 } label: {
                     switch $0 {
                     case .scroll: ("Scrolling my phone", "Then I lose track of time", "iphone.gen3")
@@ -935,7 +935,7 @@ private struct PlanQuestionnaire: View {
                 }
             }
         case 5:
-            question("How much time can you give this on a normal day?", "Realistic beats ambitious. You can always do more.") {
+            question("How much time can you give this on a normal day?", "Pick what's realistic. You can always do more.") {
                 choices([30, 60, 120, 180], selected: [answers.dailyMinutes]) { answers.dailyMinutes = $0 } label: {
                     switch $0 {
                     case 30: ("30 minutes", "A small, daily start", "1.circle")
@@ -957,7 +957,7 @@ private struct PlanQuestionnaire: View {
                 }
             }
         case 7:
-            question("What will you reward yourself with?", "Something you'll look forward to, saved for after the day's last block. Leave it blank if you'd rather not say.") {
+            question("What will you reward yourself with?", "Something for after the day's last block. You can leave this blank.") {
                 VStack(alignment: .leading, spacing: 14) {
                     TextField("e.g. An episode of my show, a game, a walk with friends", text: $answers.reward)
                         .textFieldStyle(.plain)
@@ -1087,7 +1087,7 @@ private struct PlanPreview: View {
                 fact("Long break", "\(plan.longBreakMinutes) min every \(plan.longBreakEvery)")
                 fact("Target", plan.estimatedDaysToTarget == 0 ? "Already there" : "~\(plan.estimatedDaysToTarget) days away")
             }
-            Text("Your timer switches to these lengths, and the breathing ritual stays on for a calm, identical start every time.")
+            Text("Your timer switches to these lengths, and the breathing ritual stays on.")
                 .font(.system(size: 11))
                 .foregroundStyle(NonnaTheme.secondaryInk)
         }

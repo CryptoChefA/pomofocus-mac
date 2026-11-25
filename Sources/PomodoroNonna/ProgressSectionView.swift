@@ -57,7 +57,7 @@ private struct ProgressOverview: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {
-                SectionHeading(title: "Progress", subtitle: "What's worth knowing, without a grade.")
+                SectionHeading(title: "Progress")
 
                 HStack(alignment: .top, spacing: 16) {
                     weekTile
@@ -120,7 +120,7 @@ private struct ProgressOverview: View {
             } else {
                 Text("\(model.settings.focusMinutes)-minute blocks")
                     .font(.system(size: 26, weight: .semibold))
-                Button("Build a plan that grows with you") { model.progressTab = 2 }
+                Button("Build a focus plan") { model.progressTab = 2 }
                     .buttonStyle(.plain)
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(NonnaTheme.terracotta)
@@ -135,7 +135,7 @@ private struct ProgressOverview: View {
                 Text("How are you feeling today?")
                     .font(.system(size: 14, weight: .semibold))
                 Text(model.todaysCheckIn == nil
-                     ? "A ten-second check-in. It shows up in your weekly recap."
+                     ? "Takes ten seconds. It shows up in your weekly recap."
                      : "Checked in today. Click the flower to change it.")
                     .font(.system(size: 12))
                     .foregroundStyle(NonnaTheme.secondaryInk)

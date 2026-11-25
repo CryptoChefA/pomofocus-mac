@@ -171,7 +171,7 @@ struct MoodCheckInBanner: View {
                 }
                 .buttonStyle(.plain)
                 .foregroundStyle(NonnaTheme.secondaryInk)
-                .help("Not today. You can check in any time with the flower at the top")
+                .help("Not today. Check in later with the flower at the top")
                 .accessibilityLabel("Not today")
             }
             .padding(.horizontal, 14)
@@ -309,7 +309,7 @@ struct MoodCheckInSheet: View {
         VStack(spacing: 20) {
             Text("How are you feeling today?")
                 .font(.system(size: 24, weight: .semibold))
-            Text("Choose how you've felt overall today.")
+            Text("Pick one for the day as a whole.")
                 .font(.system(size: 13))
                 .foregroundStyle(NonnaTheme.secondaryInk)
             MoodBloom(valence: valence)
@@ -388,7 +388,7 @@ struct MoodCheckInSheet: View {
                 }
             }
             .frame(maxWidth: 480)
-            TextField("Anything else? A line in your own words, if you like", text: $note, axis: .vertical)
+            TextField("Anything else? (optional)", text: $note, axis: .vertical)
                 .textFieldStyle(.plain)
                 .font(.system(size: 13))
                 .lineLimit(2...3)
@@ -416,8 +416,8 @@ struct MoodCheckInSheet: View {
                 .frame(width: 170, height: 170)
             Text("Thanks for checking in")
                 .font(.system(size: 22, weight: .semibold))
-            Text(MoodScale.isUnpleasant(level) ? "Go gently with yourself today."
-                 : MoodScale.isPleasant(level) ? "Enjoy it. Days like this are worth noticing." : "Noticing is the first step.")
+            Text(MoodScale.isUnpleasant(level) ? "Take it easy today."
+                 : MoodScale.isPleasant(level) ? "Enjoy the rest of your day." : "See you tomorrow.")
                 .font(.system(size: 13))
                 .foregroundStyle(NonnaTheme.secondaryInk)
         }
@@ -536,7 +536,7 @@ struct MoodCard: View {
                 HStack(spacing: 7) {
                     Text("Mood")
                         .font(.system(size: 18, weight: .semibold))
-                    InfoButton(title: "Mood", text: "Your daily check-ins. The line shows the last 30 days, higher is more pleasant; hover a day to see what you picked. The calendar shows the last five weeks. Check-ins stay on this Mac, like everything else in Pomofocus.")
+                    InfoButton(title: "Mood", text: "The line shows the last 30 days; higher is more pleasant. Hover a day to see what you picked. The calendar shows the last five weeks. Check-ins stay on this Mac.")
                     Spacer()
                     Button(model.todaysCheckIn == nil ? "Check in" : "Update today") { model.showsMoodCheckIn = true }
                         .buttonStyle(NonnaButtonStyle(prominent: false))
@@ -547,7 +547,7 @@ struct MoodCard: View {
                         MoodBloom(valence: 0.62).frame(width: 70, height: 70)
                         Text("No check-ins yet")
                             .font(.system(size: 17, weight: .semibold))
-                        Text("Check in once a day to see how your mood moves over the weeks, and what shapes it.")
+                        Text("Check in daily to see how your mood changes and what affects it.")
                             .font(.system(size: 13))
                             .foregroundStyle(NonnaTheme.secondaryInk)
                             .multilineTextAlignment(.center)
@@ -579,7 +579,7 @@ struct MoodCard: View {
                         HStack(alignment: .top, spacing: 10) {
                             Image(systemName: "heart")
                                 .foregroundStyle(MoodColor.color(2))
-                            Text("It's been a heavy couple of weeks. Talking with someone you trust, or your school's counselling service, can really help. If it ever feels like too much, reach out to a crisis line where you live.")
+                            Text("It's been a hard couple of weeks. Talking to someone you trust or your school's counselling service can help. If it feels like too much, contact a crisis line where you live.")
                                 .font(.system(size: 12))
                                 .fixedSize(horizontal: false, vertical: true)
                         }
@@ -681,7 +681,7 @@ struct MoodCard: View {
                 .font(.system(size: 11, weight: .semibold))
                 .foregroundStyle(NonnaTheme.secondaryInk)
             if summary.topFeelings.isEmpty {
-                Text("Name a feeling when you check in and it'll show here.")
+                Text("Feelings you pick when you check in show here.")
                     .font(.system(size: 12))
                     .foregroundStyle(NonnaTheme.secondaryInk)
             }
@@ -707,7 +707,7 @@ struct MoodCard: View {
                 .font(.system(size: 11, weight: .semibold))
                 .foregroundStyle(NonnaTheme.secondaryInk)
             if summary.topInfluences.isEmpty {
-                Text("Pick what's having an impact when you check in and it'll show here.")
+                Text("What you pick as having an impact shows here.")
                     .font(.system(size: 12))
                     .foregroundStyle(NonnaTheme.secondaryInk)
             }
@@ -730,7 +730,7 @@ struct MoodCard: View {
 
     private func focusLine(good: Int, hard: Int) -> String {
         var line = "On days you felt good, you focused \(good.focusDurationString) on average. On harder days, \(hard.focusDurationString)."
-        if hard < good { line += " Hard days happen; shorter blocks and a kinder goal can help on those." }
+        if hard < good { line += " On hard days, try shorter blocks and a smaller goal." }
         return line
     }
 }
