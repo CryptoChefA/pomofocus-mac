@@ -31,6 +31,8 @@ After installing, Pomofocus updates itself.
 ## What works today
 
 - Native SwiftUI macOS app and menu-bar timer with a live progress ring and countdown
+- Four places: Focus, Tasks, Progress and Settings, in a sidebar that tucks away until the pointer reaches the window's left edge
+- Progress: an Overview (this week, your plan, peak hours, mood, week and year recaps) with See more for every detail, plus Mood, History and Your plan tabs
 - Native small, medium, and large desktop/sidebar widgets with a live timer, one restrained gold progress band, and buttons to start, pause, resume, skip a break or end a session without opening the app
 - Menu bar looks: the timer chip, three bars that empty as a block runs, your own icon, or Minimal (just the time left or a percentage), in the menu bar's colour or any colour
 - A silent glow around the screen when a block or break ends, shown over full-screen apps too
@@ -39,7 +41,7 @@ After installing, Pomofocus updates itself.
 - `pomofocus://start`, `pause`, `resume`, `toggle`, `next`, `end` and `skip-break` links for Shortcuts and scripts
 - Light on the Mac: with a timer running, about 4% CPU with the window in view and under 1% when it's hidden; the clock's roll runs in Core Animation, and anything you can't see stops redrawing
 - Obsidian Atelier interface with graphite surfaces, champagne accents, and precision typography
-- Themes: Obsidian, Ivory (light), Midnight, Forest, Ember, Sakura, Layla (Tiffany baby pink), Écrin (jewel-box red and gold), Piano, Bespoke, Black Ice and London (Westminster across the Thames on a rainy night, drawn on the graphics chip, with optional rain and storm), Match system (follows macOS light/dark), or a custom theme built from a base, a background, a focus colour and a break colour; readable surfaces are derived automatically. Chosen on first launch and changeable in Settings
+- Themes: Obsidian, Ivory (light), Midnight, Forest, Ember, Sakura, Layla (Tiffany baby pink), Écrin (jewel-box red and gold), Piano, Bespoke, Black Ice and London (Westminster across the Thames on a rainy night, drawn on the graphics chip, with optional rain and storm), Match system (follows macOS light/dark), or a custom theme built from a base, a background, a focus colour and a break colour; readable surfaces are derived automatically. Four are offered up front (Match system, Black Ice, London, Layla), in a one-time tip after your first block and at the top of Settings; More themes shows the rest
 - Split focus workspace with an analog timer dial and a dark daily timeline
 - Cinema mode (⇧⌘F): a full-screen, screensaver-like scene for wide and ultrawide displays, with rolling digits, an unrolled minute tape, and a slowly drifting glow, plus your next calendar event under the clock ("Up next: … in 25 min, 3:00 PM"); keeps the display awake, Space pauses, → advances, Esc leaves
 - Seven-day navigator with focus, break, and live-session blocks
@@ -63,22 +65,22 @@ After installing, Pomofocus updates itself.
 - Total focus time, distinct usage days, current streak, and longest streak
 - Fourteen-day activity chart and twelve-week consistency heatmap
 - Focus score: one number out of 100 for each day (time against your goal, finishing what you start, few pauses, breaks back on time, your longest unbroken stretch), with a 7-day comparison; click it to see exactly why, part by part, with the one change that would lift it most
-- Away guard: if a timer runs over and you leave the Mac (no keyboard or mouse for 10 minutes, sleep, lock, or the app closed), it pauses as of when you left, so a forgotten timer doesn't record hours of overtime; "I was here" counts the time anyway; old runaway timers can be trimmed from the dashboard
+- Away guard: if a timer runs over and you leave the Mac (no keyboard or mouse for 10 minutes, sleep, lock, or the app closed), it pauses as of when you left, so a forgotten timer doesn't record hours of overtime; "I was here" counts the time anyway; old runaway timers can be trimmed from Progress
 - Clickable dashboard metrics with dedicated 7, 30, and 90-day intelligence views, rolling trends, outcome distributions, task allocation, time-of-day patterns, and transparent metric definitions
 - Insights with a 7, 30, 90-day or all-time range: week-over-week trend, six-month totals, daily goal hit rate, focus by hour and weekday, rating by task and start hour, completion rate, focus-to-break ratio, skipped breaks, and overtime trend
 - Read-only calendar overlay on the day timeline through EventKit, so any account added to macOS (Google included) appears behind your sessions, with a per-calendar picker and Start focus from an event
 - Intention for each focus block
-- Your peak hours on the Dashboard: the best two-hour stretch by blocks finished and how they felt, and the toughest stretch
+- Your peak hours in Progress: the best two-hour stretch by blocks finished and how they felt, and the toughest stretch
 - Study together: friends in the same room join one group over Bluetooth and peer-to-peer Wi-Fi (no internet, account or server, encrypted), and everyone's timer follows the host's, breaks included; only the timer and a first name are shared
-- Help when focus slips: after a rough block, one matched suggestion (walk, brain dump, guided reset, or rest); mid-block, Drifting? offers a one-minute reset, parking thoughts as tasks, or finishing small
-- Hours by week on the Dashboard: the last 12 weeks, your weekly average, and this week against the same point last week
+- One Reset for when focus slips: from Drifting? mid-block, the break after a rough block, or the Focus screen, it offers the one thing that fits how it's going (walk, write it out as tasks, a guided breath, settle, ease back in, or rest), with the others a click away
+- Hours by week in Progress: the last 12 weeks, your weekly average, and this week against the same point last week
 - One-click session rating (Scattered, Restless, Steady, Focused, Flow, or ⌘1 to ⌘5) at the end of a whole session, or after every block if you prefer; it waits for any other sheet to close, sits beside the session in History and feeds Insights
 - Focus rebuild plan: eight questions build a research-based plan in four phases (Reset, Build, Extend, Sustain). Blocks climb five minutes per level once you finish 4 full blocks on 2+ days with a 70% completion rate, and step back a level if under 40% are finished. Weekly metrics (completion rate, longest unbroken stretch, pauses per block, start-time spread, active days), house rules from your distractions, a restorative break menu and an end-of-day reward; every recommendation cites peer-reviewed research, with a Sources page and an honest note on what the science doesn't say
 - Collapsible day timeline (⌥⌘T)
 - Session celebration: when you press End session, screen-wide confetti and a cinematic breakdown of the whole sitting (every pomodoro, total focus, breaks, pauses, overtime, today vs goal, streak); single pomodoros pass quietly; switchable in Settings
-- Daily check-in: "How are you feeling today?" once a day (a continuous slider from very unpleasant to very pleasant, like Apple's State of Mind, with a shape that morphs from spiky to a soft bloom; then optional feeling words from a 45-word vocabulary, what's affecting you and a note); the Dashboard's Mood card shows the last 30 days with hover details, a five-week mood calendar, the feelings named most, what's been affecting you, and focus on good days versus hard ones. Turn the prompt off in Settings → Experience
+- Daily check-in: "How are you feeling today?" once a day (a continuous slider from very unpleasant to very pleasant, like Apple's State of Mind, with a shape that morphs from spiky to a soft bloom; then optional feeling words from a 45-word vocabulary, what's affecting you and a note); Progress → Mood shows the last 30 days with hover details, a five-week mood calendar, the feelings named most, what's been affecting you, and focus on good days versus hard ones. Turn the prompt off in Settings → Experience
 - Your week: a calm look back each Monday (total focus, day bars, best day and time, top list, mood, one suggestion), and Your year in focus: story cards for the year so far, or the whole year in December (hours, biggest month, top lists, rhythm, longest streak, moods) ending in a shareable image that only shows numbers
-- Focus reset: pick one of three short guided sessions (one minute; settle a busy mind; coming back after days away) and an ambience (rain, binaural beats, meditation music, or just the voice), then the window goes quiet in the theme's colour with a breathing flower that follows the voice's breath cues; optional captions in Settings
+- Guided resets: three short sessions (one minute; settle a busy mind; coming back after days away) over rain, binaural beats, meditation music, or just the voice (chosen in Settings); the window goes quiet in the theme's colour with a breathing flower that follows the voice's breath cues; optional captions in Settings
 - Three-cycle guided breathing ritual with animated inhale and exhale cues
 - Local notifications and a locally generated bell ding for every timer cue
 - Local focus ambience: soft ticking, layered natural rain, ocean waves, and brown noise
@@ -176,10 +178,12 @@ swiftc Sources/PomodoroNonna/Models.swift Sources/PomodoroNonna/MoodCheckIn.swif
 - `PomofocusIntents.swift`: the app's Spotlight, Shortcuts and Siri actions and its App Shortcuts
 - `ControlCenterControls.swift`: the Control Center buttons, built on the same intents
 - `LayerRollingClock.swift`: the big rolling clock, animated by Core Animation so the roll costs the app nothing per frame
-- `WeeklyTotals.swift`: focus per calendar week for the Dashboard's Hours by week chart
+- `WeeklyTotals.swift`: focus per calendar week for the Hours by week chart in Progress
 - `ScreenGlow.swift`: the silent end-of-block glow around every screen
 - `PeakHours.swift`: when you focus best, hour by hour
-- `FocusCoach.swift`: break suggestions after a rough block, the brain dump and the Drifting? menu
+- `FocusCoach.swift`: the brain dump
+- `ResetSheet.swift`: the one Reset sheet and the break nudge after a rough block
+- `ProgressSectionView.swift`: Progress, its Overview and the Mood, History and Your plan tabs
 - `GroupSync.swift`: what a study group shares, and how a friend's timer follows the host (pure, checked by Tests/GroupCheck)
 - `StudyGroup.swift`: finds, hosts and joins study groups nearby with Multipeer Connectivity
 - `StudyTogetherView.swift`: the Study together sheet and the group banner on the Focus screen
@@ -192,19 +196,19 @@ swiftc Sources/PomodoroNonna/Models.swift Sources/PomodoroNonna/MoodCheckIn.swif
 - `CelebrationMode.swift`: end-of-sitting confetti and stats breakdown
 - `FocusPlan.swift`: the focus plan engine (ladder, evidence-based levelling, phases, metrics, rules, break menu)
 - `FocusScience.swift`: the citations behind the plan and the limits of the evidence
-- `FocusPlanView.swift`: the Plan section and its questionnaire
+- `FocusPlanView.swift`: Progress → Your plan and its questionnaire
 - `ThemePalette.swift`: theme palettes, presets and custom-theme colour derivation
-- `ThemePickerView.swift`: the theme picker, custom theme editor and first-launch welcome
-- `WeekSummary.swift` and `WeekViews.swift`: the weekly look back (totals, best day and time, top list, mood, one suggestion) and its banner, sheet and Dashboard row
+- `ThemePickerView.swift`: the theme picker, custom theme editor, the themes tip and the one-page first-launch setup
+- `WeekSummary.swift` and `WeekViews.swift`: the weekly look back (totals, best day and time, top list, mood, one suggestion) and its banner, sheet and Progress row
 - `FocusQuiet.swift`: silencing notifications during focus, through two Do Not Disturb shortcuts
 - `MoodCheckIn.swift`: daily check-in data, the feeling and influence lists, and the Mood card's summary
-- `MoodViews.swift`: the check-in banner, the three-step check-in sheet and the Dashboard's Mood card
+- `MoodViews.swift`: the check-in banner, the three-step check-in sheet and the Mood card
 - `LondonScene.swift`: the London theme's Metal scene; its skyline layers are drawn by `Scripts/london/layers.html` and rendered to `Resources/London` with `Scripts/london/render.sh`
-- `DashboardView.swift`: local charts, lifetime task totals, streaks, and usage days
+- `DashboardView.swift`: the details under Progress → See more: local charts, lifetime task totals, streaks, and usage days
 - `FocusScore.swift`: the daily focus score and runaway-timer trimming (pure, tested); `FocusScoreViews.swift` draws them
 - `HistoryView.swift`: searchable session ledger and CSV export
 - `TasksView.swift`: Tasks (board, smart views, New task form, Paste a list) and the timer's task link
-- `FocusReset.swift`: the Focus reset section, its recordings, player and breath cues
+- `FocusReset.swift`: the guided resets, their recordings, player and breath cues
 - `SimpleTasks.swift`: the Keep tasks simple Today view (Up next, planning nudge)
 - `WorkImport.swift`: picks past work to offer as tasks after updating (pure, tested); `WorkImportSheet.swift` shows the offer
 - `SettingsView.swift`: timer, rhythm, sound, and privacy controls
@@ -253,7 +257,7 @@ The focus sounds in `Resources/Sounds` come from Wikimedia Commons, trimmed into
 - `brown.m4a` and `white.m4a` are generated noise, made for Pomofocus.
 - `ambience-binaural.m4a`: a 6 Hz binaural beat (200 Hz left, 206 Hz right), generated for Pomofocus.
 - Meditation music in the released app: "Motion" by Liborio Conti ([no-copyright-music.com](https://no-copyright-music.com)), looped. The composer asks that his music isn't given away as files, so it isn't in this repo; `Scripts/build-app.sh` adds it from `Resources/Licensed/` when present, and builds without it simply don't offer that option.
-- `reset-one-minute.m4a`, `reset-settle.m4a` and `reset-coming-back.m4a` (Focus reset): written for Pomofocus, voice generated with [elevenlabs.io](https://elevenlabs.io) on a free plan, which allows non-commercial use with this credit. These recordings are not covered by the MIT license; don't reuse them commercially.
+- `reset-one-minute.m4a`, `reset-settle.m4a` and `reset-coming-back.m4a` (guided resets): written for Pomofocus, voice generated with [elevenlabs.io](https://elevenlabs.io) on a free plan, which allows non-commercial use with this credit. These recordings are not covered by the MIT license; don't reuse them commercially.
 
 ## License
 

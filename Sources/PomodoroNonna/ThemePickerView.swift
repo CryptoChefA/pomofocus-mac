@@ -3,7 +3,7 @@ import SwiftUI
 
 // MARK: - Picker
 
-/// The grid of looks, shared by Settings and the welcome screen. Picking one restyles
+/// The grid of looks in Settings: four up front, the rest under More themes. Picking one restyles
 /// the whole app immediately, with a soft crossfade.
 struct ThemePicker: View {
     @Environment(AppModel.self) private var model
@@ -15,12 +15,36 @@ struct ThemePicker: View {
     private var selected: ThemeChoice? { ThemeChoice(rawValue: model.settings.themeID) }
     @State private var code = ""
     @State private var codeMessage: (ok: Bool, text: String)?
+    @State private var showsMore = false
+
+    /// Four looks up front (and yours, if it's another); the rest under More themes.
+    private var featured: [ThemeChoice] {
+        FeaturedThemes.choices + (selected.map { FeaturedThemes.choices.contains($0) ? [] : [$0] } ?? [])
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 14), count: compact ? 3 : columns), spacing: 14) {
+                ForEach(featured) { choice in
+                    ThemeSwatchButton(choice: choice, custom: model.settings.customTheme, isSelected: selected == choice) {
+                        ThemeCrossfade.perform(reduceMotion: reduceMotion) {
+                            model.updateSettings { $0.themeID = choice.rawValue }
+                        }
+                    }
+                }
+            }
+            Button {
+                withAnimation(reduceMotion ? nil : NonnaMotion.selection) { showsMore.toggle() }
+            } label: {
+                Label(showsMore ? "Fewer themes" : "More themes", systemImage: showsMore ? "chevron.up" : "chevron.down")
+                    .font(.system(size: 12, weight: .medium))
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(NonnaTheme.terracotta)
+            if showsMore {
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 14), count: compact ? 3 : columns), spacing: 14) {
                 // Limited editions show up in their season, or while they're in use.
-                ForEach(ThemeChoice.allCases.filter { $0.isAvailable() || $0 == selected }) { choice in
+                ForEach(ThemeChoice.allCases.filter { ($0.isAvailable() || $0 == selected) && !featured.contains($0) }) { choice in
                     ThemeSwatchButton(choice: choice, custom: model.settings.customTheme, isSelected: selected == choice) {
                         ThemeCrossfade.perform(reduceMotion: reduceMotion) {
                             model.updateSettings { $0.themeID = choice.rawValue }
@@ -35,6 +59,7 @@ struct ThemePicker: View {
                         }
                     }
                 }
+            }
             }
             if selected == .custom {
                 CustomThemeEditor()
@@ -138,7 +163,7 @@ private struct SavedThemeSwatch: View {
     }
 }
 
-private struct ThemeSwatchButton: View {
+struct ThemeSwatchButton: View {
     let choice: ThemeChoice
     let custom: CustomThemeSpec
     let isSelected: Bool
@@ -468,127 +493,91 @@ private struct LondonWeatherSettings: View {
     }
 }
 
-// MARK: - Welcome
+// MARK: - Themes tip
 
-/// Shown once on a fresh install, and again from Settings: name, how you like to work, a daily goal, a look,
-/// a sound and a few extras, one calm question per page like a Mac setup assistant. Skip it any time.
-/// Few words, centred, in the theme's own colours, type and buttons.
-struct WelcomeView: View {
+/// The four looks offered first: in the tip on Focus and at the top of the picker.
+enum FeaturedThemes {
+    static let choices: [ThemeChoice] = [.system, .blackIce, .london, .layla]
+}
+
+/// A one-time tip on the Focus screen once you've finished a block.
+struct ThemeTip: View {
     @Environment(AppModel.self) private var model
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @AppStorage("displayName") private var displayName = ""
-    @AppStorage(MoodPrompt.enabledKey) private var dailyCheckIn = true
-    @AppStorage(QuietClock.enabledKey) private var showsClock = true
-    @State private var page = 0
-    @State private var appeared = false
-    @State private var style: WorkStyle = .classic
-    @State private var preview = AmbientSoundPlayer()
-    @State private var previewStop: Task<Void, Never>?
-    @FocusState private var nameFocused: Bool
-    let onBuildPlan: () -> Void
-
-    private static let pageCount = 7
-    private var name: String { displayName.trimmingCharacters(in: .whitespacesAndNewlines) }
-
-    /// The three ways to start, set on the second page.
-    enum WorkStyle: CaseIterable {
-        case classic, longer, buildUp
-
-        var title: String {
-            switch self {
-            case .classic: "Classic"
-            case .longer: "Longer blocks"
-            case .buildUp: "Build up slowly"
-            }
-        }
-
-        var detail: String {
-            switch self {
-            case .classic: "25 minutes of focus, 5 minutes off. The original Pomodoro."
-            case .longer: "50 minutes of focus, 10 off. For when you get into a rhythm."
-            case .buildUp: "Start where you are today and add five minutes as you go."
-            }
-        }
-
-        var icon: String {
-            switch self {
-            case .classic: "timer"
-            case .longer: "hourglass"
-            case .buildUp: "chart.line.uptrend.xyaxis"
-            }
-        }
-    }
+    @AppStorage("themeTipDone") private var done = false
 
     var body: some View {
-        VStack(spacing: 0) {
-            ZStack {
-                switch page {
-                case 0: namePage.transition(pageTransition)
-                case 1: stylePage.transition(pageTransition)
-                case 2: goalPage.transition(pageTransition)
-                case 3: themePage.transition(pageTransition)
-                case 4: soundPage.transition(pageTransition)
-                case 5: extrasPage.transition(pageTransition)
-                default: donePage.transition(pageTransition)
-                }
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-
-            VStack(spacing: 16) {
-                if page < Self.pageCount - 1 {
-                    Button("Continue") { go(to: page + 1) }
-                        .buttonStyle(OnboardingButtonStyle(color: NonnaTheme.terracotta))
-                        .keyboardShortcut(.defaultAction)
-                } else if style == .buildUp {
-                    Button("Build my focus plan") { finish(buildPlan: true) }
-                        .buttonStyle(OnboardingButtonStyle(color: NonnaTheme.terracotta))
-                        .keyboardShortcut(.defaultAction)
-                    Button("Not now") { finish(buildPlan: false) }
-                        .buttonStyle(.plain)
-                        .foregroundStyle(NonnaTheme.secondaryInk)
-                } else {
-                    Button("Start focusing") { finish(buildPlan: false) }
-                        .buttonStyle(OnboardingButtonStyle(color: NonnaTheme.terracotta))
-                        .keyboardShortcut(.defaultAction)
-                    Button("Or build a focus plan first") { finish(buildPlan: true) }
-                        .buttonStyle(.plain)
-                        .foregroundStyle(NonnaTheme.secondaryInk)
-                }
-                HStack(spacing: 7) {
-                    ForEach(0..<Self.pageCount, id: \.self) { index in
-                        Circle()
-                            .fill(index == page ? NonnaTheme.terracotta : NonnaTheme.strongLine)
-                            .frame(width: index == page ? 18 : 6, height: 6)
+        if !done, model.status == .idle, model.sessions.contains(where: { $0.outcome == .completed }) {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Make it yours")
+                            .font(.system(size: 14, weight: .semibold))
+                        Text("Pick a look. More in Settings.")
+                            .font(.system(size: 12))
+                            .foregroundStyle(NonnaTheme.secondaryInk)
                     }
-                }
-                .padding(.top, 6)
-                .accessibilityElement()
-                .accessibilityLabel("Step \(page + 1) of \(Self.pageCount)")
-            }
-            .overlay(alignment: .leading) {
-                if page > 0 {
-                    Button { go(to: page - 1) } label: {
-                        Image(systemName: "chevron.left").font(.system(size: 13, weight: .semibold))
+                    Spacer()
+                    Button { done = true } label: {
+                        Image(systemName: "xmark").font(.system(size: 10, weight: .semibold))
                     }
                     .buttonStyle(.plain)
                     .foregroundStyle(NonnaTheme.secondaryInk)
-                    .help("Back")
-                    .accessibilityLabel("Back")
+                    .accessibilityLabel("Dismiss")
+                }
+                HStack(spacing: 12) {
+                    ForEach(FeaturedThemes.choices) { choice in
+                        ThemeSwatchButton(choice: choice, custom: model.settings.customTheme,
+                                          isSelected: model.settings.themeID == choice.rawValue) {
+                            ThemeCrossfade.perform(reduceMotion: reduceMotion) {
+                                model.updateSettings { $0.themeID = choice.rawValue }
+                            }
+                        }
+                    }
+                }
+                .frame(maxWidth: 520)
+            }
+            .padding(16)
+            .background(NonnaTheme.raisedPaper, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .overlay { RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(NonnaTheme.terracotta.opacity(0.35), lineWidth: 0.8) }
+        }
+    }
+}
+
+// MARK: - Setup
+
+/// Shown once on a fresh install, and again from Settings: one question, how you like to
+/// work, then straight into a first block. Everything else waits for the tips and Settings.
+struct QuickSetupView: View {
+    @Environment(AppModel.self) private var model
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var style: WorkStyle = .classic
+    /// Called once setup closes; true when they chose to build a plan.
+    let onDone: (_ buildPlan: Bool) -> Void
+
+    var body: some View {
+        VStack(spacing: 30) {
+            Spacer(minLength: 0)
+            Text("How do you like to work?")
+                .font(.system(size: 40, weight: .regular, design: .serif))
+                .tracking(-0.6)
+            Text("You can change this any time. Everything else can wait.")
+                .font(.system(size: 15))
+                .foregroundStyle(NonnaTheme.secondaryInk)
+            HStack(spacing: 14) {
+                ForEach(WorkStyle.allCases, id: \.self) { option in
+                    OnboardingChoice(icon: option.icon, title: option.title, detail: option.detail, selected: style == option) {
+                        withAnimation(reduceMotion ? nil : NonnaMotion.selection) { style = option }
+                    }
                 }
             }
+            Spacer(minLength: 0)
+            Button(style == .buildUp ? "Build my plan" : "Start my first block") { finish() }
+                .buttonStyle(OnboardingButtonStyle(color: NonnaTheme.terracotta))
+                .keyboardShortcut(.defaultAction)
         }
         .padding(48)
-        .frame(width: 760, height: 620)
-        .overlay(alignment: .topTrailing) {
-            if page < Self.pageCount - 1 {
-                Button("Skip setup") { finish(buildPlan: false) }
-                    .buttonStyle(.plain)
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(NonnaTheme.secondaryInk)
-                    .padding(22)
-                    .help("Use the usual settings. You can change everything later in Settings")
-            }
-        }
+        .frame(width: 760, height: 520)
         .background {
             ZStack {
                 NonnaTheme.cream
@@ -599,92 +588,11 @@ struct WelcomeView: View {
         .tint(NonnaTheme.terracotta)
         .preferredColorScheme(NonnaTheme.colorScheme)
         .interactiveDismissDisabled()
-        .onAppear {
-            withAnimation(reduceMotion ? nil : .easeOut(duration: 0.8)) { appeared = true }
-            nameFocused = true
-            // Run again from Settings, the choice shown is the one already in use.
-            if model.data.focusPlan != nil { style = .buildUp }
-            else if model.settings.focusMinutes >= 45 { style = .longer }
-        }
-        .onDisappear(perform: stopPreview)
     }
 
-    // Only opacity and a short slide: cheap to draw, calm to watch.
-    private var pageTransition: AnyTransition {
-        reduceMotion ? .opacity : .asymmetric(insertion: .opacity.combined(with: .offset(x: 24)), removal: .opacity.combined(with: .offset(x: -24)))
-    }
-
-    private func go(to target: Int) {
-        if page == 4 { stopPreview() }
-        withAnimation(reduceMotion ? nil : .spring(duration: 0.5, bounce: 0.08)) { page = target }
-    }
-
-    private func finish(buildPlan: Bool) {
-        stopPreview()
-        model.completeOnboarding()
-        if buildPlan { onBuildPlan() }
-    }
-
-    private func title(_ text: String) -> some View {
-        Text(text)
-            .font(.system(size: 40, weight: .regular, design: .serif))
-            .tracking(-0.6)
-            .multilineTextAlignment(.center)
-            .fixedSize(horizontal: false, vertical: true)
-            .opacity(appeared ? 1 : 0)
-            .offset(y: appeared || reduceMotion ? 0 : 10)
-    }
-
-    private func subtitle(_ text: String) -> some View {
-        Text(text)
-            .font(.system(size: 15))
-            .foregroundStyle(NonnaTheme.secondaryInk)
-            .multilineTextAlignment(.center)
-    }
-
-    // MARK: Pages
-
-    private var namePage: some View {
-        VStack(spacing: 40) {
-            title(name.isEmpty ? "What should we call you?" : "Hello, \(name).")
-                .contentTransition(.opacity)
-                .animation(reduceMotion ? nil : .easeOut(duration: 0.3), value: name.isEmpty)
-            TextField("", text: $displayName, prompt: Text("First name"))
-                .textFieldStyle(.plain)
-                .font(.system(size: 24))
-                .multilineTextAlignment(.center)
-                .focused($nameFocused)
-                .onSubmit { go(to: 1) }
-                .padding(.vertical, 12)
-                .frame(width: 320)
-                .background(NonnaTheme.paper, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .stroke(nameFocused ? NonnaTheme.terracotta.opacity(0.6) : NonnaTheme.line, lineWidth: nameFocused ? 1.2 : 0.8)
-                }
-                .shadow(color: nameFocused ? NonnaTheme.terracotta.opacity(0.16) : .clear, radius: 10)
-                .opacity(appeared ? 1 : 0)
-                .animation(reduceMotion ? nil : .easeOut(duration: 0.8).delay(0.2), value: appeared)
-        }
-    }
-
-    private var stylePage: some View {
-        VStack(spacing: 30) {
-            title("How do you like to work?")
-            HStack(spacing: 14) {
-                ForEach(WorkStyle.allCases, id: \.self) { option in
-                    OnboardingChoice(icon: option.icon, title: option.title, detail: option.detail, selected: style == option) {
-                        withAnimation(reduceMotion ? nil : NonnaMotion.selection) { choose(option) }
-                    }
-                }
-            }
-        }
-    }
-
-    private func choose(_ option: WorkStyle) {
-        style = option
+    private func finish() {
         model.updateSettings { settings in
-            switch option {
+            switch style {
             case .classic, .buildUp:
                 settings.focusMinutes = 25
                 settings.shortBreakMinutes = 5
@@ -695,134 +603,48 @@ struct WelcomeView: View {
                 settings.longBreakMinutes = 30
             }
         }
-    }
-
-    private var goalPage: some View {
-        let goal = model.settings.dailyGoalMinutes
-        let options = [30, 60, 120, 180, 240]
-        return VStack(spacing: 40) {
-            title("How much focus makes a good day?")
-            HStack(spacing: 10) {
-                ForEach(options, id: \.self) { minutes in
-                    let selected = goal == minutes
-                    Button {
-                        withAnimation(reduceMotion ? nil : NonnaMotion.selection) {
-                            model.updateSettings { $0.dailyGoalMinutes = minutes }
-                        }
-                    } label: {
-                        Text(minutes.minutesString)
-                            .font(.system(size: 20, weight: .semibold))
-                            .frame(width: 92, height: 72)
-                            .foregroundStyle(selected ? NonnaTheme.terracotta : NonnaTheme.ink)
-                            .background(selected ? NonnaTheme.raisedPaper : NonnaTheme.paper, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-                            .overlay {
-                                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                    .stroke(selected ? NonnaTheme.terracotta : NonnaTheme.line, lineWidth: selected ? 1.4 : 0.8)
-                            }
-                            .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                    }
-                    .buttonStyle(.plain)
-                }
+        model.completeOnboarding()
+        onDone(style == .buildUp)
+        if style != .buildUp {
+            Task { @MainActor in
+                try? await Task.sleep(for: .milliseconds(400))
+                model.startFocus()
             }
-            subtitle("A gentle target, not a test. Missing it doesn't break anything.")
+        }
+    }
+}
+
+/// The three ways to start, asked on the setup page.
+enum WorkStyle: CaseIterable {
+    case classic, longer, buildUp
+
+    var title: String {
+        switch self {
+        case .classic: "Classic"
+        case .longer: "Longer blocks"
+        case .buildUp: "Build up slowly"
         }
     }
 
-    private var themePage: some View {
-        VStack(spacing: 32) {
-            title("Choose a look.")
-            ThemePicker()
-                .opacity(appeared ? 1 : 0)
+    var detail: String {
+        switch self {
+        case .classic: "25 minutes of focus, 5 minutes off. The original Pomodoro."
+        case .longer: "50 minutes of focus, 10 off. For when you get into a rhythm."
+        case .buildUp: "Start where you are today and add five minutes as you go."
         }
     }
 
-    private var soundPage: some View {
-        let current = model.settings.ambientSound
-        let options: [AmbientSound] = [.off, .rain, .ocean, .ticking, .brownNoise]
-        return VStack(spacing: 30) {
-            title("What helps you focus?")
-            HStack(spacing: 10) {
-                ForEach(options) { sound in
-                    let selected = current == sound
-                    Button {
-                        withAnimation(reduceMotion ? nil : NonnaMotion.selection) {
-                            model.updateSettings { $0.ambientSound = sound }
-                        }
-                        play(sound)
-                    } label: {
-                        VStack(spacing: 10) {
-                            Image(systemName: sound.icon)
-                                .font(.system(size: 20))
-                                .foregroundStyle(selected ? NonnaTheme.terracotta : NonnaTheme.secondaryInk)
-                            Text(sound == .off ? "Quiet" : sound.title)
-                                .font(.system(size: 12, weight: .semibold))
-                                .multilineTextAlignment(.center)
-                        }
-                        .frame(width: 112, height: 96)
-                        .background(selected ? NonnaTheme.raisedPaper : NonnaTheme.paper, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-                        .overlay {
-                            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                .stroke(selected ? NonnaTheme.terracotta : NonnaTheme.line, lineWidth: selected ? 1.4 : 0.8)
-                        }
-                        .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityAddTraits(selected ? .isSelected : [])
-                }
-            }
-            subtitle("Tap one to hear it. It plays under your focus blocks.")
-            OnboardingToggle(title: "Timer cues", detail: "Gentle sounds when a block starts, pauses or ends",
-                             isOn: Binding(get: { model.settings.playSounds }, set: { value in model.updateSettings { $0.playSounds = value } }))
-                .frame(width: 440)
+    var icon: String {
+        switch self {
+        case .classic: "timer"
+        case .longer: "hourglass"
+        case .buildUp: "chart.line.uptrend.xyaxis"
         }
-    }
-
-    private var extrasPage: some View {
-        VStack(spacing: 26) {
-            title("A few extras.")
-            VStack(spacing: 12) {
-                OnboardingToggle(title: "Daily check-in", detail: "Once a day, a quick \"How are you feeling?\"", isOn: $dailyCheckIn)
-                OnboardingToggle(title: "Show the time", detail: "A small clock at the top of the timer", isOn: $showsClock)
-                OnboardingToggle(title: "Keep tasks simple", detail: "Tasks shows what's next, not everything at once",
-                                 isOn: Binding(get: { model.settings.simpleTasks }, set: { value in model.updateSettings { $0.simpleTasks = value } }))
-                OnboardingToggle(title: "Timer in the menu bar", detail: "The countdown stays in view when the window is closed",
-                                 isOn: Binding(get: { model.settings.showInMenuBar }, set: { value in model.updateSettings { $0.showInMenuBar = value } }))
-            }
-            .frame(width: 460)
-        }
-    }
-
-    private var donePage: some View {
-        VStack(spacing: 18) {
-            title(name.isEmpty ? "You're all set." : "You're all set, \(name).")
-            subtitle(style == .buildUp
-                     ? "Next, eight quick questions to set up a plan that starts where you are."
-                     : "You can change any of this later in Settings.")
-        }
-    }
-
-    // MARK: Sound preview
-
-    /// A few seconds of the sound, through a player of its own so the timer's is untouched.
-    private func play(_ sound: AmbientSound) {
-        previewStop?.cancel()
-        guard sound != .off else { preview.stop(); return }
-        preview.start(sound, volume: max(0.25, model.settings.ambientVolume))
-        previewStop = Task { @MainActor in
-            try? await Task.sleep(for: .seconds(5))
-            guard !Task.isCancelled else { return }
-            preview.stop()
-        }
-    }
-
-    private func stopPreview() {
-        previewStop?.cancel()
-        preview.stop()
     }
 }
 
 /// One of the setup's big choices: an icon, a name and a line under it.
-private struct OnboardingChoice: View {
+struct OnboardingChoice: View {
     let icon: String
     let title: String
     let detail: String
@@ -857,32 +679,8 @@ private struct OnboardingChoice: View {
     }
 }
 
-/// A switch with a name and a line of explanation, sized for the setup pages.
-private struct OnboardingToggle: View {
-    let title: String
-    let detail: String
-    @Binding var isOn: Bool
-
-    var body: some View {
-        HStack(spacing: 14) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title).font(.system(size: 14, weight: .semibold))
-                Text(detail).font(.system(size: 12)).foregroundStyle(NonnaTheme.secondaryInk)
-            }
-            Spacer(minLength: 12)
-            Toggle(title, isOn: $isOn)
-                .toggleStyle(.switch)
-                .labelsHidden()
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
-        .background(NonnaTheme.paper, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-        .overlay { RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(NonnaTheme.line, lineWidth: 0.8) }
-    }
-}
-
 /// A wide capsule in the theme's accent, like a Mac setup assistant's main button.
-private struct OnboardingButtonStyle: ButtonStyle {
+struct OnboardingButtonStyle: ButtonStyle {
     let color: Color
 
     func makeBody(configuration: Configuration) -> some View {

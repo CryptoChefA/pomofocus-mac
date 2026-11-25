@@ -273,7 +273,7 @@ struct SettingsView: View {
             FocusQuietSettingsRow()
             ToggleRow(
                 title: "Daily check-in",
-                subtitle: "Ask how you're feeling once a day, with a flower at the top of the timer to check in any time. Your mood shows on the Dashboard and stays on this Mac",
+                subtitle: "Ask how you're feeling once a day. Check in any time from Progress. Your mood shows in Progress → Mood and stays on this Mac",
                 binding: $dailyCheckIn
             )
             ToggleRow(
@@ -282,15 +282,30 @@ struct SettingsView: View {
                 binding: settingsBinding(\.playSounds)
             )
             ToggleRow(
-                title: "Focus reset captions",
+                title: "Reset captions",
                 subtitle: "Show what the voice says, for following along without sound",
                 binding: settingsBinding(\.resetCaptions)
             )
             HStack(spacing: 12) {
                 VStack(alignment: .leading, spacing: 2) {
+                    Text("Under a reset")
+                        .font(.system(size: 12, weight: .medium))
+                    Text("What plays beneath the voice in Breathe, Settle and Ease back in")
+                        .font(.system(size: 10))
+                        .foregroundStyle(NonnaTheme.secondaryInk)
+                }
+                Spacer()
+                Picker("Under a reset", selection: settingsBinding(\.resetAmbience)) {
+                    ForEach(ResetAmbience.allCases.filter(\.isAvailable)) { Text($0.title).tag($0.rawValue) }
+                }
+                .labelsHidden()
+                .frame(width: 170)
+            }
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 2) {
                     Text("Setup")
                         .font(.system(size: 12, weight: .medium))
-                    Text("Go through the first-launch questions again: how you work, your look, sound and extras")
+                    Text("Answer the first-launch question again: how you like to work")
                         .font(.system(size: 10))
                         .foregroundStyle(NonnaTheme.secondaryInk)
                 }

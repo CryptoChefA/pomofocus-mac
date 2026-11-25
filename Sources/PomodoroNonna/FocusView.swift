@@ -16,7 +16,6 @@ struct FocusView: View {
     /// A tab clicked while a timer runs: it's only shown, and the running block carries on
     /// until "Start" is pressed for it.
     @State private var browsedPhase: TimerPhase?
-    @State private var showsBrainDump = false
     @State private var showsStudyTogether = false
     /// The rough block whose suggestion was dismissed, so it doesn't come back.
     @State private var dismissedCoach: UUID?
@@ -35,7 +34,6 @@ struct FocusView: View {
     private var isFlashing: Bool { isAlerting && model.status == .overtime }
 
     @AppStorage("displayName") private var displayName = ""
-    @AppStorage(MoodPrompt.enabledKey) private var dailyCheckIn = true
     @AppStorage(QuietClock.enabledKey) private var showsClock = true
     private var isBlackIce: Bool { ThemeManager.shared.themeID == ThemeChoice.blackIce.rawValue }
     private var isBespoke: Bool { ThemeManager.shared.themeID == ThemeChoice.bespoke.rawValue }
@@ -72,9 +70,6 @@ struct FocusView: View {
                             QuietClock()
                                 .padding(.trailing, 4)
                         }
-                        if dailyCheckIn {
-                            MoodButton()
-                        }
                         TogetherButton { showsStudyTogether = true }
                         Button {
                             CinematicController.shared.enter(model: model)
@@ -107,12 +102,18 @@ struct FocusView: View {
 
                     // After a rough block: one suggestion for the break, matched to how it went.
                     if let suggestion = model.breakSuggestion, suggestion.blockID != dismissedCoach {
-                        CoachCard(kind: suggestion.kind, onBrainDump: { showsBrainDump = true }) {
+                        ResetNudge(text: suggestion.kind == .move ? "That block felt restless. A short walk might help."
+                                   : suggestion.kind == .unload ? "That block felt scattered. Want to empty your head?"
+                                   : "Two tough blocks in a row. Maybe rest instead of pushing.",
+                                   onOpen: { model.showsResetSheet = true }) {
                             withAnimation(reduceMotion ? nil : NonnaMotion.dismiss) { dismissedCoach = suggestion.blockID }
                         }
                         .frame(maxWidth: 690)
                         .transition(.banner(reduceMotion: reduceMotion))
                     }
+
+                    ThemeTip()
+                        .frame(maxWidth: 690)
 
                     if model.status == .idle {
                         MoodCheckInBanner()
@@ -186,10 +187,6 @@ struct FocusView: View {
         }
         .sheet(isPresented: $showsStudyTogether) {
             StudyTogetherSheet { showsStudyTogether = false }
-                .environment(model)
-        }
-        .sheet(isPresented: $showsBrainDump) {
-            BrainDumpSheet { showsBrainDump = false }
                 .environment(model)
         }
         .sheet(isPresented: $showingNewTask) {
@@ -492,10 +489,10 @@ struct FocusView: View {
                 Button {
                     model.resetScreenRequest += 1
                 } label: {
-                    Label("Focus reset", systemImage: "wind")
+                    Label("Reset", systemImage: "wind")
                 }
                 .buttonStyle(NonnaButtonStyle(prominent: false))
-                .help("A short guided reset before you start")
+                .help("Get your focus back: a walk, a brain dump or a guided breath")
             } else {
                 Button {
                     model.togglePause()
@@ -516,7 +513,13 @@ struct FocusView: View {
                 endSessionButton
 
                 if model.phase == .focus, !model.isOvertime {
-                    DriftingMenu { showsBrainDump = true }
+                    Button { model.showsResetSheet = true } label: {
+                        Label("Drifting?", systemImage: "wind")
+                            .font(.system(size: 12, weight: .medium))
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(NonnaTheme.secondaryInk)
+                    .help("Lost focus? Reset instead of quitting")
                 }
 
                 Menu {
@@ -526,7 +529,7 @@ struct FocusView: View {
                         }
                         Divider()
                     } else {
-                        Button("Focus reset") { model.resetScreenRequest += 1 }
+                        Button("Reset…") { model.showsResetSheet = true }
                         Divider()
                     }
                     Button("Abandon timer…", role: .destructive) { confirmsAbandon = true }

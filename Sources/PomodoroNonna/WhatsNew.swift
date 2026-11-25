@@ -14,6 +14,13 @@ enum WhatsNew {
 
     /// Newest first. Add an entry with every release.
     static let releases: [(version: String, items: [Item])] = [
+        ("0.23.0", [
+            Item(icon: "sidebar.left", title: "A calmer window", detail: "Four places instead of seven: Focus, Tasks, Progress and Settings. The sidebar tucks itself away, so the timer has the window to itself. Move the pointer to the left edge to bring it back."),
+            Item(icon: "chart.bar.xaxis", title: "Progress", detail: "The Dashboard, History, your plan and your mood now live together in Progress. Overview shows your week, your plan, your peak hours and your recaps. See more, at the bottom, opens every detail."),
+            Item(icon: "wind", title: "One Reset", detail: "Drifting mid-block, or after a rough one? Reset offers the one thing that fits: a walk, writing it out, a guided breath or a proper rest. The others are a click away. Pick what plays under a reset in Settings."),
+            Item(icon: "paintpalette", title: "Four looks to start", detail: "Match system, Black Ice, London and Layla sit up front. More themes, in Settings, has the rest."),
+            Item(icon: "checklist", title: "A quicker setup", detail: "First launch asks one thing, how you like to work, then starts your first block."),
+        ]),
         ("0.22.15", [
             Item(icon: "wind", title: "Breathe together", detail: "In a study group, when the leader starts a block with the opening breaths, everyone breathes along in step, and the block begins for all of you at the same moment."),
             Item(icon: "person.2", title: "A steadier group", detail: "Groups no longer depend on everyone's clock agreeing, which could keep a friend's timer from following. The Together window now shows the leader's timer and when you last heard from it."),

@@ -3,23 +3,34 @@ import SwiftUI
 
 enum AppSection: String, CaseIterable, Identifiable {
     case focus = "Focus"
-    case plan = "Plan"
-    case reset = "Focus reset"
-    case dashboard = "Dashboard"
-    case history = "History"
     case tasks = "Tasks"
+    case progress = "Progress"
     case settings = "Settings"
 
     var id: String { rawValue }
     var icon: String {
         switch self {
         case .focus: "timer"
-        case .plan: "figure.stairs"
-        case .reset: "wind"
-        case .dashboard: "chart.bar.xaxis"
-        case .history: "clock.arrow.circlepath"
+        case .progress: "chart.bar.xaxis"
         case .tasks: "checklist"
         case .settings: "slider.horizontal.3"
+        }
+    }
+}
+
+extension RootView {
+    /// Shows the sidebar now, or hides it a moment after the pointer leaves.
+    func revealSidebar(_ show: Bool) {
+        hideSidebar?.cancel()
+        let motion: Animation? = reduceMotion ? nil : .spring(duration: 0.38, bounce: 0.12)
+        if show {
+            withAnimation(motion) { sidebarShown = true }
+        } else {
+            hideSidebar = Task { @MainActor in
+                try? await Task.sleep(for: .milliseconds(450))
+                guard !Task.isCancelled else { return }
+                withAnimation(motion) { sidebarShown = false }
+            }
         }
     }
 }
@@ -28,6 +39,9 @@ struct RootView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var selection: AppSection = .focus
+    /// The sidebar hides until the pointer reaches the window's left edge.
+    @State private var sidebarShown = false
+    @State private var hideSidebar: Task<Void, Never>?
     @State private var workSuggestions: [WorkSuggestion] = []
 
     /// Any sheet other than the focus rating.
@@ -45,26 +59,16 @@ struct RootView: View {
             if let session = model.activeReset {
                 FocusResetSessionView(session: session)
             } else {
-            HStack(spacing: 0) {
-                Sidebar(selection: $selection)
-                    .frame(width: 82)
-                    .frame(maxHeight: .infinity)
-                    // The whole column, edge to edge and under the title bar. Solid unless
-                    // glass is turned up in Settings, so scenery doesn't show beside the icons.
-                    .background(NonnaSurface(shape: Rectangle(), tint: NonnaTheme.sunken).ignoresSafeArea())
-                Divider().overlay(NonnaTheme.line)
+            ZStack(alignment: .leading) {
                 GeometryReader { proxy in
                 ZStack {
                     Group {
                         switch selection {
                         case .focus: FocusView()
-                        case .plan: FocusPlanView {
+                        case .progress: ProgressSectionView {
                             withAnimation(reduceMotion ? nil : NonnaMotion.page) { selection = .focus }
                             if model.status == .idle, !model.isBreathing, model.awaitingNextPhase == nil { model.startFocus() }
                         }
-                        case .reset: FocusResetView()
-                        case .dashboard: DashboardView()
-                        case .history: HistoryView()
                         case .tasks: TasksView()
                         case .settings: SettingsView()
                         }
@@ -77,6 +81,30 @@ struct RootView: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .animation(reduceMotion ? nil : NonnaMotion.page, value: selection)
+
+                // A strip along the left edge: reach it and the sidebar slides in.
+                Color.clear
+                    .frame(width: 14)
+                    .frame(maxHeight: .infinity)
+                    .contentShape(Rectangle())
+                    .onHover { if $0 { revealSidebar(true) } }
+                // A faint handle, so it's findable.
+                Capsule()
+                    .fill(NonnaTheme.secondaryInk.opacity(0.3))
+                    .frame(width: 3, height: 46)
+                    .padding(.leading, 5)
+                    .opacity(sidebarShown ? 0 : 1)
+                    .allowsHitTesting(false)
+                HStack(spacing: 0) {
+                    Sidebar(selection: $selection)
+                        .frame(width: 82)
+                        .frame(maxHeight: .infinity)
+                        .background(NonnaSurface(shape: Rectangle(), tint: NonnaTheme.sunken).ignoresSafeArea())
+                    Divider().overlay(NonnaTheme.line)
+                }
+                .shadow(color: .black.opacity(sidebarShown ? 0.28 : 0), radius: 18)
+                .offset(x: sidebarShown ? 0 : -92)
+                .onHover { revealSidebar($0) }
             }
             }
         }
@@ -87,7 +115,11 @@ struct RootView: View {
             withAnimation(reduceMotion ? nil : NonnaMotion.page) { selection = .focus }
         }
         .onChange(of: model.resetScreenRequest) { _, _ in
-            withAnimation(reduceMotion ? nil : NonnaMotion.page) { selection = .reset }
+            model.showsResetSheet = true
+        }
+        .sheet(isPresented: Bindable(model).showsResetSheet) {
+            ResetSheet { model.showsResetSheet = false }
+                .environment(model)
         }
         .onOpenURL { url in
             // pomofocus://pause and friends, from Shortcuts or from a widget button when the
@@ -101,8 +133,9 @@ struct RootView: View {
             NSApp.activate()
         }
         .sheet(isPresented: Binding(get: { model.needsOnboarding }, set: { _ in })) {
-            WelcomeView {
-                withAnimation(reduceMotion ? nil : NonnaMotion.page) { selection = .plan }
+            QuickSetupView { buildPlan in
+                if buildPlan { model.progressTab = 2 }
+                withAnimation(reduceMotion ? nil : NonnaMotion.page) { selection = buildPlan ? .progress : .focus }
             }
             .environment(model)
         }

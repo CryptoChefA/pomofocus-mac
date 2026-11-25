@@ -907,6 +907,9 @@ final class AppModel {
     var focusScreenRequest = 0
     /// Bumped to show the Focus reset section, from the button beside Begin focus.
     var resetScreenRequest = 0
+    /// Progress's open tab (0 overview, 1 history, 2 your plan, 4 mood) and the Reset sheet.
+    var progressTab = 0
+    var showsResetSheet = false
     /// The focus reset filling the window, while one is under way.
     var activeReset: FocusResetSession?
 

@@ -7,6 +7,9 @@ struct DashboardView: View {
     @State private var hoveredDay: Date?
     @State private var selectedMetric: DashboardMetric?
     @State private var chartWidth: CGFloat = 600
+    /// Shown under Progress → See more, inside Overview's scroll, without what Overview
+    /// already shows.
+    var embedded = false
 
     private var analytics: AnalyticsSnapshot { model.analytics }
 
@@ -37,17 +40,19 @@ struct DashboardView: View {
     }
 
     var body: some View {
-        ScrollView {
+        OptionalScroll(enabled: !embedded) {
             VStack(alignment: .leading, spacing: 22) {
-                SectionHeading(
-                    title: "Dashboard"
-                )
+                if !embedded {
+                    SectionHeading(title: "Dashboard")
+                }
 
                 FocusScoreCard()
-                PeakHoursCard()
-                WeekDashboardRow()
-                YearDashboardRow()
-                RunawayTimersBanner()
+                if !embedded {
+                    PeakHoursCard()
+                    WeekDashboardRow()
+                    YearDashboardRow()
+                    RunawayTimersBanner()
+                }
 
                 let totalBreakSeconds = model.breakSessions.reduce(0) { $0 + $1.restedSeconds }
                 let trends = MetricTrends.compute(
@@ -138,13 +143,15 @@ struct DashboardView: View {
 
                 WeeklyHoursCard()
 
-                MoodCard()
+                if !embedded {
+                    MoodCard()
+                }
 
                 consistencyCard
 
                 InsightsSection()
             }
-            .padding(30)
+            .padding(embedded ? 0 : 30)
         }
         .sheet(item: $selectedMetric) { metric in
             MetricDeepDiveView(
@@ -815,7 +822,7 @@ private struct WeeklyHoursCard: View {
 
 /// When you focus best: each hour judged by how its blocks went (finished, and how they
 /// felt), with the best two-hour stretch named in plain words.
-private struct PeakHoursCard: View {
+struct PeakHoursCard: View {
     @Environment(AppModel.self) private var model
     @State private var hoveredHour: Int?
     @State private var chartWidth: CGFloat = 600
@@ -930,5 +937,19 @@ private struct PeakHoursCard: View {
         var lines = ["\(hour.minutes.minutesString) focused", "\(hour.finished) of \(hour.blocks) blocks finished"]
         if let feel = feeling(hour.averageRating) { lines.append("Usually rated \(feel)") }
         return lines
+    }
+}
+
+/// A scroll view, or just the content when something outside already scrolls.
+struct OptionalScroll<Content: View>: View {
+    let enabled: Bool
+    @ViewBuilder let content: Content
+
+    var body: some View {
+        if enabled {
+            ScrollView { content }
+        } else {
+            content
+        }
     }
 }

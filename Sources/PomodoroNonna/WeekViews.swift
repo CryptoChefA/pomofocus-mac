@@ -53,7 +53,7 @@ struct WeekReadyBanner: View {
                 }
                 .buttonStyle(.plain)
                 .foregroundStyle(NonnaTheme.secondaryInk)
-                .help("Not now. It's always on the Dashboard")
+                .help("Not now. It's always in Progress")
                 .accessibilityLabel("Not now")
             }
             .padding(.horizontal, 14)

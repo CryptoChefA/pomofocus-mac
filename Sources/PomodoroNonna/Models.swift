@@ -112,7 +112,7 @@ enum AmbientSound: String, Codable, CaseIterable, Identifiable, Sendable {
     }
 
     /// Where the recordings come from. The clock's licence and ElevenLabs' terms ask for this credit.
-    static let credits = "Clock: \u{201C}Wall clock with weight ticking\u{201D} by Work With Sounds / Technical Museum of Slovenia, CC BY 4.0. Rain: \u{201C}Rain against the window\u{201D}, public domain. Ocean: \u{201C}Ocean Waves on a Tropical Beach\u{201D}, CC0. All via Wikimedia Commons; trimmed and looped. Brown and white noise made for Pomofocus. Focus reset voice by elevenlabs.io; meditation music \u{201C}Motion\u{201D} by Liborio Conti (no-copyright-music.com)."
+    static let credits = "Clock: \u{201C}Wall clock with weight ticking\u{201D} by Work With Sounds / Technical Museum of Slovenia, CC BY 4.0. Rain: \u{201C}Rain against the window\u{201D}, public domain. Ocean: \u{201C}Ocean Waves on a Tropical Beach\u{201D}, CC0. All via Wikimedia Commons; trimmed and looped. Brown and white noise made for Pomofocus. Reset voice by elevenlabs.io; meditation music \u{201C}Motion\u{201D} by Liborio Conti (no-copyright-music.com)."
 }
 
 struct FocusTask: Identifiable, Codable, Hashable, Sendable {
