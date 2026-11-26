@@ -10,6 +10,23 @@ struct DashboardView: View {
     /// Shown under Progress → See more, inside Overview's scroll, without what Overview
     /// already shows.
     var embedded = false
+    /// Shows only this card, for a Progress widget.
+    var part: DashboardPart?
+
+    enum DashboardPart {
+        case focusScore, dailyFocus, timeByList, hoursByWeek, consistency
+    }
+
+    @ViewBuilder
+    private func partView(_ part: DashboardPart) -> some View {
+        switch part {
+        case .focusScore: FocusScoreCard()
+        case .dailyFocus: recentActivityCard
+        case .timeByList: taskTotalsCard
+        case .hoursByWeek: WeeklyHoursCard()
+        case .consistency: consistencyCard
+        }
+    }
 
     private var analytics: AnalyticsSnapshot { model.analytics }
 
@@ -40,6 +57,10 @@ struct DashboardView: View {
     }
 
     var body: some View {
+        Group {
+        if let part {
+            partView(part)
+        } else {
         OptionalScroll(enabled: !embedded) {
             VStack(alignment: .leading, spacing: 22) {
                 if !embedded {
@@ -152,6 +173,8 @@ struct DashboardView: View {
                 InsightsSection()
             }
             .padding(embedded ? 0 : 30)
+        }
+        }
         }
         .sheet(item: $selectedMetric) { metric in
             MetricDeepDiveView(
@@ -270,7 +293,7 @@ struct DashboardView: View {
                             .foregroundStyle(NonnaTheme.secondaryInk)
                         }
                     }
-                    .frame(height: 235)
+                    .frame(minHeight: 90, idealHeight: 235, maxHeight: 235)
                 }
             }
         }
@@ -799,7 +822,7 @@ private struct WeeklyHoursCard: View {
                 .foregroundStyle(NonnaTheme.secondaryInk)
             }
         }
-        .frame(height: 220)
+        .frame(minHeight: 90, idealHeight: 220, maxHeight: 220)
     }
 
     /// Every third week, counting back from this one, so the labels never crowd.
@@ -929,7 +952,7 @@ struct PeakHoursCard: View {
                 .foregroundStyle(NonnaTheme.secondaryInk)
             }
         }
-        .frame(height: 170)
+        .frame(minHeight: 80, idealHeight: 170, maxHeight: 170)
         .accessibilityLabel("Focus minutes by hour. Best from \(range(best)).")
     }
 

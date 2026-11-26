@@ -32,7 +32,7 @@ After installing, Pomofocus updates itself.
 
 - Native SwiftUI macOS app and menu-bar timer with a live progress ring and countdown
 - Four places: Focus, Tasks, Progress and Settings, in a sidebar that hides until the pointer reaches the window's left edge
-- Progress: an Overview (this week, your plan, peak hours, mood, week and year recaps) with See more for every detail, plus Mood, History and Your plan tabs
+- Progress: a Dashboard of stat widgets you drag, resize (small to extra large) and add or remove, with as many named dashboards as you like, plus Mood, History and Your plan tabs
 - Small, medium and large desktop and sidebar widgets with a live timer, a gold progress band, and buttons to start, pause, resume, skip a break or end a session
 - Menu bar looks: the timer chip, three bars that empty as a block runs, your own icon, or Minimal (the time left or a percentage), in the menu bar's colour or any other
 - A silent glow around the screen edges when a block or break ends, including over full-screen apps
@@ -89,7 +89,7 @@ After installing, Pomofocus updates itself.
 - Searchable history and CSV export
 - Timer recovery after quitting or restarting the app
 - Human-readable local JSON storage
-- Custom keyboard shortcuts and menu-bar controls
+- Shortcuts that work from any app for start or pause, next, skip break, end session and show the window (Settings → Shortcuts)
 
 ## Privacy
 
@@ -184,7 +184,9 @@ swiftc Sources/PomodoroNonna/Models.swift Sources/PomodoroNonna/MoodCheckIn.swif
 - `FocusCoach.swift`: the brain dump
 - `ThinScrollBars.swift`: the slim scroll bar used in every scroll view
 - `ResetSheet.swift`: the one Reset sheet and the break nudge after a rough block
-- `ProgressSectionView.swift`: Progress, its Overview and the Mood, History and Your plan tabs
+- `ProgressSectionView.swift`: Progress, its Dashboard and the Mood, History and Your plan tabs
+- `ProgressWidgets.swift`: the widget dashboards: sizes, packing, drag, resize, the widget strip and saved dashboards
+- `GlobalHotkeys.swift`: shortcuts that work from any app, and the recorder in Settings → Shortcuts
 - `GroupSync.swift`: what a study group shares, and how a friend's timer follows the host (pure, checked by Tests/GroupCheck)
 - `StudyGroup.swift`: finds, hosts and joins study groups nearby with Multipeer Connectivity
 - `StudyTogetherView.swift`: the Study together sheet and the group banner on the Focus screen
@@ -205,7 +207,7 @@ swiftc Sources/PomodoroNonna/Models.swift Sources/PomodoroNonna/MoodCheckIn.swif
 - `MoodCheckIn.swift`: daily check-in data, the feeling and influence lists, and the Mood card's summary
 - `MoodViews.swift`: the check-in banner, the three-step check-in sheet and the Mood card
 - `LondonScene.swift`: the London theme's Metal scene; its skyline layers are drawn by `Scripts/london/layers.html` and rendered to `Resources/London` with `Scripts/london/render.sh`
-- `DashboardView.swift`: the details under Progress → See more: local charts, lifetime task totals, streaks, and usage days
+- `DashboardView.swift`: the chart cards behind the larger Progress widgets: local charts, lifetime task totals, streaks, and usage days
 - `FocusScore.swift`: the daily focus score and runaway-timer trimming (pure, tested); `FocusScoreViews.swift` draws them
 - `HistoryView.swift`: searchable session ledger and CSV export
 - `TasksView.swift`: Tasks (board, smart views, New task form, Paste a list) and the timer's task link

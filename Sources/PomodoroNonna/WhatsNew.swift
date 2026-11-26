@@ -14,6 +14,10 @@ enum WhatsNew {
 
     /// Newest first. Add an entry with every release.
     static let releases: [(version: String, items: [Item])] = [
+        ("0.24.0", [
+            Item(icon: "square.grid.2x2", title: "Widgets in Progress", detail: "The Dashboard is now a board of widgets. Drag one to move it, right-click to pick small, medium, large or extra large, and use Edit widgets to add or remove them. Click the dashboard's name to make another one. In depth has everything that was under See more."),
+            Item(icon: "keyboard", title: "Shortcuts from any app", detail: "In Settings → Shortcuts, set keys to start or pause, go to the next block or break, skip a break, end the session or show the window. They work while you're in another app, so after the bell you can start your break without switching back."),
+        ]),
         ("0.23.0", [
             Item(icon: "sidebar.left", title: "A shorter sidebar", detail: "Four places instead of seven: Focus, Tasks, Progress and Settings. The sidebar hides until you move the pointer to the window's left edge."),
             Item(icon: "chart.bar.xaxis", title: "Progress", detail: "The Dashboard, History, your plan and your mood are now in Progress. Overview shows your week, plan, peak hours and recaps, and See more at the bottom has the full details."),

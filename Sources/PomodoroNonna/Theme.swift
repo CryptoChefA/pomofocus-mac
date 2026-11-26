@@ -399,11 +399,28 @@ struct NonnaSurface<S: Shape>: View {
     }
 }
 
+private struct CardChromeKey: EnvironmentKey {
+    static let defaultValue = true
+}
+
+extension EnvironmentValues {
+    /// Off inside a Progress widget, which draws its own card around what it shows.
+    var cardChrome: Bool {
+        get { self[CardChromeKey.self] }
+        set { self[CardChromeKey.self] = newValue }
+    }
+}
+
 struct NonnaCard<Content: View>: View {
     var padding: CGFloat = 22
     @ViewBuilder var content: Content
+    @Environment(\.cardChrome) private var chrome
 
     var body: some View {
+        if chrome { card } else { content }
+    }
+
+    private var card: some View {
         content
             .padding(padding)
             .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))

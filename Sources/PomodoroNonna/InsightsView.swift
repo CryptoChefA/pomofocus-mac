@@ -6,6 +6,10 @@ struct InsightsSection: View {
     @Environment(\.compactLayout) private var compact
     @Environment(AppModel.self) private var model
     @State private var range: InsightsRange = .month
+    /// Shows only this card, over the last month, for a Progress widget.
+    var only: Part?
+
+    enum Part { case trends, rhythm, quality, breaks }
 
     var body: some View {
         let insights = InsightsSnapshot.calculate(
@@ -14,6 +18,24 @@ struct InsightsSection: View {
             dailyGoalMinutes: model.settings.dailyGoalMinutes,
             range: range
         )
+        if let only {
+            if insights.sessionCount == 0 {
+                EmptyState(icon: "chart.xyaxis.line", title: "Nothing this month yet", message: "Finish a session to fill this in.")
+            } else {
+                switch only {
+                case .trends: TrendsCard(insights: insights, goalMinutes: model.settings.dailyGoalMinutes)
+                case .rhythm: RhythmCard(insights: insights)
+                case .quality: QualityCard(insights: insights)
+                case .breaks: BreaksCard(insights: insights)
+                }
+            }
+        } else {
+            fullSection(insights)
+        }
+    }
+
+    @ViewBuilder
+    private func fullSection(_ insights: InsightsSnapshot) -> some View {
 
         VStack(alignment: .leading, spacing: 18) {
             HStack(alignment: .bottom) {

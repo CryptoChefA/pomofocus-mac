@@ -30,6 +30,7 @@ struct SettingsView: View {
                     }
                     VStack(spacing: 18) {
                         experienceSettings
+                        ShortcutSettingsCard()
                         MenuBarSettingsCard()
                         widgetSettings
                         calendarSettings

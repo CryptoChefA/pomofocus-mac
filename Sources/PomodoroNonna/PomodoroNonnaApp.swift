@@ -14,6 +14,7 @@ struct PomodoroNonnaApp: App {
         WindowGroup("Pomofocus") {
             RootView()
                 .environment(model)
+                .task { GlobalHotkeys.shared.start(model: model) }
                 .environmentObject(calendarStore)
                 .preferredColorScheme(NonnaTheme.colorScheme)
                 .frame(minWidth: 720, minHeight: 560)
